@@ -212,6 +212,27 @@ pub struct GraphMetrics {
     pub most_dependent: Vec<(String, u64)>,
 }
 
+/// 一条静态调用边（规格 §19 可靠子集；仅直接调用，且 callee 解析成功时
+/// 才为 Resolved；动态/未知名保持 Unresolved，不猜测）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallEdge {
+    /// 稳定 ID：`call:{caller}#{callee_name}#{line}:{column}`。
+    pub id: String,
+    /// 调用方符号（限定路径所属）。
+    pub caller_id: prism_core::ids::SymbolId,
+    pub caller_qualified: String,
+    /// 原样 callee 文本（"helper" / "obj.method"）。
+    pub callee_text: String,
+    /// 调用名的最后一段（解析键）。
+    pub callee_name: String,
+    /// Resolved 时的被调符号。
+    pub callee_id: Option<prism_core::ids::SymbolId>,
+    pub callee_qualified: Option<String>,
+    pub resolution: ResolutionStatus,
+    pub confidence: Confidence,
+    pub location: Option<SourceLocation>,
+}
+
 /// M3 对外 JSON 契约（规格 §33）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DependencyGraphResult {
@@ -226,6 +247,9 @@ pub struct DependencyGraphResult {
     pub nodes: Vec<GraphNode>,
     /// 按稳定 ID 排序。
     pub edges: Vec<GraphEdge>,
+    /// 静态调用边（符号级，规格 §19/§20），按稳定 ID 排序。
+    #[serde(default)]
+    pub calls: Vec<CallEdge>,
     /// 按 ID 排序。
     pub cycles: Vec<Cycle>,
     pub metrics: GraphMetrics,

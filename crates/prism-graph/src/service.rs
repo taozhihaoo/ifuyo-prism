@@ -4,6 +4,7 @@
 //! 单文件解析失败不击穿（§34），结果按稳定 ID 排序（§27）。
 
 use crate::builder::build_graph;
+use crate::calls::resolve_calls;
 use crate::model::{
     Dependency, DependencyGraphResult, DependencyKind, GraphMetrics, ResolutionDiagnostic,
     ResolutionStatus, GRAPH_SCHEMA_VERSION,
@@ -103,6 +104,8 @@ impl DependencyService {
 
         dependencies.sort_by(|a, b| a.id.cmp(&b.id));
 
+        let calls = resolve_calls(model, &dependencies);
+
         let diagnostics: Vec<ResolutionDiagnostic> = {
             let mut list = diagnostics;
             list.sort_by(|a, b| {
@@ -134,6 +137,7 @@ impl DependencyService {
             project_name: discovery.project.name.clone(),
             modules,
             dependencies,
+            calls,
             nodes: assembly.nodes,
             edges: assembly.edges,
             cycles: assembly.cycles,

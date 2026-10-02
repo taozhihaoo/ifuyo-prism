@@ -163,3 +163,75 @@ fn graph_builder_builds_contains_and_metrics() {
     assert!(assembly.metrics.node_count >= 2);
     std::fs::remove_dir_all(&root).ok();
 }
+
+#[test]
+fn call_graph_resolves_same_file_import_and_dynamic() {
+    let root = temp_root("calls");
+    std::fs::create_dir_all(root.join("src")).unwrap();
+    // same.ts: main() 调用同文件 helper() → Resolved（同文件）
+    // imported.ts: main() 调用 useUtil()（来自 resolved import ./util）→ Resolved
+    // util.ts: useUtil 定义
+    // dynamic.ts: handler = compute(); handler() → Unresolved
+    std::fs::write(
+        root.join("src/same.ts"),
+        "function helper(): number {\n    return 1;\n}\nexport function main(): number {\n    return helper();\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("src/util.ts"),
+        "export function useUtil(): number {\n    return 2;\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("src/imported.ts"),
+        "import { useUtil } from \"./util\";\nexport function main(): number {\n    return useUtil();\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        root.join("src/dynamic.ts"),
+        "function run(): void {\n    const handler = getHandler();\n    handler();\n}\n",
+    )
+    .unwrap();
+
+    let result = graph_of(&root);
+    let calls = &result.calls;
+    assert!(calls.len() >= 3, "expected >= 3 calls, got {}", calls.len());
+
+    // 同文件解析（High）
+    let same = calls
+        .iter()
+        .find(|c| c.callee_name == "helper")
+        .expect("helper call");
+    assert_eq!(same.resolution, ResolutionStatus::Resolved);
+    assert_eq!(same.confidence, prism_core::Confidence::High);
+    assert!(same
+        .callee_qualified
+        .as_deref()
+        .unwrap()
+        .ends_with("helper"));
+
+    // import 解析（Medium）：callee 符号位于 ./util
+    let imported = calls
+        .iter()
+        .find(|c| c.callee_name == "useUtil")
+        .expect("useUtil call");
+    assert_eq!(imported.resolution, ResolutionStatus::Resolved);
+    assert_eq!(imported.confidence, prism_core::Confidence::Medium);
+    assert!(imported
+        .callee_qualified
+        .as_deref()
+        .unwrap()
+        .ends_with("util.useUtil"));
+
+    // 动态名：handler → Unresolved，不指向任何符号
+    let dynamic = calls
+        .iter()
+        .find(|c| c.callee_name == "handler" && c.callee_text == "handler")
+        .expect("handler call");
+    assert_eq!(dynamic.resolution, ResolutionStatus::Unresolved);
+    assert!(dynamic.callee_id.is_none());
+
+    // 确定性
+    let again = graph_of(&root);
+    assert_eq!(result.calls, again.calls);
+}

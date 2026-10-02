@@ -12,14 +12,16 @@
 //! Explicit Uncertainty。指标是事实不是评价；环只是记录，不做健康判断（M7）。
 
 pub mod builder;
+pub mod calls;
 pub mod model;
 pub mod modules;
 pub mod resolve;
 pub mod service;
 
 pub use builder::build_graph;
+pub use calls::resolve_calls;
 pub use model::{
-    Cycle, Dependency, DependencyGraphResult, DependencyKind, GraphEdge, GraphEdgeKind,
+    CallEdge, Cycle, Dependency, DependencyGraphResult, DependencyKind, GraphEdge, GraphEdgeKind,
     GraphMetrics, GraphNode, GraphNodeKind, Module, ModuleKind, ResolutionDiagnostic,
     ResolutionStatus, GRAPH_SCHEMA_VERSION,
 };

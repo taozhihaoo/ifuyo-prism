@@ -7,7 +7,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
+  InspectStatus,
   PrismErrorDto,
+  ProjectCodeModelDto,
   ProjectDiscovery,
   ProjectInfo,
   RuntimeInfo,
@@ -65,4 +67,22 @@ export async function pickDirectory(): Promise<string | null> {
   const { open } = await import("@tauri-apps/plugin-dialog");
   const selected = await open({ directory: true, multiple: false, title: "Open project" });
   return typeof selected === "string" ? selected : null;
+}
+
+// ---------- M2：Code Understanding ----------
+
+export function startInspect(): Promise<string> {
+  return invoke<string>("start_inspect");
+}
+
+export function cancelInspect(): Promise<void> {
+  return invoke<void>("cancel_inspect");
+}
+
+export function getInspectStatus(): Promise<InspectStatus> {
+  return invoke<InspectStatus>("get_inspect_status");
+}
+
+export function getCodeModel(): Promise<ProjectCodeModelDto | null> {
+  return invoke<ProjectCodeModelDto | null>("get_code_model");
 }

@@ -6,7 +6,8 @@
 //! GUI 不自建扫描逻辑。扫描在后台线程执行，前端轮询 get_scan_status
 //! （纲领 §68 允许轮询而非 streaming）。
 
-use crate::state::{lock_session, status_string, AppState};
+use crate::state::{lock_session, status_string, AppState, InspectProgress};
+use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
 use prism_core::application::{AppInfo, RuntimeInfo};
 use prism_core::error::PrismErrorDto;
 use prism_core::task::TaskState;
@@ -157,4 +158,135 @@ pub fn get_scan_status(state: State<'_, AppState>) -> ScanStatusDto {
 pub fn get_discovery(state: State<'_, AppState>) -> Option<ProjectDiscovery> {
     let session = lock_session(&state.session);
     session.discovery.clone()
+}
+
+// ---------- M2：Code Understanding ----------
+
+/// inspect 会话对外状态。
+#[derive(Debug, Clone, Serialize)]
+pub struct InspectStatusDto {
+    /// "idle" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub files_total: u64,
+    pub files_done: u64,
+    pub symbols: u64,
+    pub errors: u64,
+    /// Completed 且存在解析失败/错误诊断 → completed with warnings。
+    pub has_warnings: bool,
+    pub error: Option<String>,
+}
+
+/// 启动代码理解（discovery + analysis 后台线程），返回 task id。
+/// 前端经 get_inspect_status 轮询、get_code_model 取结果。
+#[tauri::command]
+pub fn start_inspect(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
+    let (root, token, task_id, session_arc) = {
+        let mut session = lock_session(&state.session);
+        if session.project.is_none() {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        }
+        if session.inspect_status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "an inspect is already running",
+            ));
+        }
+        let root = session
+            .project
+            .as_ref()
+            .expect("checked above")
+            .root_path
+            .clone();
+        let task_id = session.begin_inspect();
+        let token = session.inspect_token.clone();
+        (root, token, task_id, state.session.clone())
+    };
+
+    let progress_session = session_arc.clone();
+    std::thread::spawn(move || {
+        let cancel = &token;
+        let result =
+            DiscoveryService::new().discover(&root, ScanOptions::default(), cancel, |_| {});
+        let outcome = result.and_then(move |discovery| {
+            CodeAnalysisService::new().analyze(
+                &discovery,
+                CodeAnalysisOptions::default(),
+                cancel,
+                move |progress: prism_analysis::CodeAnalysisProgress| {
+                    let mut session = lock_session(&progress_session);
+                    session.inspect_progress = InspectProgress {
+                        files_total: progress.files_total,
+                        files_done: progress.files_done,
+                        symbols: progress.symbols,
+                        errors: progress.errors,
+                    };
+                },
+            )
+        });
+
+        let mut session = lock_session(&session_arc);
+        match outcome {
+            Ok(model) => {
+                session.inspect_status = Some(model.summary.status);
+                session.inspect_progress = InspectProgress {
+                    files_total: model.summary.files_total,
+                    files_done: model.summary.files_total,
+                    symbols: model.summary.symbols_total,
+                    errors: model.summary.error_count,
+                };
+                session.code_model = Some(model);
+            }
+            Err(err) => {
+                session.inspect_status = Some(TaskState::Failed);
+                session.inspect_error = Some(err.to_string());
+            }
+        }
+    });
+
+    Ok(task_id.to_string())
+}
+
+/// 查询 inspect 会话状态（前端轮询入口）。
+#[tauri::command]
+pub fn get_inspect_status(state: State<'_, AppState>) -> InspectStatusDto {
+    let session = lock_session(&state.session);
+    let status = match session.inspect_status {
+        None => "idle".to_string(),
+        Some(state) => serde_json::to_value(state)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+    let has_warnings = session.inspect_status == Some(TaskState::Completed)
+        && session
+            .code_model
+            .as_ref()
+            .is_some_and(|model| model.summary.files_failed > 0 || model.summary.error_count > 0);
+    InspectStatusDto {
+        status,
+        files_total: session.inspect_progress.files_total,
+        files_done: session.inspect_progress.files_done,
+        symbols: session.inspect_progress.symbols,
+        errors: session.inspect_progress.errors,
+        has_warnings,
+        error: session.inspect_error.clone(),
+    }
+}
+
+/// 获取最近一次 inspect 的完整 Code Model（未完成为 None）。
+#[tauri::command]
+pub fn get_code_model(state: State<'_, AppState>) -> Option<ProjectCodeModel> {
+    let session = lock_session(&state.session);
+    session.code_model.clone()
+}
+
+/// 取消当前 inspect。
+#[tauri::command]
+pub fn cancel_inspect(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
+    let session = lock_session(&state.session);
+    session.inspect_token.cancel();
+    Ok(())
 }

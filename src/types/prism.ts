@@ -183,3 +183,119 @@ export interface ScanStatus {
   has_warnings: boolean;
   error: string | null;
 }
+
+// ---------- M2：Code Understanding 契约 ----------
+
+export type SymbolKind =
+  | "file"
+  | "module"
+  | "namespace"
+  | "class"
+  | "struct"
+  | "interface"
+  | "enum"
+  | "function"
+  | "method"
+  | "constructor"
+  | "property"
+  | "field"
+  | "variable"
+  | "constant"
+  | "parameter"
+  | "type_alias"
+  | "import"
+  | "export"
+  | "decorator"
+  | "unknown";
+
+export type SymbolVisibility =
+  | "public"
+  | "private"
+  | "protected"
+  | "internal"
+  | "package"
+  | "module"
+  | "unknown";
+
+export interface SourceLocationDto {
+  line: number;
+  column: number;
+  byte_offset: number;
+}
+
+export interface SourceRangeDto {
+  start: SourceLocationDto;
+  end: SourceLocationDto;
+}
+
+export interface SymbolDto {
+  id: string;
+  name: string;
+  qualified_name: string;
+  kind: SymbolKind;
+  language: string;
+  file_id: string;
+  parent_id: string | null;
+  visibility: SymbolVisibility;
+  range: SourceRangeDto;
+  signature: string | null;
+  documentation_present: boolean;
+}
+
+export type ParseStatus =
+  | "successful"
+  | "successful_with_diagnostics"
+  | "failed"
+  | "unsupported"
+  | "skipped";
+
+export interface ParseDiagnosticDto {
+  severity: "info" | "warning" | "error";
+  message: string;
+  location: SourceLocationDto | null;
+  code: string;
+}
+
+export interface ParseResultDto {
+  file_id: string;
+  relative_path: string;
+  language: string | null;
+  status: ParseStatus;
+  symbols: SymbolDto[];
+  diagnostics: ParseDiagnosticDto[];
+  duration_ms: number;
+  parser_version: string;
+  reason: string | null;
+}
+
+export interface ParseSummaryDto {
+  files_total: number;
+  files_parsed: number;
+  files_with_diagnostics: number;
+  files_failed: number;
+  files_unsupported: number;
+  files_skipped: number;
+  symbols_total: number;
+  error_count: number;
+  warning_count: number;
+  duration_ms: number;
+  status: "queued" | "running" | "completed" | "failed" | "cancelled";
+}
+
+export interface ProjectCodeModelDto {
+  schema_version: number;
+  project: ProjectInfo;
+  files: FileInfoDto[];
+  parse_results: ParseResultDto[];
+  summary: ParseSummaryDto;
+}
+
+export interface InspectStatus {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  files_total: number;
+  files_done: number;
+  symbols: number;
+  errors: number;
+  has_warnings: boolean;
+  error: string | null;
+}

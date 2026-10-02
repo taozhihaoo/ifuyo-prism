@@ -50,6 +50,10 @@ pub fn run() {
             commands::cancel_scan,
             commands::get_scan_status,
             commands::get_discovery,
+            commands::start_inspect,
+            commands::get_inspect_status,
+            commands::get_code_model,
+            commands::cancel_inspect,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

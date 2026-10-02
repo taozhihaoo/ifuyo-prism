@@ -2468,6 +2468,7 @@ name = "prism-app"
 version = "0.1.0"
 dependencies = [
  "log",
+ "prism-analysis",
  "prism-core",
  "prism-project",
  "serde",

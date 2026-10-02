@@ -3,6 +3,7 @@
 //! M1 的会话是单项目的内存态（纲领 §56：关闭 Prism 后结果可以消失，
 //! 持久化属于 M11）。
 
+use prism_analysis::ProjectCodeModel;
 use prism_core::application::AppInfoService;
 use prism_core::config::PrismConfig;
 use prism_core::ids::TaskId;
@@ -30,6 +31,28 @@ pub struct ScanSession {
     pub error: Option<String>,
     /// 扫描开始时间。
     pub started_at: Option<Timestamp>,
+    /// ---- M2 Code Understanding ----
+    /// 最近一次 inspect 的任务 ID。
+    pub inspect_task_id: Option<TaskId>,
+    /// inspect 取消令牌（独立于扫描令牌）。
+    pub inspect_token: CancellationToken,
+    /// inspect 状态：None = 尚未执行。
+    pub inspect_status: Option<TaskState>,
+    /// inspect 实时进度。
+    pub inspect_progress: crate::state::InspectProgress,
+    /// inspect 完成后的 Code Model。
+    pub code_model: Option<ProjectCodeModel>,
+    /// inspect Failed 时的错误描述。
+    pub inspect_error: Option<String>,
+}
+
+/// inspect 的实时计数（真实统计）。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct InspectProgress {
+    pub files_total: u64,
+    pub files_done: u64,
+    pub symbols: u64,
+    pub errors: u64,
 }
 
 impl ScanSession {
@@ -52,6 +75,24 @@ impl ScanSession {
         self.discovery = None;
         self.error = None;
         self.started_at = Some(Timestamp::now_utc());
+        // 新扫描使既有代码模型过期。
+        self.inspect_task_id = None;
+        self.inspect_status = None;
+        self.inspect_progress = InspectProgress::default();
+        self.code_model = None;
+        self.inspect_error = None;
+        task_id
+    }
+
+    /// 准备一次 inspect（生成新 token 与 task id）。
+    pub fn begin_inspect(&mut self) -> TaskId {
+        let task_id = TaskId::new();
+        self.inspect_token = CancellationToken::new();
+        self.inspect_task_id = Some(task_id.clone());
+        self.inspect_status = Some(TaskState::Running);
+        self.inspect_progress = InspectProgress::default();
+        self.code_model = None;
+        self.inspect_error = None;
         task_id
     }
 }

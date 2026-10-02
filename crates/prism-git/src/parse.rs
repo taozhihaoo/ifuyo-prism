@@ -62,7 +62,9 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
 
     let mut i = 0;
     while i < records.len() {
+        // 保留行内空格语义，仅去掉首部空白（多行 Rust 字符串常带缩进）。
         let record = records[i];
+        let record = record.trim_start();
         let mut fields = record.split(' ');
         let tag = fields.next().unwrap_or("");
         match tag {
@@ -76,6 +78,7 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
                 i += 1;
             }
             "2" => {
+                eprintln!("DEBUG status 2 record: {:?}", record);
                 let xy = fields.next().ok_or(malformed("status", "missing XY"))?;
                 let path = record
                     .splitn(10, ' ')
@@ -90,7 +93,7 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
                 i += 1;
             }
             "u" => {
-                let path = record.split(' ').last().unwrap_or("");
+                let path = record.rsplit(' ').next().unwrap_or("");
                 entries.push(GitFileStatus {
                     path: path.to_string(),
                     original_path: None,
@@ -105,8 +108,10 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
                 i += 1;
             }
             "?" => {
+                // 记录形如 "? <path>"（-z 下 NUL 分隔）。
+                let path = record.strip_prefix("? ").unwrap_or(record);
                 entries.push(GitFileStatus {
-                    path: record.to_string(),
+                    path: path.to_string(),
                     original_path: None,
                     index_state: GitFileState::Unmodified,
                     working_tree_state: GitFileState::Untracked,
@@ -119,7 +124,8 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
                 i += 1;
             }
             "!" => {
-                ignored.push(record.to_string());
+                let path = record.strip_prefix("! ").unwrap_or(record);
+                ignored.push(path.to_string());
                 i += 1;
             }
             _ => i += 1, // 头部行（# branch.*）在此跳过
@@ -222,7 +228,9 @@ fn parse_track(track: Option<&str>) -> (Option<u64>, Option<u64>) {
     let mut behind = None;
     if let Some(track) = track {
         if !track.is_empty() && track != "gone" {
-            for part in track.split(", ") {
+            // git 输出形如 "[ahead 2, behind 1]"（括号由 git 添加）。
+            let inner = track.trim_start_matches('[').trim_end_matches(']');
+            for part in inner.split(", ") {
                 if let Some(value) = part.strip_prefix("ahead ") {
                     ahead = value.parse().ok();
                 } else if let Some(value) = part.strip_prefix("behind ") {
@@ -246,6 +254,13 @@ pub fn parse_log(output: &str) -> Vec<GitCommit> {
         }
         let fields: Vec<&str> = record.split('\u{1f}').collect();
         if fields.len() < 10 {
+            eprintln!(
+                "DEBUG parse_log skip: {} fields, first={:?}",
+                fields.len(),
+                fields
+                    .first()
+                    .map(|f| f.chars().take(24).collect::<String>())
+            );
             continue;
         }
         let person = |name: &str, email: &str| GitPerson {
@@ -467,6 +482,7 @@ pub fn parse_patch(output: &str) -> Vec<GitDiffFile> {
                 ' ' => GitDiffLineKind::Context,
                 _ => continue, // "\ No newline..." 等不计行
             };
+            eprintln!("DEBUG patch line kind={:?} content={:?}", kind, line);
             let (old_line, new_line) = match kind {
                 GitDiffLineKind::Context => (Some(state.old_cursor), Some(state.new_cursor)),
                 GitDiffLineKind::Addition => (None, Some(state.new_cursor)),

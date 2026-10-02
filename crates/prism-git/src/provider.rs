@@ -195,11 +195,9 @@ impl GitProvider for CliGitProvider {
             }
         };
 
-        // 非 Git 项目：rev-parse 退出 128，stdout 为空、stderr 提示。
+        // 非 Git 项目：rev-parse 退出 128。规格 §25：这不是错误，返回 Ok(None)。
         if output.exit_code != Some(0) {
-            return Err(GitError::NotGitRepository {
-                path: path.to_string_lossy().to_string(),
-            });
+            return Ok(None);
         }
 
         let lines: Vec<&str> = output.stdout.lines().collect();
@@ -264,7 +262,12 @@ impl GitProvider for CliGitProvider {
         include_ignored: bool,
         cancel: &CancellationToken,
     ) -> GitResult<GitStatus> {
+        // -c 固定配置：不受用户全局/系统配置影响（规格 §4/§27 确定性要求）。
         let mut args = vec![
+            "-c",
+            "status.showUntrackedFiles=all",
+            "-c",
+            "core.quotepath=false",
             "status",
             "--porcelain=v2",
             "-z",
@@ -327,7 +330,7 @@ impl GitProvider for CliGitProvider {
                 "log",
                 "-n",
                 &limit_arg,
-                "--pretty=format:%H%x01%P%x01%an%x01%ae%x01%aI%x01%cn%x01%ce%x01%cI%x01%s%x01%b%x01%D%x1e",
+                "--pretty=format:%H%x1f%P%x1f%an%x1f%ae%x1f%aI%x1f%cn%x1f%ce%x1f%cI%x1f%s%x1f%b%x1f%D%x1e",
             ],
             cancel,
         )?;

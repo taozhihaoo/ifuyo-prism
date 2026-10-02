@@ -71,6 +71,18 @@ pub enum GitRefKind {
     Other,
 }
 
+impl GitRefKind {
+    /// 稳定的对外字符串（与 serde 序列化一致）。
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            GitRefKind::Branch => "branch",
+            GitRefKind::RemoteBranch => "remote_branch",
+            GitRefKind::Tag => "tag",
+            GitRefKind::Other => "other",
+        }
+    }
+}
+
 /// Git 作者/提交者身份。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct GitPerson {

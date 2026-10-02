@@ -98,6 +98,13 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
+    /// Git 事实（status/log/diff/refs，M4 只读）
+    Git {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[command(subcommand)]
+        command: crate::git_command::GitCommand,
+    },
     /// 项目健康体检（M7）
     Health {
         #[arg(default_value = ".")]
@@ -131,6 +138,8 @@ impl Command {
             Command::Info { .. } => "info",
             Command::Scan { .. } => "scan",
             Command::Inspect { .. } => "inspect",
+            Command::Graph { .. } => "graph",
+            Command::Git { .. } => "git",
             Command::Graph { .. } => "graph",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",

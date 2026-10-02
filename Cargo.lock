@@ -2487,8 +2487,10 @@ dependencies = [
  "log",
  "prism-analysis",
  "prism-core",
+ "prism-git",
  "prism-graph",
  "prism-project",
+ "serde",
  "serde_json",
 ]
 

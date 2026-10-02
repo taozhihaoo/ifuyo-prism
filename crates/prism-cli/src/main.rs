@@ -10,20 +10,24 @@
 //! - `3` 输入无效（路径不存在等）
 //! - `4` 操作被取消
 //! - `5` 成功完成但有警告（scan completed with warnings）
+//! - `6` 非 Git 项目（`prism git <cmd>` 明确请求 Git 时）
 
 mod cli;
+mod git_command;
 
 use clap::{CommandFactory, Parser};
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
 use prism_core::application::AppInfoService;
 use prism_core::config::OutputFormat;
 use prism_core::logging;
+use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
 use prism_core::PrismErrorCode;
 use prism_graph::{DependencyGraphResult, DependencyService, GraphNodeKind};
 use prism_project::{DiscoveryService, ProjectDiscovery, ScanOptions};
 use std::collections::BTreeMap;
 use std::path::Path;
+use std::sync::Arc;
 
 const EXIT_OK: i32 = 0;
 const EXIT_ERROR: i32 = 1;
@@ -33,6 +37,8 @@ const EXIT_USAGE: i32 = 2;
 const EXIT_INVALID_INPUT: i32 = 3;
 const EXIT_CANCELLED: i32 = 4;
 const EXIT_WARNINGS: i32 = 5;
+/// M4：`prism git <cmd>` 在非 Git 项目上的专用退出码（规格 §39）。
+const EXIT_NOT_GIT: i32 = 6;
 
 fn main() {
     let exit_code = run();
@@ -62,6 +68,22 @@ fn run() -> i32 {
         Some(cli::Command::Inspect { path, format }) => run_inspect(&path, format.into()),
         Some(cli::Command::Graph { path, kind, format }) => {
             run_graph(&path, kind.as_str(), format.into())
+        }
+        Some(cli::Command::Git { path, command }) => {
+            let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
+            git_command::run(&path, command, runner)
+        }
+        Some(cli::Command::Git { path, command }) => {
+            let runner: Arc<dyn CommandRunner> =
+                Arc::new(prism_core::runtime::command::StdCommandRunner::new());
+            git_command::run(&path, command, runner)
+        }
+        Some(cli::Command::Graph { path, kind, format }) => {
+            run_graph(&path, kind.as_str(), format.into())
+        }
+        Some(cli::Command::Git { path, command }) => {
+            let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
+            git_command::run(&path, command, runner)
         }
         Some(command) => not_implemented_yet(command.name()),
     }

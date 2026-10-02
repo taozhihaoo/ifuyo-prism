@@ -32,6 +32,7 @@ pub enum ConfigurationType {
     ViteConfig,
     WebpackConfig,
     NextConfig,
+    TauriConfig,
     ProjectReadme,
     AgentInstructions,
     GitIgnore,
@@ -92,6 +93,8 @@ impl ConfigurationType {
             Some(ConfigurationType::WebpackConfig)
         } else if lower.starts_with("next.config.") {
             Some(ConfigurationType::NextConfig)
+        } else if lower == "tauri.conf.json" {
+            Some(ConfigurationType::TauriConfig)
         } else {
             None
         }

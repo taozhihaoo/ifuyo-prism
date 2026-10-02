@@ -67,11 +67,20 @@ pub fn detect_project_types(
         }
     };
 
-    if has_file(files, "Cargo.toml") {
+    // 根级或嵌套 workspace（如 src-tauri/Cargo.toml）的 Rust manifest 均可作证据。
+    let rust_manifest = if has_file(files, "Cargo.toml") {
+        Some("Cargo.toml".to_string())
+    } else {
+        files
+            .iter()
+            .map(|file| file.relative_path.clone())
+            .find(|path| path.ends_with("/Cargo.toml"))
+    };
+    if let Some(manifest) = rust_manifest {
         push(candidate(
             "Rust",
             Confidence::High,
-            vec![Evidence::new(SOURCE, "Cargo.toml", "Rust manifest found")],
+            vec![Evidence::new(SOURCE, &manifest, "Rust manifest found")],
         ));
     }
     if has_file(files, "package.json") {

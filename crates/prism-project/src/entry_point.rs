@@ -62,6 +62,12 @@ pub fn detect_entry_points(files: &[FileInfo]) -> Vec<EntryPoint> {
         "conventional Rust binary entry",
     );
     push(
+        "src-tauri/src/main.rs",
+        EntryPointKind::RustBinary,
+        Confidence::High,
+        "Tauri backend entry (nested cargo workspace)",
+    );
+    push(
         "main.rs",
         EntryPointKind::RustBinary,
         Confidence::High,

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "fixture-multi-language",
+  "version": "0.1.0",
+  "identifier": "com.fixture.multi-language"
+}

@@ -13,4 +13,4 @@
 
 pub mod app_info;
 
-pub use app_info::AppInfoService;
+pub use app_info::{AppInfo, AppInfoService, RuntimeInfo};

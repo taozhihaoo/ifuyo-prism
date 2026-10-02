@@ -1,6 +1,6 @@
 [package]
 name = "prism-integration-tests"
-description = "Cross-crate integration tests for Prism M0 foundations"
+description = "Cross-crate integration tests for Prism M0/M1 foundations"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 prism-core.workspace = true
+prism-project.workspace = true
 serde_json.workspace = true
 
 [[bin]]

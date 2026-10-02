@@ -1,10 +1,11 @@
-//! Project 基础对象。
+//! Project：被打开的项目身份。
 //!
-//! M0 只保留最小身份字段；语言、符号、依赖、Git、健康、环境等
-//! 全部由后续里程碑以独立模型扩展，不塞进本结构。
+//! 从 M0 的 prism-core 迁入并增加 `discovered_at`。
+//! 只保留身份字段；语言/符号/依赖/Git/健康等由后续里程碑扩展。
 
-use crate::error::PrismResult;
-use crate::ids::ProjectId;
+use prism_core::error::{PrismError, PrismResult};
+use prism_core::ids::ProjectId;
+use prism_core::timestamp::Timestamp;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -12,19 +13,19 @@ use std::path::{Path, PathBuf};
 pub struct Project {
     pub id: ProjectId,
     pub name: String,
-    /// 项目的绝对根路径（构造时已 canonicalize）。
+    /// 项目的绝对根路径（构造时已 canonicalize）。仅用于执行文件系统操作；
+    /// 文件身份一律使用 root + relative_path。
     pub root_path: PathBuf,
+    /// 项目被发现的时间。
+    pub discovered_at: Timestamp,
 }
 
 impl Project {
-    /// 从磁盘上的一个根目录构造 Project。
-    ///
-    /// 目录必须存在。名字取目录名；root_path 规范化为绝对路径，
-    /// 后续所有文件路径都以“project root + 相对路径”表达（M1 起生效）。
+    /// 从磁盘上的一个根目录构造 Project（目录必须存在）。
     pub fn from_root(root: impl AsRef<Path>) -> PrismResult<Self> {
         let canonical = root.as_ref().canonicalize()?;
         if !canonical.is_dir() {
-            return Err(crate::error::PrismError::invalid_input(format!(
+            return Err(PrismError::invalid_input(format!(
                 "project root is not a directory: {}",
                 canonical.display()
             )));
@@ -38,6 +39,7 @@ impl Project {
             id: ProjectId::new(),
             name,
             root_path: canonical,
+            discovered_at: Timestamp::now_utc(),
         })
     }
 }
@@ -45,23 +47,23 @@ impl Project {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
 
     #[test]
-    fn constructs_from_existing_directory() {
-        let temp = std::env::temp_dir().join("prism-core-project-test");
-        fs::create_dir_all(&temp).unwrap();
+    fn constructs_from_existing_directory_with_discovered_at() {
+        let temp = std::env::temp_dir().join("prism-project-test");
+        std::fs::create_dir_all(&temp).unwrap();
         let project = Project::from_root(&temp).unwrap();
         assert_eq!(project.name, temp.file_name().unwrap().to_string_lossy());
         assert!(project.root_path.is_absolute());
-        fs::remove_dir_all(&temp).ok();
+        assert!(project.discovered_at.as_rfc3339().ends_with('Z'));
+        std::fs::remove_dir_all(&temp).ok();
     }
 
     #[test]
     fn rejects_missing_directory() {
-        let missing = std::env::temp_dir().join("prism-core-project-missing-xyz");
+        let missing = std::env::temp_dir().join("prism-project-missing-xyz");
         let err = Project::from_root(&missing).unwrap_err();
-        assert_eq!(err.code(), crate::error::PrismErrorCode::NotFound);
+        assert_eq!(err.code(), prism_core::PrismErrorCode::NotFound);
     }
 
     #[test]
@@ -69,7 +71,8 @@ mod tests {
         let json = serde_json::json!({
             "id": "proj-1",
             "name": "demo",
-            "root_path": "/tmp/demo"
+            "root_path": "/tmp/demo",
+            "discovered_at": "2026-10-03T00:00:00Z"
         });
         let project: Project = serde_json::from_value(json).unwrap();
         assert_eq!(project.name, "demo");

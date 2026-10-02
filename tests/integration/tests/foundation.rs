@@ -6,7 +6,6 @@ mod support;
 
 use prism_core::application::AppInfoService;
 use prism_core::config::PrismConfig;
-use prism_core::project::Project;
 use prism_core::runtime::command::{CommandOutput, CommandRunner, StdCommandRunner};
 use prism_core::runtime::fs::{FileSystem, StdFileSystem};
 use prism_core::task::{CancellationToken, TaskState, TaskTracker};
@@ -116,9 +115,10 @@ fn filesystem_abstraction_roundtrip() {
 #[test]
 fn project_can_be_created_from_directory() {
     let dir = temp_dir("project");
-    let project = Project::from_root(&dir).unwrap();
+    let project = prism_project::Project::from_root(&dir).unwrap();
     assert_eq!(project.name, dir.file_name().unwrap().to_string_lossy());
     assert!(project.root_path.is_absolute());
+    assert!(!project.discovered_at.as_rfc3339().is_empty());
     std::fs::remove_dir_all(&dir).ok();
 }
 

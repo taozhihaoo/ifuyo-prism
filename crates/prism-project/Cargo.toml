@@ -1,0 +1,13 @@
+[package]
+name = "prism-project"
+description = "Prism project discovery: filesystem scan, ignore engine, language/classification detection, project type & entry point candidates"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+ignore.workspace = true

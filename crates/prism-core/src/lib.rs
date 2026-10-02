@@ -25,13 +25,11 @@ pub mod error;
 pub mod ids;
 pub mod logging;
 pub mod progress;
-pub mod project;
 pub mod runtime;
 pub mod severity;
 pub mod task;
 pub mod timestamp;
 
 pub use error::{PrismError, PrismErrorCode, PrismErrorDto, PrismResult};
-pub use project::Project;
 pub use severity::{Confidence, Severity};
 pub use timestamp::Timestamp;

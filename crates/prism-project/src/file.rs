@@ -310,6 +310,8 @@ fn is_generated_path(relative_path: &str) -> bool {
 }
 
 /// 组装 FileInfo 的便捷入口（scanner 使用）。
+/// 参数均为独立标量事实，比引入参数对象更直白；M2 若继续膨胀再重构。
+#[allow(clippy::too_many_arguments)]
 pub fn build_file_info(
     classifier: &FileClassifier,
     relative_path: &str,

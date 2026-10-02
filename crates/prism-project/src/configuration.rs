@@ -146,7 +146,6 @@ mod tests {
     use super::*;
     use crate::file::{FileClassification, FileKind};
     use prism_core::ids::FileId;
-    use std::path::PathBuf;
 
     fn file(relative_path: &str) -> FileInfo {
         let name = std::path::Path::new(relative_path)

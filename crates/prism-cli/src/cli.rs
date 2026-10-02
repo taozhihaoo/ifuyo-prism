@@ -100,7 +100,6 @@ impl Command {
             Command::Info { .. } => "info",
             Command::Scan { .. } => "scan",
             Command::Inspect { .. } => "inspect",
-            Command::Inspect { .. } => "inspect",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
             Command::Verify { .. } => "verify",

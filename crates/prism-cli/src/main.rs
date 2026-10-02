@@ -24,6 +24,8 @@ use std::path::Path;
 
 const EXIT_OK: i32 = 0;
 const EXIT_ERROR: i32 = 1;
+/// clap 用法错误自身以 2 退出；常量仅为契约文档保持完整。
+#[allow(dead_code)]
 const EXIT_USAGE: i32 = 2;
 const EXIT_INVALID_INPUT: i32 = 3;
 const EXIT_CANCELLED: i32 = 4;

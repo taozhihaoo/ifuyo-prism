@@ -58,7 +58,9 @@ impl ScanSession {
 
 /// Tauri managed state。只保存配置与服务实例，不缓存业务结果。
 pub struct AppState {
-    /// M1 命令尚未直接消费配置；保留为后续里程碑（scan 读取 analysis 配置）的入口。
+    /// 当前里程碑命令尚未直接消费配置；保留为后续里程碑（读取 analysis/logging
+    /// 配置）的入口，删除会让后续里程碑重复接线。
+    #[allow(dead_code)]
     pub config: PrismConfig,
     pub app_info: AppInfoService,
     /// 扫描会话；Arc 便于后台扫描线程与 IPC 命令共享同一份状态。

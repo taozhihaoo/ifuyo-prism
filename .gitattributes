@@ -5,3 +5,6 @@
 *.png binary
 *.ico binary
 *.icns binary
+
+# CRLF test fixture must keep its CRLF bytes
+tests/fixtures/unicode/src/crlf.ts -text

@@ -2505,7 +2505,9 @@ dependencies = [
 name = "prism-integration-tests"
 version = "0.1.0"
 dependencies = [
+ "prism-analysis",
  "prism-core",
+ "prism-parser",
  "prism-project",
  "serde_json",
 ]

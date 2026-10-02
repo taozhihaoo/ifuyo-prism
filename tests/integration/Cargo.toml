@@ -1,0 +1,15 @@
+[package]
+name = "prism-integration-tests"
+description = "Cross-crate integration tests for Prism M0 foundations"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+serde_json.workspace = true
+
+[[bin]]
+name = "prism-test-helper"
+path = "src/bin/prism-test-helper.rs"

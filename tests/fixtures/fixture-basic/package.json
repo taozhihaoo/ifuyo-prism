@@ -1,0 +1,9 @@
+{
+  "name": "fixture-basic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Minimal synthetic project used as a Prism test fixture (M1+ scans it; M0 only ships it).",
+  "scripts": {
+    "test": "echo fixture has no real runner"
+  }
+}

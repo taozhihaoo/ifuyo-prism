@@ -81,6 +81,12 @@ M0 已引入的全部运行时依赖：`serde`、`serde_json`、`uuid`、`time`�
 
 已知版本坑（2026-10 记录）：
 
+- `tree-sitter` 0.25 + 官方 grammar 0.23（typescript/javascript/python/c-sharp）
+  经 `tree-sitter-language` 0.1 统一 ABI，可安全共存；grammar 导出
+  `LANGUAGE_*: LanguageFn` 常量（`.into()` 成 Language），不是函数
+- tree-sitter-python 的语法错误常以 MISSING 节点表达（无 ERROR 包裹），
+  诊断收集必须两者都查
+
 - `log` 0.4.34 起 **std/alloc 特性默认关闭**，必须 `features = ["std"]`
   否则 `set_boxed_logger` 不存在
 - `time` 的 RFC3339 在 `time::format_description::well_known::Rfc3339`，

@@ -31,6 +31,8 @@ CLI 自建业务逻辑（不经 Application/Core）✗
 | --- | --- | --- |
 | `crates/prism-core` | 地基层 | ID/错误/配置/任务/日志、CommandRunner/FileSystem 抽象、AppInfoService |
 | `crates/prism-project` | Project Discovery 领域层（M1） | scanner/ignore/language/file/configuration/project_type/entry_point/statistics + DiscoveryService |
+| `crates/prism-parser` | Code Understanding（M2） | Symbol 模型与坐标契约（UTF-8 字节）/LanguageParser/Registry + tree-sitter adapters（TS/TSX/JS/Python/C#） |
+| `crates/prism-analysis` | 分析编排（M2） | 源文件选择/有界并发/取消/ProjectCodeModel/SymbolIndex |
 | `crates/prism-cli` | CLI 壳 | clap 参数 → 领域服务；退出码契约见 development.md |
 | `src-tauri`（prism-app） | Tauri 壳 | IPC commands → 领域服务；扫描在后台线程、前端轮询 |
 | `tests/integration` | 集成测试 | M0/M1 验收场景 + prism-test-helper |
@@ -88,8 +90,15 @@ src/
 8. **Evidence 模型锚定于 prism-project（M1）**：`Evidence{source,path,reason}`；
    M2/M3 复用或扩展此定义（文档漂移以代码为准）。
 9. **Application 层拆分**：prism-core::application 承载跨域基础服务（AppInfo），
-   各域服务住在各自 crate（如 prism-project::DiscoveryService）——保持 core 零
-   业务依赖，依赖方向仍为 CLI/Tauri → prism-project → prism-core。
+   各域服务住在各自 crate（如 prism-project::DiscoveryService、
+   prism-analysis::CodeAnalysisService）——保持 core 零业务依赖，依赖方向仍为
+   CLI/Tauri → prism-project/prism-parser/prism-analysis → prism-core。
+10. **M2 坐标契约**：line 1-based；column 1-based 按行内 UTF-8 字节；
+    byte_offset 0-based 绝对字节。SymbolId =
+    `symbol:{relative_path}#{qualified_path}#{kind}`（确定性派生）。
+    qualified_name 为路径根式（跨语言方案统一、稳定可复现），不做伪跨语言语义。
+11. **M2 解析技术**：tree-sitter 0.25 + 官方 grammar 0.23（统一 ABI，MIT/Apache）；
+    ERROR 节点受限恢复（关键字序列合成），Python MISSING 节点诊断为必查项。
 8. **CommandRunner 超时用轮询**（25ms tick），管道由独立线程读取防死锁；
    进程树终止（Windows job object）留给 M8 Verify 执行器。
 9. **ID 生成策略**：运行期身份用 UUIDv4（TaskId 等）；需要跨运行稳定的
@@ -116,8 +125,6 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 ## 未来模块落位（随里程碑创建）
 
 ```text
-M2  prism-parser      Language Adapter + 符号抽取（TS/JS/Python/C#）
-M2  prism-analysis    ProjectCodeModel / SymbolIndex
 M3  （prism-analysis 内）模块/依赖/调用图、环检测
 M4  prism-git         只读 Git 事实层（经 CommandRunner 调系统 git）
 M5  prism-changes     ChangeSet（或并入 prism-analysis，M5 开工时定案）

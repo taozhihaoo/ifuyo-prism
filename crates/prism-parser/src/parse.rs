@@ -31,6 +31,17 @@ pub enum ImportKind {
     TypeOnly,
 }
 
+/// 一条直接调用语法事实（规格 §19 可靠子集：仅直接函数/方法调用）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CallInfo {
+    /// 调用方所在函数/方法的限定路径；顶层调用无宿主时不捕获。
+    pub caller_qualified: String,
+    /// 被调者的原样文本（如 "helper" / "obj.method" / "svc.fetch"）。
+    pub callee_text: String,
+    /// 调用表达式起始位置。
+    pub location: Option<crate::model::SourceLocation>,
+}
+
 /// 解析请求：按需读取的单文件内容（解析后即丢弃，不驻留）。
 #[derive(Debug, Clone)]
 pub struct ParseRequest {
@@ -118,6 +129,9 @@ pub struct ParseResult {
     /// 文件内全部 import 语法事实（M3 起；M2 已构造处补空 Vec）。
     #[serde(default)]
     pub imports: Vec<ImportInfo>,
+    /// 文件内全部直接调用语法事实（M3 起）。
+    #[serde(default)]
+    pub calls: Vec<CallInfo>,
 }
 
 impl ParseResult {
@@ -157,6 +171,7 @@ mod tests {
             parser_version: "test".to_string(),
             reason: None,
             imports: Vec::new(),
+            calls: Vec::new(),
         };
         assert!(!result.has_errors());
 
@@ -180,6 +195,7 @@ mod tests {
             parser_version: "tree-sitter-test/1".to_string(),
             reason: None,
             imports: Vec::new(),
+            calls: Vec::new(),
         };
         let json = serde_json::to_value(&result).unwrap();
         for field in [

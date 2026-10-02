@@ -317,6 +317,7 @@ impl CodeAnalysisService {
             parser_version: "n/a".to_string(),
             reason: Some(reason.to_string()),
             imports: Vec::new(),
+            calls: Vec::new(),
         }
     }
 
@@ -332,6 +333,7 @@ impl CodeAnalysisService {
             parser_version: "n/a".to_string(),
             reason: None,
             imports: Vec::new(),
+            calls: Vec::new(),
         }
     }
 }

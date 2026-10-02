@@ -154,6 +154,7 @@ mod tests {
                 parser_version: "test".to_string(),
                 reason: None,
                 imports: Vec::new(),
+                calls: Vec::new(),
             }],
             summary: ParseSummary::default(),
         }

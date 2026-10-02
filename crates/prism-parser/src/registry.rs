@@ -102,6 +102,7 @@ mod tests {
                 parser_version: self.parser_version().to_string(),
                 reason: None,
                 imports: Vec::new(),
+                calls: Vec::new(),
             })
         }
     }

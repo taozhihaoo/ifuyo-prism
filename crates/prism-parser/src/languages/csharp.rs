@@ -7,7 +7,7 @@
 use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
-use crate::parse::{ImportInfo, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
+use crate::parse::{CallInfo, ImportInfo, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
 use prism_core::task::CancellationToken;
@@ -105,6 +105,7 @@ struct Collector<'a> {
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
     imports: Vec<ImportInfo>,
+    calls: Vec<CallInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -166,6 +167,7 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         top_level: bool,
+        caller: Option<&str>,
     ) {
         if self.cancel.is_cancelled() {
             return;
@@ -185,7 +187,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "class_declaration" | "record_declaration" => {
@@ -208,7 +210,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "struct_declaration" => {
@@ -231,7 +233,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "interface_declaration" => {
@@ -254,7 +256,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "enum_declaration" => {
@@ -277,7 +279,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "method_declaration" => {
@@ -294,7 +296,7 @@ impl<'a> Collector<'a> {
                         visibility,
                         signature,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "constructor_declaration" => {
@@ -376,6 +378,25 @@ impl<'a> Collector<'a> {
                     );
                 }
             }
+            "invocation_expression" => {
+                // 规格 §19 可靠子集：直接调用。tree-sitter-c-sharp 的
+                // invocation_expression 无命名字段：首个 named child 即 callee。
+                if let Some(caller) = caller {
+                    let mut child = node.child(0);
+                    while let Some(current) = child {
+                        if current.is_named() {
+                            self.calls.push(CallInfo {
+                                caller_qualified: caller.to_string(),
+                                callee_text: CSharpParser::text(current, self.content).to_string(),
+                                location: Some(CSharpParser::node_location(node, false)),
+                            });
+                            break;
+                        }
+                        child = current.next_sibling();
+                    }
+                }
+                self.walk_children(node, parent_id, prefix, top_level, caller);
+            }
             "using_directive" => {
                 // field 名不可靠（裸 identifier 无 name 字段），扫描 named children。
                 let mut child = node.child(0);
@@ -406,8 +427,8 @@ impl<'a> Collector<'a> {
                 }
             }
             // ERROR 节点：受限恢复（同 TS adapter，规格 §24）。
-            "ERROR" => self.walk_error(node, parent_id, prefix, top_level),
-            _ => self.walk_children(node, parent_id, prefix, top_level),
+            "ERROR" => self.walk_error(node, parent_id, prefix, top_level, caller),
+            _ => self.walk_children(node, parent_id, prefix, top_level, caller),
         }
     }
 
@@ -419,6 +440,7 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         _top_level: bool,
+        caller: Option<&str>,
     ) {
         let mut pending: Option<SymbolKind> = None;
         let mut inner: Option<(SymbolId, String)> = None;
@@ -457,7 +479,7 @@ impl<'a> Collector<'a> {
                         Some((id, qualified)) => (Some(id), qualified.as_str()),
                         None => (parent_id, prefix),
                     };
-                    self.walk(current, owner_id, owner_prefix, false);
+                    self.walk(current, owner_id, owner_prefix, false, caller);
                 }
             } else {
                 match current.kind() {
@@ -479,10 +501,11 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         top_level: bool,
+        caller: Option<&str>,
     ) {
         let mut child = node.child(0);
         while let Some(current) = child {
-            self.walk(current, parent_id, prefix, top_level);
+            self.walk(current, parent_id, prefix, top_level, caller);
             child = current.next_sibling();
         }
     }
@@ -585,6 +608,7 @@ impl LanguageParser for CSharpParser {
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
             imports: Vec::new(),
+            calls: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -592,6 +616,7 @@ impl LanguageParser for CSharpParser {
             Some(&file_symbol_id),
             &qualified_root,
             true,
+            None,
         );
 
         if tree.root_node().has_error() {
@@ -615,6 +640,7 @@ impl LanguageParser for CSharpParser {
             parser_version: self.version.to_string(),
             reason: None,
             imports: collector.imports,
+            calls: collector.calls,
         })
     }
 }

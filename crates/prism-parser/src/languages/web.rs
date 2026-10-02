@@ -11,7 +11,7 @@ use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
 use crate::parse::{
-    ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
+    CallInfo, ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
 };
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
@@ -159,6 +159,7 @@ struct Collector<'a> {
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
     imports: Vec<ImportInfo>,
+    calls: Vec<CallInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -199,7 +200,14 @@ impl<'a> Collector<'a> {
         symbol
     }
 
-    fn walk(&mut self, node: Node<'a>, parent_id: Option<&SymbolId>, prefix: &str, in_class: bool) {
+    fn walk(
+        &mut self,
+        node: Node<'a>,
+        parent_id: Option<&SymbolId>,
+        prefix: &str,
+        in_class: bool,
+        caller: Option<&str>,
+    ) {
         if self.cancel.is_cancelled() {
             return;
         }
@@ -217,7 +225,7 @@ impl<'a> Collector<'a> {
                         in_class,
                         signature,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "class_declaration" | "abstract_class_declaration" => {
@@ -231,7 +239,7 @@ impl<'a> Collector<'a> {
                         in_class,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, true);
+                    self.walk_children(node, Some(&symbol.id), &qualified, true, Some(&qualified));
                 }
             }
             "interface_declaration" => {
@@ -245,7 +253,7 @@ impl<'a> Collector<'a> {
                         in_class,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, true);
+                    self.walk_children(node, Some(&symbol.id), &qualified, true, Some(&qualified));
                 }
             }
             "type_alias_declaration" => {
@@ -272,7 +280,7 @@ impl<'a> Collector<'a> {
                         in_class,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, true);
+                    self.walk_children(node, Some(&symbol.id), &qualified, true, Some(&qualified));
                 }
             }
             "namespace_declaration" | "internal_module" => {
@@ -286,7 +294,7 @@ impl<'a> Collector<'a> {
                         in_class,
                         None,
                     );
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "method_definition" => {
@@ -299,7 +307,7 @@ impl<'a> Collector<'a> {
                     let qualified = format!("{prefix}.{name}");
                     let signature = WebParser::function_signature(node, self.content);
                     let symbol = self.emit(node, kind, &qualified, parent_id, true, signature);
-                    self.walk_children(node, Some(&symbol.id), &qualified, true);
+                    self.walk_children(node, Some(&symbol.id), &qualified, true, Some(&qualified));
                 }
             }
             "method_signature" | "abstract_method_signature" => {
@@ -371,7 +379,14 @@ impl<'a> Collector<'a> {
                 }
             }
             "enum_body" | "enum_assignment" => {
-                self.walk_plain_children(node, parent_id, prefix, in_class, SymbolKind::Constant);
+                self.walk_plain_children(
+                    node,
+                    parent_id,
+                    prefix,
+                    in_class,
+                    caller,
+                    SymbolKind::Constant,
+                );
             }
             "export_statement" => {
                 // 有声明子节点 → 透传（声明本身已捕获）；裸导出子句 → Export 符号。
@@ -389,7 +404,7 @@ impl<'a> Collector<'a> {
                             location: Some(WebParser::node_location(node, false)),
                         });
                     }
-                    self.walk_children(node, parent_id, prefix, in_class);
+                    self.walk_children(node, parent_id, prefix, in_class, caller);
                 } else {
                     // `export { a, b } from "./x"` = re-export。
                     if let Some(source) = node.child_by_field_name("source") {
@@ -477,8 +492,22 @@ impl<'a> Collector<'a> {
             // ERROR 节点：受限恢复（规格 §24）——扫描 `class/interface/enum/function
             // <identifier>` 关键字序列合成符号，已恢复的结构化声明挂到其下；
             // 诊断本身在解析后统一收集。
-            "ERROR" => self.walk_error(node, parent_id, prefix, in_class),
-            _ => self.walk_children(node, parent_id, prefix, in_class),
+            "call_expression" => {
+                // 规格 §19 可靠子集：直接调用（callee 文本原样记录）；
+                // 只有存在宿主函数/方法时才捕获（顶层初始化代码不属于调用图）。
+                if let Some(caller) = caller {
+                    if let Some(function) = node.child_by_field_name("function") {
+                        self.calls.push(CallInfo {
+                            caller_qualified: caller.to_string(),
+                            callee_text: WebParser::text(function, self.content).to_string(),
+                            location: Some(WebParser::node_location(node, false)),
+                        });
+                    }
+                }
+                self.walk_children(node, parent_id, prefix, in_class, caller);
+            }
+            "ERROR" => self.walk_error(node, parent_id, prefix, in_class, caller),
+            _ => self.walk_children(node, parent_id, prefix, in_class, caller),
         }
     }
 
@@ -488,6 +517,7 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         in_class: bool,
+        _caller: Option<&str>,
         kind: SymbolKind,
     ) {
         let mut child = node.child(0);
@@ -518,6 +548,7 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         in_class: bool,
+        caller: Option<&str>,
     ) {
         let mut pending: Option<SymbolKind> = None;
         // ERROR 内合成的“开放声明”（如 class 头），后续恢复出的成员挂到它下面。
@@ -558,7 +589,7 @@ impl<'a> Collector<'a> {
                         Some((id, qualified)) => (Some(id), qualified.as_str()),
                         None => (parent_id, prefix),
                     };
-                    self.walk(current, owner_id, owner_prefix, true);
+                    self.walk(current, owner_id, owner_prefix, true, caller);
                 }
                 // 其他 named 节点（表达式碎片等）不再深入，避免噪音符号。
             } else {
@@ -580,10 +611,11 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         in_class: bool,
+        caller: Option<&str>,
     ) {
         let mut child = node.child(0);
         while let Some(current) = child {
-            self.walk(current, parent_id, prefix, in_class);
+            self.walk(current, parent_id, prefix, in_class, caller);
             child = current.next_sibling();
         }
     }
@@ -682,6 +714,7 @@ impl LanguageParser for WebParser {
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
             imports: Vec::new(),
+            calls: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -689,6 +722,7 @@ impl LanguageParser for WebParser {
             Some(&file_symbol_id),
             &qualified_root,
             false,
+            None,
         );
 
         let had_error = tree.root_node().has_error();
@@ -713,6 +747,7 @@ impl LanguageParser for WebParser {
             parser_version: self.version.to_string(),
             reason: None,
             imports: collector.imports,
+            calls: collector.calls,
         })
     }
 }

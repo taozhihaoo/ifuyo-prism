@@ -83,6 +83,17 @@ fn run_contract_suite(fixture: &Fixture) {
     );
     assert!(result.imports.iter().all(|i| !i.specifier.is_empty()));
 
+    // 3.7 直接调用语法事实（M3 调用图输入）：fixture 内 render/create 调用
+    // helper / 方法体里的调用必须被捕获且 caller 为宿主限定路径。
+    assert!(
+        !result.calls.is_empty(),
+        "[{tag}] fixture contains calls inside methods"
+    );
+    assert!(result
+        .calls
+        .iter()
+        .all(|c| !c.caller_qualified.is_empty() && !c.callee_text.is_empty()));
+
     // 4. hierarchy：方法挂在类下
     let class = result
         .symbols
@@ -149,7 +160,7 @@ export class Widget {
     private ready = false;
 
     render(): string {
-        return "widget";
+        return helper(this.name);
     }
 }
 
@@ -168,8 +179,12 @@ const TSX_VALID: &str = r#"import React from "react";
 
 export class Panel {
     render(): string {
-        return "<panel />";
+        return mount();
     }
+}
+
+function mount(): string {
+    return "panel";
 }
 
 function mountPanel(): void {}
@@ -187,7 +202,7 @@ export class Store {
     }
 
     get(key) {
-        return key;
+        return helper(key);
     }
 }
 
@@ -234,7 +249,8 @@ namespace App.Services
 
         public User Create(string name)
         {
-            return new User();
+            var text = Convert.ToString(name);
+            return new User(text);
         }
     }
 }
@@ -291,7 +307,7 @@ fn tsx_contract() {
         valid: TSX_VALID,
         invalid: TSX_INVALID,
         locate_name: "mountPanel",
-        expect_line: 9,
+        expect_line: 13,
         relative_path: "src/panel.tsx",
         expect_kinds: WEB_KINDS,
     });

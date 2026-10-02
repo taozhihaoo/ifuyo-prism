@@ -9,7 +9,7 @@ use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
 use crate::parse::{
-    ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
+    CallInfo, ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
 };
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
@@ -94,6 +94,7 @@ struct Collector<'a> {
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
     imports: Vec<ImportInfo>,
+    calls: Vec<CallInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -157,7 +158,14 @@ impl<'a> Collector<'a> {
                 .starts_with('\'')
     }
 
-    fn walk(&mut self, node: Node<'a>, parent_id: Option<&SymbolId>, prefix: &str, in_class: bool) {
+    fn walk(
+        &mut self,
+        node: Node<'a>,
+        parent_id: Option<&SymbolId>,
+        prefix: &str,
+        in_class: bool,
+        caller: Option<&str>,
+    ) {
         if self.cancel.is_cancelled() {
             return;
         }
@@ -175,19 +183,19 @@ impl<'a> Collector<'a> {
                     let symbol = self.emit(node, kind, &qualified, parent_id, signature);
                     // 函数体不是类作用域：内部赋值按 Variable 处理（且不深入
                     // 抽取局部变量属 P1，这里只保持作用域语义正确）。
-                    self.walk_children(node, Some(&symbol.id), &qualified, false);
+                    self.walk_children(node, Some(&symbol.id), &qualified, false, Some(&qualified));
                 }
             }
             "class_definition" => {
                 if let Some(name) = PythonParser::child_text(node, "name", self.content) {
                     let qualified = format!("{prefix}.{name}");
                     let symbol = self.emit(node, SymbolKind::Class, &qualified, parent_id, None);
-                    self.walk_children(node, Some(&symbol.id), &qualified, true);
+                    self.walk_children(node, Some(&symbol.id), &qualified, true, Some(&qualified));
                 }
             }
             "decorated_definition" => {
                 // P1 才抽取 decorator 本身；这里解包让声明正常进入管线。
-                self.walk_children(node, parent_id, prefix, in_class);
+                self.walk_children(node, parent_id, prefix, in_class, caller);
             }
             "import_statement" | "import_from_statement" => {
                 let module = node
@@ -213,6 +221,19 @@ impl<'a> Collector<'a> {
                     self.emit(node, SymbolKind::Import, &qualified, parent_id, None);
                 }
             }
+            "call" => {
+                // 规格 §19 可靠子集：直接调用，callee = function 字段文本。
+                if let Some(caller) = caller {
+                    if let Some(function) = node.child_by_field_name("function") {
+                        self.calls.push(CallInfo {
+                            caller_qualified: caller.to_string(),
+                            callee_text: PythonParser::text(function, self.content).to_string(),
+                            location: Some(PythonParser::node_location(node, false)),
+                        });
+                    }
+                }
+                self.walk_children(node, parent_id, prefix, in_class, caller);
+            }
             "assignment" => {
                 // 顶层 → Variable；类体 → Field（局部赋值不抽取，规格 §16）。
                 if let Some(name) = PythonParser::child_text(node, "left", self.content) {
@@ -225,8 +246,8 @@ impl<'a> Collector<'a> {
                     self.emit(node, kind, &qualified, parent_id, None);
                 }
             }
-            "ERROR" => self.walk_children(node, parent_id, prefix, in_class),
-            _ => self.walk_children(node, parent_id, prefix, in_class),
+            "ERROR" => self.walk_children(node, parent_id, prefix, in_class, caller),
+            _ => self.walk_children(node, parent_id, prefix, in_class, caller),
         }
     }
 
@@ -236,14 +257,15 @@ impl<'a> Collector<'a> {
         parent_id: Option<&SymbolId>,
         prefix: &str,
         in_class: bool,
+        caller: Option<&str>,
     ) {
         let mut child = node.child(0);
         while let Some(current) = child {
             // block / module 内的直接子语句才推进 in_class 语义；
             // 深层嵌套（函数体内的赋值）不抽取，由 _ 前缀规则之外忽略。
             match current.kind() {
-                "block" => self.walk_children(current, parent_id, prefix, in_class),
-                _ => self.walk(current, parent_id, prefix, in_class),
+                "block" => self.walk_children(current, parent_id, prefix, in_class, caller),
+                _ => self.walk(current, parent_id, prefix, in_class, caller),
             }
             child = current.next_sibling();
         }
@@ -355,6 +377,7 @@ impl LanguageParser for PythonParser {
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
             imports: Vec::new(),
+            calls: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -362,6 +385,7 @@ impl LanguageParser for PythonParser {
             Some(&file_symbol_id),
             &qualified_root,
             false,
+            None,
         );
 
         if tree.root_node().has_error() {
@@ -385,6 +409,7 @@ impl LanguageParser for PythonParser {
             parser_version: self.version.to_string(),
             reason: None,
             imports: collector.imports,
+            calls: collector.calls,
         })
     }
 }

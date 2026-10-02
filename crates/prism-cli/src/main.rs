@@ -20,6 +20,7 @@ use prism_core::config::OutputFormat;
 use prism_core::logging;
 use prism_core::task::CancellationToken;
 use prism_core::PrismErrorCode;
+use prism_graph::{DependencyGraphResult, DependencyService, GraphNodeKind};
 use prism_project::{DiscoveryService, ProjectDiscovery, ScanOptions};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -59,6 +60,9 @@ fn run() -> i32 {
         Some(cli::Command::Info { format }) => run_info(format.into()),
         Some(cli::Command::Scan { path, format }) => run_scan(&path, format.into()),
         Some(cli::Command::Inspect { path, format }) => run_inspect(&path, format.into()),
+        Some(cli::Command::Graph { path, kind, format }) => {
+            run_graph(&path, kind.as_str(), format.into())
+        }
         Some(command) => not_implemented_yet(command.name()),
     }
 }
@@ -266,6 +270,129 @@ fn print_inspect_text(model: &ProjectCodeModel) {
     if summary.status == prism_core::task::TaskState::Cancelled {
         println!();
         println!("Inspect cancelled — partial results above.");
+    }
+}
+
+fn run_graph(path: &Path, kind: &str, format: OutputFormat) -> i32 {
+    let cancel = CancellationToken::new();
+    let result = DependencyService::new().inspect_graph(path, &cancel);
+    match result {
+        Ok(graph) => {
+            match format {
+                OutputFormat::Json => match serde_json::to_string_pretty(&graph) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("prism: failed to serialize dependency graph: {err}");
+                        return EXIT_ERROR;
+                    }
+                },
+                OutputFormat::Text => print_graph_text(&graph, kind),
+            }
+            let _ = kind;
+            EXIT_OK
+        }
+        Err(err) => {
+            eprintln!("prism: graph failed: {err}");
+            if matches!(
+                err.code(),
+                PrismErrorCode::InvalidInput | PrismErrorCode::NotFound
+            ) {
+                EXIT_INVALID_INPUT
+            } else {
+                EXIT_ERROR
+            }
+        }
+    }
+}
+
+fn print_graph_text(graph: &DependencyGraphResult, kind: &str) {
+    let metrics = &graph.metrics;
+    println!("ifuyo-prism");
+    println!("Dependency & Architecture ({kind} view)");
+    println!();
+    println!("Project: {}", graph.project_name);
+    println!();
+    println!("Graph");
+    println!("  Nodes: {}", metrics.node_count);
+    println!("  Edges: {}", metrics.edge_count);
+    println!("  Resolved: {}", metrics.resolved_edges);
+    println!("  External: {}", metrics.external_edges);
+    println!("  Builtin: {}", metrics.builtin_edges);
+    println!("  Unresolved: {}", metrics.unresolved_edges);
+    println!("  Ambiguous: {}", metrics.ambiguous_edges);
+    println!("  Cycles: {}", metrics.cycle_count);
+    println!("  Components: {}", metrics.connected_components);
+    println!();
+    if !metrics.most_referenced.is_empty() {
+        println!("Most referenced (fan-in)");
+        for (id, count) in metrics.most_referenced.iter().take(5) {
+            println!("  {count:>4}  {id}");
+        }
+        println!();
+    }
+    if !metrics.most_dependent.is_empty() {
+        println!("Most dependent (fan-out)");
+        for (id, count) in metrics.most_dependent.iter().take(5) {
+            println!("  {count:>4}  {id}");
+        }
+        println!();
+    }
+    if !graph.cycles.is_empty() {
+        println!("Cycles");
+        for cycle in graph.cycles.iter().take(10) {
+            println!("  {} ({})", cycle.id, cycle.nodes.len());
+        }
+        println!();
+    }
+    if !graph.diagnostics.is_empty() {
+        println!("Unresolved dependencies");
+        for diagnostic in graph.diagnostics.iter().take(20) {
+            println!(
+                "  {}: {} — {}",
+                diagnostic.source_path, diagnostic.raw_target, diagnostic.reason
+            );
+        }
+        println!();
+    }
+    // 按层级视图展示节点（file/module/project 视图过滤）。
+    println!("Nodes ({kind})");
+    let wanted = match kind {
+        "module" => "namespace",
+        "project" => "project",
+        _ => "file",
+    };
+    for node in graph.nodes.iter().take(30) {
+        let matches = match kind {
+            "module" => {
+                node.kind == GraphNodeKind::Package || node.kind == GraphNodeKind::Namespace
+            }
+            "project" => node.kind == GraphNodeKind::Project,
+            _ => node.kind == GraphNodeKind::FileModule,
+        };
+        if matches {
+            println!("  {}", node.label);
+        }
+        if wanted == "never" {
+            break;
+        }
+    }
+    let total: usize = graph
+        .nodes
+        .iter()
+        .filter(|node| match kind {
+            "module" => {
+                node.kind == GraphNodeKind::Package || node.kind == GraphNodeKind::Namespace
+            }
+            "project" => node.kind == GraphNodeKind::Project,
+            _ => node.kind == GraphNodeKind::FileModule,
+        })
+        .count();
+    if total > 30 {
+        println!("  … and {} more", total - 30);
+    }
+    if graph.diagnostics.is_empty() && graph.metrics.unresolved_edges == 0 {
+        println!();
+        println!("No unresolved dependencies.");
     }
 }
 

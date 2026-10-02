@@ -26,6 +26,23 @@ pub struct Cli {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum GraphKindArg {
+    File,
+    Module,
+    Project,
+}
+
+impl GraphKindArg {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            GraphKindArg::File => "file",
+            GraphKindArg::Module => "module",
+            GraphKindArg::Project => "project",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum FormatArg {
     Text,
     Json,
@@ -70,6 +87,17 @@ pub enum Command {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
     },
+    /// 依赖与架构图（M3 可用）
+    Graph {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 图层级：file / module / project
+        #[arg(long, value_enum, default_value_t = GraphKindArg::File)]
+        kind: GraphKindArg,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = FormatArg::Text)]
+        format: FormatArg,
+    },
     /// 项目健康体检（M7）
     Health {
         #[arg(default_value = ".")]
@@ -103,6 +131,7 @@ impl Command {
             Command::Info { .. } => "info",
             Command::Scan { .. } => "scan",
             Command::Inspect { .. } => "inspect",
+            Command::Graph { .. } => "graph",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
             Command::Verify { .. } => "verify",

@@ -234,3 +234,52 @@ fn inspect_missing_path_is_invalid_input_exit_3() {
     let output = prism(&["inspect", missing.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(3), "invalid input must exit 3");
 }
+
+// ---------- prism graph（M3） ----------
+
+#[test]
+fn graph_outputs_text_summary_with_metrics() {
+    let dir = temp_code_project("graph-text");
+    let output = prism(&["graph", dir.to_str().unwrap()]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "graph must exit 0, stderr: {}",
+        stderr_text(&output)
+    );
+    let text = stdout_text(&output);
+    assert!(text.contains("Dependency & Architecture"), "{text}");
+    assert!(text.contains("Nodes:"), "{text}");
+    assert!(text.contains("Cycles:"), "{text}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn graph_json_outputs_stable_contract() {
+    let dir = temp_code_project("graph-json");
+    let output = prism(&["graph", dir.to_str().unwrap(), "--format", "json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let value: serde_json::Value =
+        serde_json::from_str(&stdout_text(&output)).expect("must be valid JSON");
+    assert_eq!(value["schema_version"], 1);
+    assert!(value["nodes"].as_array().is_some());
+    assert!(value["edges"].as_array().is_some());
+    assert!(value["cycles"].as_array().is_some());
+    assert!(value["metrics"]["node_count"].is_u64());
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn graph_module_kind_filters_view() {
+    let dir = temp_code_project("graph-kind");
+    let output = prism(&["graph", dir.to_str().unwrap(), "--kind", "module"]);
+    assert_eq!(output.status.code(), Some(0));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn graph_missing_path_is_invalid_input_exit_3() {
+    let missing = std::env::temp_dir().join("prism-cli-graph-missing-xyz");
+    let output = prism(&["graph", missing.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(3));
+}

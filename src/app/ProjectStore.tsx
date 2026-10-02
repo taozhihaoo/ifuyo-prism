@@ -18,16 +18,21 @@ import {
 import {
   cancelScan as invokeCancelScan,
   getCodeModel,
+  getDependencyGraph,
   getDiscovery,
+  getGraphStatus,
   getInspectStatus,
   getScanStatus,
   openProject as invokeOpenProject,
   pickDirectory,
+  startGraph as invokeStartGraph,
   startInspect as invokeStartInspect,
   startScan as invokeStartScan,
   toPrismError,
 } from "../services/ipc";
 import type {
+  DependencyGraphResultDto,
+  GraphStatus,
   InspectStatus,
   ProjectCodeModelDto,
   ProjectDiscovery,
@@ -52,6 +57,8 @@ interface ProjectStoreValue {
   discovery: ProjectDiscovery | null;
   inspectStatus: InspectStatus | null;
   codeModel: ProjectCodeModelDto | null;
+  graphStatus: GraphStatus | null;
+  dependencyGraph: DependencyGraphResultDto | null;
   lastError: string | null;
   /** 打开系统目录选择对话框并打开所选项目。 */
   pickAndOpenProject: () => Promise<void>;
@@ -75,9 +82,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const [discovery, setDiscovery] = useState<ProjectDiscovery | null>(null);
   const [inspectStatus, setInspectStatus] = useState<InspectStatus | null>(null);
   const [codeModel, setCodeModel] = useState<ProjectCodeModelDto | null>(null);
+  const [graphStatus, setGraphStatus] = useState<GraphStatus | null>(null);
+  const [dependencyGraph, setDependencyGraph] = useState<DependencyGraphResultDto | null>(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const pollingRef = useRef<number | null>(null);
   const inspectPollingRef = useRef<number | null>(null);
+  const graphPollingRef = useRef<number | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current !== null) {
@@ -92,6 +102,33 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       inspectPollingRef.current = null;
     }
   }, []);
+
+  const stopGraphPolling = useCallback(() => {
+    if (graphPollingRef.current !== null) {
+      window.clearInterval(graphPollingRef.current);
+      graphPollingRef.current = null;
+    }
+  }, []);
+
+  const pollGraphUntilDone = useCallback(async () => {
+    stopGraphPolling();
+    const tick = async () => {
+      try {
+        const status = await getGraphStatus();
+        setGraphStatus(status);
+        if (status.status !== "running") {
+          stopGraphPolling();
+          const graph = await getDependencyGraph();
+          setDependencyGraph(graph);
+        }
+      } catch (err) {
+        stopGraphPolling();
+        setLastError(toPrismError(err).message);
+      }
+    };
+    void tick();
+    graphPollingRef.current = window.setInterval(() => void tick(), POLL_INTERVAL_MS);
+  }, [stopGraphPolling]);
 
   /** 轮询直到扫描离开 running 态；结束时拉取 Discovery 并链式执行代码理解。 */
   const pollUntilDone = useCallback(async () => {
@@ -136,6 +173,13 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           stopInspectPolling();
           const model = await getCodeModel();
           setCodeModel(model);
+          // inspect 完成 → 链式执行依赖图分析（M3）。
+          try {
+            await invokeStartGraph();
+            void pollGraphUntilDone();
+          } catch (chainErr) {
+            setLastError(toPrismError(chainErr).message);
+          }
         }
       } catch (err) {
         stopInspectPolling();
@@ -144,7 +188,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     };
     void tick();
     inspectPollingRef.current = window.setInterval(() => void tick(), POLL_INTERVAL_MS);
-  }, [stopInspectPolling]);
+  }, [stopInspectPolling, pollGraphUntilDone]);
 
   const openProject = useCallback(
     async (path: string) => {
@@ -154,6 +198,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       setDiscovery(null);
       setCodeModel(null);
       setInspectStatus(null);
+      setGraphStatus(null);
+      setDependencyGraph(null);
       setScanStatus({
         project: opened,
         status: "idle",
@@ -197,21 +243,25 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
   const closeProject = useCallback(() => {
     stopPolling();
     stopInspectPolling();
+    stopGraphPolling();
     setProject(null);
     setDiscovery(null);
     setScanStatus(null);
     setCodeModel(null);
     setInspectStatus(null);
+    setGraphStatus(null);
+    setDependencyGraph(null);
     setLastError(null);
-  }, [stopPolling, stopInspectPolling]);
+  }, [stopPolling, stopInspectPolling, stopGraphPolling]);
 
   // 组件卸载时停止轮询。
   useEffect(
     () => () => {
       stopPolling();
       stopInspectPolling();
+      stopGraphPolling();
     },
-    [stopPolling, stopInspectPolling],
+    [stopPolling, stopInspectPolling, stopGraphPolling],
   );
 
   const phase: ScanPhase = useMemo(() => {
@@ -235,6 +285,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       discovery,
       inspectStatus,
       codeModel,
+      graphStatus,
+      dependencyGraph,
       lastError,
       pickAndOpenProject,
       openProject,
@@ -250,6 +302,8 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       discovery,
       inspectStatus,
       codeModel,
+      graphStatus,
+      dependencyGraph,
       lastError,
       pickAndOpenProject,
       openProject,

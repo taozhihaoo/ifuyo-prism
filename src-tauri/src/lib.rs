@@ -54,6 +54,9 @@ pub fn run() {
             commands::get_inspect_status,
             commands::get_code_model,
             commands::cancel_inspect,
+            commands::start_graph,
+            commands::get_graph_status,
+            commands::get_dependency_graph,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

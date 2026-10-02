@@ -459,3 +459,28 @@ body {
 .symbol-selected {
   background: var(--color-accent-soft);
 }
+
+.graph-svg {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+}
+
+.graph-edge {
+  stroke: var(--color-border);
+  stroke-opacity: 0.7;
+}
+
+.graph-node circle {
+  fill: var(--color-accent);
+}
+
+.graph-node text {
+  fill: var(--color-text);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.graph-node {
+  cursor: pointer;
+}

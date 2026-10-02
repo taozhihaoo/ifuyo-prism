@@ -7,6 +7,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
+  DependencyGraphResultDto,
+  GraphStatus,
   InspectStatus,
   PrismErrorDto,
   ProjectCodeModelDto,
@@ -85,4 +87,18 @@ export function getInspectStatus(): Promise<InspectStatus> {
 
 export function getCodeModel(): Promise<ProjectCodeModelDto | null> {
   return invoke<ProjectCodeModelDto | null>("get_code_model");
+}
+
+// ---------- M3：Dependency & Architecture ----------
+
+export function startGraph(): Promise<string> {
+  return invoke<string>("start_graph");
+}
+
+export function getGraphStatus(): Promise<GraphStatus> {
+  return invoke<GraphStatus>("get_graph_status");
+}
+
+export function getDependencyGraph(): Promise<DependencyGraphResultDto | null> {
+  return invoke<DependencyGraphResultDto | null>("get_dependency_graph");
 }

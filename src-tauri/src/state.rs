@@ -9,6 +9,7 @@ use prism_core::config::PrismConfig;
 use prism_core::ids::TaskId;
 use prism_core::task::{CancellationToken, TaskState};
 use prism_core::timestamp::Timestamp;
+use prism_graph::DependencyGraphResult;
 use prism_project::{Project, ProjectDiscovery, ScanProgress};
 use std::sync::Mutex;
 
@@ -44,6 +45,15 @@ pub struct ScanSession {
     pub code_model: Option<ProjectCodeModel>,
     /// inspect Failed 时的错误描述。
     pub inspect_error: Option<String>,
+    /// ---- M3 Dependency & Architecture ----
+    /// graph 取消令牌。
+    pub graph_token: CancellationToken,
+    /// graph 状态：None = 尚未执行。
+    pub graph_status: Option<TaskState>,
+    /// graph 完成后的结果。
+    pub graph_model: Option<DependencyGraphResult>,
+    /// graph Failed 时的错误描述。
+    pub graph_error: Option<String>,
 }
 
 /// inspect 的实时计数（真实统计）。
@@ -75,12 +85,25 @@ impl ScanSession {
         self.discovery = None;
         self.error = None;
         self.started_at = Some(Timestamp::now_utc());
-        // 新扫描使既有代码模型过期。
+        // 新扫描使既有代码模型与依赖图过期。
         self.inspect_task_id = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;
         self.inspect_error = None;
+        self.graph_status = None;
+        self.graph_model = None;
+        self.graph_error = None;
+        task_id
+    }
+
+    /// 准备一次 graph 分析。
+    pub fn begin_graph(&mut self) -> TaskId {
+        let task_id = TaskId::new();
+        self.graph_token = CancellationToken::new();
+        self.graph_status = Some(TaskState::Running);
+        self.graph_model = None;
+        self.graph_error = None;
         task_id
     }
 
@@ -93,6 +116,10 @@ impl ScanSession {
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;
         self.inspect_error = None;
+        // inspect 完成后 graph 也会重新链式执行。
+        self.graph_status = None;
+        self.graph_model = None;
+        self.graph_error = None;
         task_id
     }
 }

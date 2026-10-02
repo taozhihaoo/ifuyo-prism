@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import DependencyView from "../components/DependencyView";
 import DirectoryTree from "../components/DirectoryTree";
 import FileList from "../components/FileList";
 import PlaceholderPage from "../components/PlaceholderPage";
@@ -11,7 +12,7 @@ import type { SymbolDto } from "../types/prism";
  * 数据一律来自真实 discovery / code model，未分析时如实说明。
  */
 export default function UnderstandPage() {
-  const { project, phase, discovery, codeModel, inspectStatus, startInspect } = useProjectStore();
+  const { project, phase, discovery, codeModel, dependencyGraph, inspectStatus, startInspect } = useProjectStore();
   const [selected, setSelected] = useState<SymbolDto | null>(null);
 
   if (!project || !discovery) {
@@ -62,6 +63,7 @@ export default function UnderstandPage() {
 
   return (
     <section className="stack">
+      {dependencyGraph && <DependencyView />}
       <div className="card" data-testid="code-summary">
         <h2 className="card-title">Code understanding</h2>
         <dl className="fact-grid">

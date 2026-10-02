@@ -11,6 +11,7 @@ use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel}
 use prism_core::application::{AppInfo, RuntimeInfo};
 use prism_core::error::PrismErrorDto;
 use prism_core::task::TaskState;
+use prism_graph::DependencyGraphResult;
 use prism_project::{DiscoveryService, Project, ProjectDiscovery, ScanOptions, ScanProgress};
 use serde::Serialize;
 use tauri::State;
@@ -289,4 +290,120 @@ pub fn cancel_inspect(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
     let session = lock_session(&state.session);
     session.inspect_token.cancel();
     Ok(())
+}
+
+// ---------- M3：Dependency & Architecture ----------
+
+/// graph 会话对外状态。
+#[derive(Debug, Clone, Serialize)]
+pub struct GraphStatusDto {
+    /// "idle" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub node_count: u64,
+    pub edge_count: u64,
+    pub cycle_count: u64,
+    pub unresolved_count: u64,
+    pub error: Option<String>,
+}
+
+/// 启动依赖图分析（后台线程；内部复用 discovery + code model）。
+#[tauri::command]
+pub fn start_graph(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
+    let (token, task_id, session_arc) = {
+        let mut session = lock_session(&state.session);
+        if session.project.is_none() {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        }
+        if session.graph_status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "a graph analysis is already running",
+            ));
+        }
+        if session.discovery.is_none() || session.code_model.is_none() {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "run a scan first; graph analysis builds on discovery and code model",
+            ));
+        }
+        let task_id = session.begin_graph();
+        let token = session.graph_token.clone();
+        (token, task_id, state.session.clone())
+    };
+
+    std::thread::spawn(move || {
+        let discovery = {
+            let session = lock_session(&session_arc);
+            session.discovery.clone()
+        };
+        let model = {
+            let session = lock_session(&session_arc);
+            session.code_model.clone()
+        };
+        let outcome = match (discovery, model) {
+            (Some(discovery), Some(model)) => {
+                prism_graph::DependencyService::new().analyze(&discovery, &model)
+            }
+            _ => Err(prism_core::PrismError::Internal {
+                message: "session lost discovery or code model".to_string(),
+            }),
+        };
+        let mut session = lock_session(&session_arc);
+        match outcome {
+            Ok(graph) => {
+                session.graph_status = Some(TaskState::Completed);
+                session.graph_model = Some(graph);
+            }
+            Err(err) => {
+                session.graph_status = Some(TaskState::Failed);
+                session.graph_error = Some(err.to_string());
+            }
+        }
+        let _ = token;
+    });
+
+    Ok(task_id.to_string())
+}
+
+/// 查询 graph 会话状态。
+#[tauri::command]
+pub fn get_graph_status(state: State<'_, AppState>) -> GraphStatusDto {
+    let session = lock_session(&state.session);
+    let status = match session.graph_status {
+        None => "idle".to_string(),
+        Some(state) => serde_json::to_value(state)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+    let (node_count, edge_count, cycle_count, unresolved_count) = session
+        .graph_model
+        .as_ref()
+        .map(|graph| {
+            (
+                graph.metrics.node_count,
+                graph.metrics.edge_count,
+                graph.metrics.cycle_count,
+                graph.metrics.unresolved_edges,
+            )
+        })
+        .unwrap_or((0, 0, 0, 0));
+    GraphStatusDto {
+        status,
+        node_count,
+        edge_count,
+        cycle_count,
+        unresolved_count,
+        error: session.graph_error.clone(),
+    }
+}
+
+/// 获取最近一次的依赖图结果。
+#[tauri::command]
+pub fn get_dependency_graph(state: State<'_, AppState>) -> Option<DependencyGraphResult> {
+    let session = lock_session(&state.session);
+    session.graph_model.clone()
 }

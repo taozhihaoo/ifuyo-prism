@@ -299,3 +299,124 @@ export interface InspectStatus {
   has_warnings: boolean;
   error: string | null;
 }
+
+// ---------- M3：Dependency & Architecture 契约 ----------
+
+export type ModuleKindDto =
+  | "project"
+  | "package"
+  | "namespace"
+  | "file_module"
+  | "external_package"
+  | "builtin"
+  | "unknown";
+
+export interface ModuleDto {
+  id: string;
+  name: string;
+  kind: ModuleKindDto;
+  file_ids: string[];
+  parent_id: string | null;
+  language: string | null;
+  path: string | null;
+  evidence: Evidence[];
+}
+
+export type ResolutionStatusDto =
+  | "resolved"
+  | "ambiguous"
+  | "unresolved"
+  | "external"
+  | "builtin"
+  | "ignored"
+  | "not_applicable";
+
+export interface DependencyDto {
+  id: string;
+  source_id: string;
+  source_path: string;
+  raw_target: string;
+  kind: string;
+  resolution: ResolutionStatusDto;
+  confidence: Confidence;
+  target_id: string | null;
+  target_path: string | null;
+  imported_names: string[];
+  location: SourceLocationDto | null;
+  evidence: Evidence[];
+}
+
+export type GraphNodeKindDto =
+  | "project"
+  | "package"
+  | "namespace"
+  | "file_module"
+  | "external_package"
+  | "builtin_module";
+
+export interface GraphNodeDto {
+  id: string;
+  kind: GraphNodeKindDto;
+  label: string;
+  entity: string;
+  language: string | null;
+}
+
+export interface GraphEdgeDto {
+  id: string;
+  source: string;
+  target: string;
+  kind: string;
+  resolution: ResolutionStatusDto;
+  confidence: Confidence;
+  evidence: Evidence[];
+}
+
+export interface CycleDto {
+  id: string;
+  nodes: string[];
+}
+
+export interface GraphMetricsDto {
+  node_count: number;
+  edge_count: number;
+  resolved_edges: number;
+  ambiguous_edges: number;
+  unresolved_edges: number;
+  external_edges: number;
+  builtin_edges: number;
+  cycle_count: number;
+  connected_components: number;
+  most_referenced: [string, number][];
+  most_dependent: [string, number][];
+}
+
+export interface ResolutionDiagnosticDto {
+  source_path: string;
+  raw_target: string;
+  resolver: string;
+  status: ResolutionStatusDto;
+  reason: string;
+  location: SourceLocationDto | null;
+}
+
+export interface DependencyGraphResultDto {
+  schema_version: number;
+  project_name: string;
+  modules: ModuleDto[];
+  dependencies: DependencyDto[];
+  nodes: GraphNodeDto[];
+  edges: GraphEdgeDto[];
+  cycles: CycleDto[];
+  metrics: GraphMetricsDto;
+  diagnostics: ResolutionDiagnosticDto[];
+}
+
+export interface GraphStatus {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  node_count: number;
+  edge_count: number;
+  cycle_count: number;
+  unresolved_count: number;
+  error: string | null;
+}

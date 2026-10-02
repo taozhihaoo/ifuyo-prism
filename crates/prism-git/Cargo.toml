@@ -1,0 +1,12 @@
+[package]
+name = "prism-git"
+description = "Prism Git facts layer: read-only Git repository facts via the system git CLI through CommandRunner"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true

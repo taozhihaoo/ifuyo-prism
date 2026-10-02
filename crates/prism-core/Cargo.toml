@@ -1,0 +1,14 @@
+[package]
+name = "prism-core"
+description = "Prism core: domain model, unified error/config/task foundations and application services shared by GUI and CLI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+time.workspace = true
+log.workspace = true

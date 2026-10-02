@@ -1,0 +1,13 @@
+[package]
+name = "prism-parser"
+description = "Prism code understanding: normalized Symbol model, LanguageParser abstraction, parser registry and language adapters (tree-sitter based)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+serde.workspace = true
+serde_json.workspace = true

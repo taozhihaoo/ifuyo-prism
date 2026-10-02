@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/prism-core",
     "crates/prism-project",
+    "crates/prism-parser",
     "crates/prism-cli",
     "src-tauri",
     "tests/integration",
@@ -23,4 +24,5 @@ clap = { version = "4", features = ["derive"] }
 
 prism-core = { path = "crates/prism-core" }
 prism-project = { path = "crates/prism-project" }
+prism-parser = { path = "crates/prism-parser" }
 ignore = "0.4"

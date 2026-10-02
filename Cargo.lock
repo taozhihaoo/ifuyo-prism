@@ -2498,6 +2498,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-parser"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-project",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-project"
 version = "0.1.0"
 dependencies = [

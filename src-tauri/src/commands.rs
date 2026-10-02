@@ -1,11 +1,17 @@
-//! Tauri IPC commands（M0 基础集）。
+//! Tauri IPC commands。
 //!
-//! 全部返回真实数据（来自 AppInfoService），禁止伪造。
-//! 未来里程碑在此追加 scan/changes/health/... 命令，仍只做转发。
+//! M0 基础集：get_app_info / get_prism_version / get_runtime_info。
+//! M1 新增：open_project / start_scan / cancel_scan / get_scan_status /
+//! get_discovery。全部转发到 prism-project 的 DiscoveryService / 共享会话，
+//! GUI 不自建扫描逻辑。扫描在后台线程执行，前端轮询 get_scan_status
+//! （纲领 §68 允许轮询而非 streaming）。
 
-use crate::state::AppState;
-use prism_core::application::app_info::prism_version;
+use crate::state::{lock_session, status_string, AppState};
 use prism_core::application::{AppInfo, RuntimeInfo};
+use prism_core::error::PrismErrorDto;
+use prism_core::task::TaskState;
+use prism_project::{DiscoveryService, Project, ProjectDiscovery, ScanOptions, ScanProgress};
+use serde::Serialize;
 use tauri::State;
 
 /// 应用信息（名称、版本、平台、构建 profile）。
@@ -17,11 +23,138 @@ pub fn get_app_info(state: State<'_, AppState>) -> AppInfo {
 /// Prism 版本号。
 #[tauri::command]
 pub fn get_prism_version(_state: State<'_, AppState>) -> &'static str {
-    prism_version()
+    prism_core::application::app_info::prism_version()
 }
 
 /// 运行时信息（平台与构建事实）。
 #[tauri::command]
 pub fn get_runtime_info(state: State<'_, AppState>) -> RuntimeInfo {
     state.app_info.runtime_info()
+}
+
+// ---------- M1：Project Discovery ----------
+
+/// 扫描会话对外状态。
+#[derive(Debug, Clone, Serialize)]
+pub struct ScanStatusDto {
+    pub project: Option<Project>,
+    /// "idle" | "queued" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub directories: u64,
+    pub files: u64,
+    pub ignored: u64,
+    pub errors: u64,
+    /// Completed + 非致命错误 > 0 → completed with warnings。
+    pub has_warnings: bool,
+    /// Failed 时的错误描述。
+    pub error: Option<String>,
+}
+
+/// 打开项目：验证目录有效性并建立 Project（重置会话）。
+#[tauri::command]
+pub fn open_project(path: String, state: State<'_, AppState>) -> Result<Project, PrismErrorDto> {
+    let project = Project::from_root(&path).map_err(PrismErrorDto::from)?;
+    let mut session = lock_session(&state.session);
+    session.open(project.clone());
+    Ok(project)
+}
+
+/// 启动扫描（后台线程执行），返回 task id；进度经 get_scan_status 轮询。
+#[tauri::command]
+pub fn start_scan(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
+    let (root, token, task_id, session_arc) = {
+        let mut session = lock_session(&state.session);
+        if session.project.is_none() {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        }
+        if session.status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "a scan is already running",
+            ));
+        }
+        let root = session
+            .project
+            .as_ref()
+            .expect("checked above")
+            .root_path
+            .clone();
+        let task_id = session.begin_scan();
+        let token = session.token.clone();
+        (root, token, task_id, state.session.clone())
+    };
+
+    std::thread::spawn(move || {
+        let service = DiscoveryService::new();
+        let result = service.discover(
+            &root,
+            ScanOptions::default(),
+            &token,
+            |progress: ScanProgress| {
+                // 实时计数写回共享会话；锁竞争极低（写 8 字节），可接受。
+                let mut session = lock_session(&session_arc);
+                session.progress = progress;
+            },
+        );
+        let mut session = lock_session(&session_arc);
+        match result {
+            Ok(discovery) => {
+                session.status = Some(discovery.scan.status);
+                // 完成时以最终统计为准（与扫描中的实时计数一致）。
+                session.progress = ScanProgress {
+                    directories: discovery.statistics.total_directories,
+                    files: discovery.statistics.total_files,
+                    ignored: discovery.statistics.ignored_files,
+                    errors: discovery.statistics.error_count,
+                };
+                session.discovery = Some(discovery);
+            }
+            Err(err) => {
+                session.status = Some(TaskState::Failed);
+                session.error = Some(err.to_string());
+            }
+        }
+    });
+
+    Ok(task_id.to_string())
+}
+
+/// 请求取消当前扫描。
+#[tauri::command]
+pub fn cancel_scan(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
+    let session = lock_session(&state.session);
+    session.token.cancel();
+    Ok(())
+}
+
+/// 查询扫描会话状态（前端轮询入口）。
+#[tauri::command]
+pub fn get_scan_status(state: State<'_, AppState>) -> ScanStatusDto {
+    let session = lock_session(&state.session);
+    let status = status_string(session.status);
+    let has_warnings = session.status == Some(TaskState::Completed)
+        && session
+            .discovery
+            .as_ref()
+            .is_some_and(|discovery| discovery.scan.errors_count > 0);
+    ScanStatusDto {
+        project: session.project.clone(),
+        status,
+        directories: session.progress.directories,
+        files: session.progress.files,
+        ignored: session.progress.ignored,
+        errors: session.progress.errors,
+        has_warnings,
+        error: session.error.clone(),
+    }
+}
+
+/// 获取最近一次扫描的完整 Discovery 结果（未完成/未扫描为 None）。
+#[tauri::command]
+pub fn get_discovery(state: State<'_, AppState>) -> Option<ProjectDiscovery> {
+    let session = lock_session(&state.session);
+    session.discovery.clone()
 }

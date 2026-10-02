@@ -39,11 +39,17 @@ pub fn run() {
     );
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(state::AppState::new(config))
         .invoke_handler(tauri::generate_handler![
             commands::get_app_info,
             commands::get_prism_version,
             commands::get_runtime_info,
+            commands::open_project,
+            commands::start_scan,
+            commands::cancel_scan,
+            commands::get_scan_status,
+            commands::get_discovery,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

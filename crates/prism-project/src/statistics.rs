@@ -1,6 +1,5 @@
 //! 统计：项目规模与语言计数（文件数量统计，不做代码行占比——LOC 推迟到 M2+）。
 
-use crate::discovery::LanguageCount;
 use crate::file::{FileInfo, FileKind};
 use serde::{Deserialize, Serialize};
 

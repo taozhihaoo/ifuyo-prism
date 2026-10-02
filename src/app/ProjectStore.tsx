@@ -1,0 +1,193 @@
+/**
+ * ProjectStore：M1 的集中式项目/扫描状态（纲领 §67）。
+ *
+ * 状态机：NoProject → Selecting → Scanning → Completed/CompletedWithWarnings
+ * / Failed / Cancelled。扫描进度经 IPC 轮询（400ms），数据全部来自真实
+ * scanner，禁止伪造进度。
+ */
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  cancelScan as invokeCancelScan,
+  getDiscovery,
+  getScanStatus,
+  openProject as invokeOpenProject,
+  pickDirectory,
+  startScan as invokeStartScan,
+  toPrismError,
+} from "../services/ipc";
+import type { ProjectDiscovery, ProjectInfo, ScanStatus } from "../types/prism";
+
+export type ScanPhase =
+  | "noProject"
+  | "idle"
+  | "scanning"
+  | "completed"
+  | "completedWithWarnings"
+  | "failed"
+  | "cancelled";
+
+interface ProjectStoreValue {
+  project: ProjectInfo | null;
+  phase: ScanPhase;
+  scanStatus: ScanStatus | null;
+  discovery: ProjectDiscovery | null;
+  lastError: string | null;
+  /** 打开系统目录选择对话框并打开所选项目。 */
+  pickAndOpenProject: () => Promise<void>;
+  /** 直接按路径打开项目（测试/CLI 同源入口）。 */
+  openProject: (path: string) => Promise<void>;
+  startScan: () => Promise<void>;
+  cancelScan: () => void;
+  /** 关闭当前项目回到空状态。 */
+  closeProject: () => void;
+}
+
+const ProjectStoreContext = createContext<ProjectStoreValue | null>(null);
+
+const POLL_INTERVAL_MS = 400;
+
+export function ProjectProvider({ children }: { children: ReactNode }) {
+  const [project, setProject] = useState<ProjectInfo | null>(null);
+  const [scanStatus, setScanStatus] = useState<ScanStatus | null>(null);
+  const [discovery, setDiscovery] = useState<ProjectDiscovery | null>(null);
+  const [lastError, setLastError] = useState<string | null>(null);
+  const pollingRef = useRef<number | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current !== null) {
+      window.clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  /** 轮询直到扫描离开 running 态；结束时拉取 Discovery。 */
+  const pollUntilDone = useCallback(async () => {
+    stopPolling();
+    const tick = async () => {
+      try {
+        const status = await getScanStatus();
+        setScanStatus(status);
+        if (status.status !== "running" && status.status !== "queued") {
+          stopPolling();
+          const result = await getDiscovery();
+          setDiscovery(result);
+        }
+      } catch (err) {
+        stopPolling();
+        setLastError(toPrismError(err).message);
+      }
+    };
+    // 立即轮询一次，然后按间隔继续。
+    void tick();
+    pollingRef.current = window.setInterval(() => void tick(), POLL_INTERVAL_MS);
+  }, [stopPolling]);
+
+  const openProject = useCallback(
+    async (path: string) => {
+      setLastError(null);
+      const opened = await invokeOpenProject(path);
+      setProject(opened);
+      setDiscovery(null);
+      setScanStatus({
+        project: opened,
+        status: "idle",
+        directories: 0,
+        files: 0,
+        ignored: 0,
+        errors: 0,
+        has_warnings: false,
+        error: null,
+      });
+      await invokeStartScan();
+      void pollUntilDone();
+    },
+    [pollUntilDone],
+  );
+
+  const pickAndOpenProject = useCallback(async () => {
+    setLastError(null);
+    const path = await pickDirectory();
+    if (!path) {
+      return; // 用户取消选择：留在原状态
+    }
+    await openProject(path);
+  }, [openProject]);
+
+  const startScan = useCallback(async () => {
+    await invokeStartScan();
+    void pollUntilDone();
+  }, [pollUntilDone]);
+
+  const cancelScan = useCallback(() => {
+    void invokeCancelScan().catch((err) => setLastError(toPrismError(err).message));
+  }, []);
+
+  const closeProject = useCallback(() => {
+    stopPolling();
+    setProject(null);
+    setDiscovery(null);
+    setScanStatus(null);
+    setLastError(null);
+  }, [stopPolling]);
+
+  // 组件卸载时停止轮询。
+  useEffect(() => stopPolling, [stopPolling]);
+
+  const phase: ScanPhase = useMemo(() => {
+    if (!project) return "noProject";
+    if (scanStatus?.status === "running" || scanStatus?.status === "queued") return "scanning";
+    if (discovery) {
+      if (discovery.scan.status === "cancelled") return "cancelled";
+      if (discovery.scan.errors_count > 0) return "completedWithWarnings";
+      return "completed";
+    }
+    if (scanStatus?.status === "failed") return "failed";
+    return "idle";
+  }, [project, scanStatus, discovery]);
+
+  const value = useMemo<ProjectStoreValue>(
+    () => ({
+      project,
+      phase,
+      scanStatus,
+      discovery,
+      lastError,
+      pickAndOpenProject,
+      openProject,
+      startScan,
+      cancelScan,
+      closeProject,
+    }),
+    [
+      project,
+      phase,
+      scanStatus,
+      discovery,
+      lastError,
+      pickAndOpenProject,
+      openProject,
+      startScan,
+      cancelScan,
+      closeProject,
+    ],
+  );
+
+  return <ProjectStoreContext.Provider value={value}>{children}</ProjectStoreContext.Provider>;
+}
+
+export function useProjectStore(): ProjectStoreValue {
+  const value = useContext(ProjectStoreContext);
+  if (!value) {
+    throw new Error("useProjectStore must be used within ProjectProvider");
+  }
+  return value;
+}

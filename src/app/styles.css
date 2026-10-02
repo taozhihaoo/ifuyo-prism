@@ -270,3 +270,162 @@ body {
   font-size: 12px;
   margin: 0;
 }
+
+/* ---------- M1：按钮 / 表格 / 树 / 证据 ---------- */
+
+.button {
+  font: inherit;
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  cursor: pointer;
+  margin-top: var(--space-3);
+}
+
+.button:hover {
+  border-color: var(--color-accent);
+}
+
+.button-primary {
+  background: var(--color-accent-soft);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.text-input {
+  font: inherit;
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  margin-bottom: var(--space-3);
+}
+
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.file-table th {
+  text-align: left;
+  color: var(--color-muted);
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-2);
+}
+
+.file-table td {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--space-1) var(--space-2);
+}
+
+.sort-button {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.row-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.row-static {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-1) 0;
+}
+
+.row-button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+}
+
+.row-button:hover {
+  background: var(--color-surface-raised);
+}
+
+.evidence-list {
+  list-style: none;
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-left: 2px solid var(--color-accent);
+  color: var(--color-muted);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.tree {
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.tree-branch {
+  list-style: none;
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--color-border);
+}
+
+.tree-root {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tree-dir {
+  color: var(--color-accent);
+}
+
+.tree-file {
+  color: var(--color-text);
+}
+
+.warning-box {
+  margin-top: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid #eab308;
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4);
+}
+
+.warning-box ul {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}

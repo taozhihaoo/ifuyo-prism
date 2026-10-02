@@ -5,7 +5,14 @@
  * 必须经由本模块（便于 mock、错误归一化与未来替换传输层）。
  */
 import { invoke } from "@tauri-apps/api/core";
-import type { AppInfo, PrismErrorDto, RuntimeInfo } from "../types/prism";
+import type {
+  AppInfo,
+  PrismErrorDto,
+  ProjectDiscovery,
+  ProjectInfo,
+  RuntimeInfo,
+  ScanStatus,
+} from "../types/prism";
 
 /** 把 IPC rejection 归一化为 PrismErrorDto（对应 Rust PrismErrorDto）。 */
 export function toPrismError(err: unknown): PrismErrorDto {
@@ -28,4 +35,34 @@ export function getPrismVersion(): Promise<string> {
 
 export function getRuntimeInfo(): Promise<RuntimeInfo> {
   return invoke<RuntimeInfo>("get_runtime_info");
+}
+
+// ---------- M1：Project Discovery ----------
+
+export function openProject(path: string): Promise<ProjectInfo> {
+  return invoke<ProjectInfo>("open_project", { path });
+}
+
+/** 启动扫描，返回 task id；进度经 getScanStatus 轮询。 */
+export function startScan(): Promise<string> {
+  return invoke<string>("start_scan");
+}
+
+export function cancelScan(): Promise<void> {
+  return invoke<void>("cancel_scan");
+}
+
+export function getScanStatus(): Promise<ScanStatus> {
+  return invoke<ScanStatus>("get_scan_status");
+}
+
+export function getDiscovery(): Promise<ProjectDiscovery | null> {
+  return invoke<ProjectDiscovery | null>("get_discovery");
+}
+
+/** 系统目录选择对话框（tauri-plugin-dialog）。取消返回 null。 */
+export async function pickDirectory(): Promise<string | null> {
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const selected = await open({ directory: true, multiple: false, title: "Open project" });
+  return typeof selected === "string" ? selected : null;
 }

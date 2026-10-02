@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { AppInfo } from "../types/prism";
 import OverviewPage from "./OverviewPage";
+import UnderstandPage from "./UnderstandPage";
 import PlaceholderPage from "../components/PlaceholderPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
@@ -31,13 +32,7 @@ export const PAGES: PageDef[] = [
   {
     key: "understand",
     label: "Understand",
-    milestoneTag: "M1",
-    render: () => (
-      <PlaceholderPage
-        milestone="M1"
-        description="Project discovery and code understanding: structure, files, languages, entry points, symbols."
-      />
-    ),
+    render: () => <UnderstandPage />,
   },
   {
     key: "changes",

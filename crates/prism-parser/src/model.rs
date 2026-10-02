@@ -53,6 +53,7 @@ pub struct SourceRange {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SymbolKind {
+    // as_str() 与 serde 序列化保持一致（新增变体时同步）。
     File,
     Module,
     Namespace,
@@ -73,6 +74,34 @@ pub enum SymbolKind {
     Export,
     Decorator,
     Unknown,
+}
+
+impl SymbolKind {
+    /// 稳定的对外字符串（与 serde 序列化一致）。
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            SymbolKind::File => "file",
+            SymbolKind::Module => "module",
+            SymbolKind::Namespace => "namespace",
+            SymbolKind::Class => "class",
+            SymbolKind::Struct => "struct",
+            SymbolKind::Interface => "interface",
+            SymbolKind::Enum => "enum",
+            SymbolKind::Function => "function",
+            SymbolKind::Method => "method",
+            SymbolKind::Constructor => "constructor",
+            SymbolKind::Property => "property",
+            SymbolKind::Field => "field",
+            SymbolKind::Variable => "variable",
+            SymbolKind::Constant => "constant",
+            SymbolKind::Parameter => "parameter",
+            SymbolKind::TypeAlias => "type_alias",
+            SymbolKind::Import => "import",
+            SymbolKind::Export => "export",
+            SymbolKind::Decorator => "decorator",
+            SymbolKind::Unknown => "unknown",
+        }
+    }
 }
 
 /// 可见性（规格 §13）。语言没有对应概念时用 Unknown，不制造虚假语义。
@@ -150,10 +179,7 @@ impl Symbol {
 }
 
 fn kind_serialized(kind: SymbolKind) -> String {
-    serde_json::to_value(kind)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_string))
-        .unwrap_or_else(|| "unknown".to_string())
+    kind.as_str().to_string()
 }
 
 #[cfg(test)]

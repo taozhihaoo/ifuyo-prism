@@ -2453,6 +2453,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
 
 [[package]]
+name = "prism-analysis"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-parser",
+ "prism-project",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-app"
 version = "0.1.0"
 dependencies = [
@@ -2472,6 +2483,7 @@ version = "0.1.0"
 dependencies = [
  "clap",
  "log",
+ "prism-analysis",
  "prism-core",
  "prism-project",
  "serde_json",

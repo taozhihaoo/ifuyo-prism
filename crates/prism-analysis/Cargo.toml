@@ -1,0 +1,14 @@
+[package]
+name = "prism-analysis"
+description = "Prism code analysis orchestration: source-file selection, bounded parallel parsing, ProjectCodeModel and SymbolIndex"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+prism-parser.workspace = true
+serde.workspace = true
+serde_json.workspace = true

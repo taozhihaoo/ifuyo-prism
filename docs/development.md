@@ -55,7 +55,9 @@ npm run icon                 # 生成 PNG → tauri icon 全平台尺寸
 → fixture 项目（tests/fixtures/）→ GUI 手动验证（tauri dev）
 ```
 
-- fixture 项目保持极小且稳定；M1+ 扫描它，禁止引入真实依赖
+- fixture 项目保持极小且稳定；M1+ 扫描它，禁止引入真实依赖；
+  `tests/fixtures/*/tests/*.test.ts` 这类占位文件不是前端测试
+  （vitest 已排除仓库 `tests/` 目录）
 - M2 起，重要 Analyzer 必须加“真实开源项目”验证（纲领 §22）
 
 ## Git 纪律（纲领 §8 / §20.2）
@@ -83,6 +85,11 @@ M0 已引入的全部运行时依赖：`serde`、`serde_json`、`uuid`、`time`�
   否则 `set_boxed_logger` 不存在
 - `time` 的 RFC3339 在 `time::format_description::well_known::Rfc3339`，
   序列化辅助在 `time::serde::rfc3339`；`parse` 需要 `parsing` feature
+
+## CLI 退出码契约（纲领 §78，M1 起细分）
+
+`0` 成功 · `1` 运行错误或命令未实现 · `2` 用法错误 · `3` 输入无效 ·
+`4` 已取消 · `5` 成功但有警告（completed with warnings）
 
 ## 技术决策台账
 

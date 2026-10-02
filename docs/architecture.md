@@ -29,10 +29,29 @@ CLI 自建业务逻辑（不经 Application/Core）✗
 
 | Crate | 角色 | 说明 |
 | --- | --- | --- |
-| `crates/prism-core` | Core + Application 层 | 领域类型、错误/配置/任务/日志、CommandRunner/FileSystem 抽象、AppInfoService |
-| `crates/prism-cli` | CLI 壳 | clap 参数 → Application/Core；退出码契约 0/1/2 |
-| `src-tauri`（prism-app） | Tauri 壳 | IPC commands → Application/Core；配置与日志初始化 |
-| `tests/integration` | 集成测试 | 跨 crate 验收场景 + prism-test-helper |
+| `crates/prism-core` | 地基层 | ID/错误/配置/任务/日志、CommandRunner/FileSystem 抽象、AppInfoService |
+| `crates/prism-project` | Project Discovery 领域层（M1） | scanner/ignore/language/file/configuration/project_type/entry_point/statistics + DiscoveryService |
+| `crates/prism-cli` | CLI 壳 | clap 参数 → 领域服务；退出码契约见 development.md |
+| `src-tauri`（prism-app） | Tauri 壳 | IPC commands → 领域服务；扫描在后台线程、前端轮询 |
+| `tests/integration` | 集成测试 | M0/M1 验收场景 + prism-test-helper |
+
+## M1 Discovery 管线（纲领 §70）
+
+```text
+Project Root → Walker（确定性 DFS）→ IgnoreEngine → Metadata（只读 metadata，不读内容）
+  → FileClassification → Language → Configuration → Project Type → Entry Point
+  → Statistics → ProjectDiscovery（schema_version=1）
+```
+
+- 文件身份 = `project root + relative_path`（`/` 分隔）；绝对路径仅在执行 IO 时使用
+- Ignore 优先级：hidden 过滤 + 系统安全规则/用户排除（按名匹配，不可被取反）
+  > 项目 `.gitignore`（`ignore` crate 提供完整语义含 `!` 取反）
+- gitignore 匹配依赖：`ignore` crate（BurntSushi/ripgrep 生态，MIT/Apache-2.0，
+  维护良好；决策记录于 M1 commit b36e737）
+- 取消语义：取消不是故障——保留已完成的部分事实，`status = cancelled`
+- 非致命错误：逐条累积为 `ScanError{path,kind,message}`；
+  `completed with warnings = Completed + errors_count > 0`
+- GUI 轮询（get_scan_status）而非事件流（纲领 §68 允许）；数据全部来自真实扫描
 
 ### prism-core 内部结构
 
@@ -64,8 +83,13 @@ src/
 5. **JSON 契约统一 snake_case**；时间戳一律 RFC3339 UTC。
 6. **CLI 用 clap v4**：M1–M11 要长出约十个子命令与大量 flag，标准解析器
    优于手写（依赖决策见 development.md）。
-7. **TS 契约类型暂为手写镜像**（数量极少，src/types/prism.ts）；契约膨胀后
-   再引入自动生成（如 tauri-specta），避免现在制造重复类型（§28 允许）。
+7. **TS 契约类型暂为手写镜像**（src/types/prism.ts，M1 已覆盖 Discovery 契约）；
+   契约膨胀后再引入自动生成（如 tauri-specta），避免现在制造重复类型（§28 允许）。
+8. **Evidence 模型锚定于 prism-project（M1）**：`Evidence{source,path,reason}`；
+   M2/M3 复用或扩展此定义（文档漂移以代码为准）。
+9. **Application 层拆分**：prism-core::application 承载跨域基础服务（AppInfo），
+   各域服务住在各自 crate（如 prism-project::DiscoveryService）——保持 core 零
+   业务依赖，依赖方向仍为 CLI/Tauri → prism-project → prism-core。
 8. **CommandRunner 超时用轮询**（25ms tick），管道由独立线程读取防死锁；
    进程树终止（Windows job object）留给 M8 Verify 执行器。
 9. **ID 生成策略**：运行期身份用 UUIDv4（TaskId 等）；需要跨运行稳定的
@@ -92,7 +116,6 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 ## 未来模块落位（随里程碑创建）
 
 ```text
-M1  prism-project     文件扫描 / ignore / 语言与项目类型识别
 M2  prism-parser      Language Adapter + 符号抽取（TS/JS/Python/C#）
 M2  prism-analysis    ProjectCodeModel / SymbolIndex
 M3  （prism-analysis 内）模块/依赖/调用图、环检测

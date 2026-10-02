@@ -61,9 +61,14 @@ Contains/Imports/ReExports/DependsOn/ProjectReferences 边种类；环 = SCC
 
 ## 7. Call Graph（§43.7）
 
-FACT：未实现（P1 deferred）。规格 §19 要求"可靠子集"，M2 未捕获调用语法
-事实；M3 不猜测（handler() 类动态调用必须 Unresolved 而非指向）。
-架构已预留：Dependency/CallEdge 模型分离。
+FACT（补齐实现，post-audit increment）：M2 parser 捕获直接调用语法事实
+（ParseResult.calls: CallInfo = caller_qualified + callee_text + location；
+三 adapter 全覆盖，contract 测试断言非空）。prism-graph `calls` 模块解析：
+同文件同名 Function/Method/Constructor → Resolved(High)；resolved import
+目标文件内同名 → Resolved(Medium)；动态/未知名 → Unresolved(Low) 且
+callee_id 为空（不指向猜测符号，规格 §19 `handler()` 语义）。
+CallEdge 进入 DependencyGraphResult.calls（加法契约字段），确定性排序，
+call_graph 集成测试覆盖 same-file / via-import / dynamic 三场景。
 
 ## 8. CLI（§43.8）
 
@@ -133,14 +138,13 @@ M3 提交（6 个，子任务粒度）：
 - 无
 
 ### P1
-- 调用图未实现（P1 deferred，规格 §19 允许；M6 Impact 前需补）
 - GUI SVG 交互人工确认待做；大图只渲染 60 节点（CLI JSON 为完整数据）
 - Python stdlib 表为保守子集（未命中 → Unresolved，不误报）
 - C# ProjectReference 解析为 naive Include 扫描（csproj 注释场景不处理）
 
 ## 15. Deferred
 
-调用图可靠子集（P1）、Rust/Go/Java/C/C++ resolver、增量 resolution
+更完整调用图（member-call 类型推断、跨文件多态等，超出 §19 子集）、Rust/Go/Java/C/C++ resolver、增量 resolution
 fingerprint（接口已留）、M4 Git / M5 ChangeSet / M6 Impact / M7 Health /
 M8 Verify / M9 Environment / M10 Context / M11 Snapshot——均未提前实现。
 

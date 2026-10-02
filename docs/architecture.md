@@ -132,7 +132,8 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 ## 未来模块落位（随里程碑创建）
 
 ```text
-M3  ✓ 已实现（prism-graph：模块/依赖/解析/图/环/指标；调用图仅可靠子集 P1）
+M3  ✓ 已实现（prism-graph：模块/依赖/解析/图/环/指标/有限调用图——
+    直接调用经名字解析，同文件 High、resolved-import Medium，其余 Unresolved）
 M4  prism-git         只读 Git 事实层（经 CommandRunner 调系统 git）
 M5  prism-changes     ChangeSet（或并入 prism-analysis，M5 开工时定案）
 M6  prism-impact      影响分析（反向遍历 M3 图）

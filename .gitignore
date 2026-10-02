@@ -1,0 +1,28 @@
+# ===== Node / frontend =====
+node_modules/
+dist/
+coverage/
+
+# ===== Rust =====
+target/
+
+# ===== Env & secrets =====
+.env
+.env.*
+*.pem
+*.key
+
+# ===== Logs =====
+*.log
+
+# ===== Editor / OS metadata =====
+.vscode/
+.idea/
+*.swp
+Thumbs.db
+.DS_Store
+
+# ===== Temporary files =====
+*.tmp
+*.bak
+*~

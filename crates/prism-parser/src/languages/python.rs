@@ -8,7 +8,9 @@
 use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
-use crate::parse::{ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
+use crate::parse::{
+    ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
+};
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
 use prism_core::task::CancellationToken;
@@ -91,6 +93,7 @@ struct Collector<'a> {
     relative_path: &'a str,
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
+    imports: Vec<ImportInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -200,6 +203,12 @@ impl<'a> Collector<'a> {
                     .map(|child| PythonParser::text(child, self.content))
                     .unwrap_or("");
                 if !module.is_empty() {
+                    self.imports.push(ImportInfo {
+                        specifier: module.to_string(),
+                        kind: ImportKind::Plain,
+                        names: Vec::new(),
+                        location: Some(PythonParser::node_location(node, false)),
+                    });
                     let qualified = format!("{prefix}.{module}");
                     self.emit(node, SymbolKind::Import, &qualified, parent_id, None);
                 }
@@ -345,6 +354,7 @@ impl LanguageParser for PythonParser {
             relative_path: &request.relative_path,
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
+            imports: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -374,6 +384,7 @@ impl LanguageParser for PythonParser {
             duration_ms: started.elapsed().as_millis() as u64,
             parser_version: self.version.to_string(),
             reason: None,
+            imports: collector.imports,
         })
     }
 }

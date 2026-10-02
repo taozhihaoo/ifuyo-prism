@@ -153,6 +153,7 @@ mod tests {
                 duration_ms: 0,
                 parser_version: "test".to_string(),
                 reason: None,
+                imports: Vec::new(),
             }],
             summary: ParseSummary::default(),
         }

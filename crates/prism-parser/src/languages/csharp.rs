@@ -7,7 +7,7 @@
 use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
-use crate::parse::{ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
+use crate::parse::{ImportInfo, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
 use prism_core::task::CancellationToken;
@@ -104,6 +104,7 @@ struct Collector<'a> {
     relative_path: &'a str,
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
+    imports: Vec<ImportInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -383,6 +384,12 @@ impl<'a> Collector<'a> {
                     if matches!(current.kind(), "qualified_name" | "identifier") && !emitted {
                         let name = CSharpParser::text(current, self.content);
                         if !name.is_empty() {
+                            self.imports.push(ImportInfo {
+                                specifier: name.to_string(),
+                                kind: crate::parse::ImportKind::Plain,
+                                names: Vec::new(),
+                                location: Some(CSharpParser::node_location(node, false)),
+                            });
                             let qualified = format!("{prefix}.{name}");
                             self.emit(
                                 node,
@@ -577,6 +584,7 @@ impl LanguageParser for CSharpParser {
             relative_path: &request.relative_path,
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
+            imports: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -606,6 +614,7 @@ impl LanguageParser for CSharpParser {
             duration_ms: started.elapsed().as_millis() as u64,
             parser_version: self.version.to_string(),
             reason: None,
+            imports: collector.imports,
         })
     }
 }

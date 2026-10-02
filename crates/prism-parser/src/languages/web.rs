@@ -10,7 +10,9 @@
 use crate::model::{
     SourceLocation, SourceRange, Symbol, SymbolKind, SymbolVisibility, COORDINATE_CONTRACT,
 };
-use crate::parse::{ParseDiagnostic, ParseRequest, ParseResult, ParseStatus};
+use crate::parse::{
+    ImportInfo, ImportKind, ParseDiagnostic, ParseRequest, ParseResult, ParseStatus,
+};
 use crate::registry::LanguageParser;
 use prism_core::ids::{FileId, SymbolId};
 use prism_core::task::CancellationToken;
@@ -156,6 +158,7 @@ struct Collector<'a> {
     language: Language,
     symbols: Vec<Symbol>,
     diagnostics: Vec<ParseDiagnostic>,
+    imports: Vec<ImportInfo>,
     cancel: &'a CancellationToken,
 }
 
@@ -373,8 +376,34 @@ impl<'a> Collector<'a> {
             "export_statement" => {
                 // 有声明子节点 → 透传（声明本身已捕获）；裸导出子句 → Export 符号。
                 if node.child_by_field_name("declaration").is_some() {
+                    // `export ... from "./x"`（声明形式的 re-export）→ 记录 ReExport。
+                    if let Some(source) = node.child_by_field_name("source") {
+                        let specifier = WebParser::text(source, self.content)
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .to_string();
+                        self.imports.push(ImportInfo {
+                            specifier,
+                            kind: ImportKind::ReExport,
+                            names: Vec::new(),
+                            location: Some(WebParser::node_location(node, false)),
+                        });
+                    }
                     self.walk_children(node, parent_id, prefix, in_class);
                 } else {
+                    // `export { a, b } from "./x"` = re-export。
+                    if let Some(source) = node.child_by_field_name("source") {
+                        let specifier = WebParser::text(source, self.content)
+                            .trim_matches('"')
+                            .trim_matches('\'')
+                            .to_string();
+                        self.imports.push(ImportInfo {
+                            specifier,
+                            kind: ImportKind::ReExport,
+                            names: Vec::new(),
+                            location: Some(WebParser::node_location(node, false)),
+                        });
+                    }
                     let mut child = node.child(0);
                     while let Some(current) = child {
                         if current.kind() == "export_clause" {
@@ -404,10 +433,36 @@ impl<'a> Collector<'a> {
             }
             "import_statement" => {
                 if let Some(source) = node.child_by_field_name("source") {
-                    let module = WebParser::text(source, self.content)
+                    let raw_specifier = WebParser::text(source, self.content)
                         .trim_matches('"')
                         .trim_matches('\'')
                         .to_string();
+                    let kind = if WebParser::text(node, self.content).starts_with("import type") {
+                        ImportKind::TypeOnly
+                    } else {
+                        ImportKind::Plain
+                    };
+                    let mut names = Vec::new();
+                    if let Some(clause) = node.child_by_field_name("imports") {
+                        let mut spec = clause.child(0);
+                        while let Some(current) = spec {
+                            if current.kind() == "import_specifier" {
+                                if let Some(name) =
+                                    WebParser::child_text(current, "name", self.content)
+                                {
+                                    names.push(name.to_string());
+                                }
+                            }
+                            spec = current.next_sibling();
+                        }
+                    }
+                    self.imports.push(ImportInfo {
+                        specifier: raw_specifier.clone(),
+                        kind,
+                        names,
+                        location: Some(WebParser::node_location(node, false)),
+                    });
+                    let module = raw_specifier.trim_start_matches("./").to_string();
                     let qualified = format!("{prefix}.{module}");
                     self.emit(
                         node,
@@ -626,6 +681,7 @@ impl LanguageParser for WebParser {
             language: self.language,
             symbols: vec![file_symbol],
             diagnostics: Vec::new(),
+            imports: Vec::new(),
             cancel: cancellation,
         };
         collector.walk_children(
@@ -656,6 +712,7 @@ impl LanguageParser for WebParser {
             duration_ms: started.elapsed().as_millis() as u64,
             parser_version: self.version.to_string(),
             reason: None,
+            imports: collector.imports,
         })
     }
 }

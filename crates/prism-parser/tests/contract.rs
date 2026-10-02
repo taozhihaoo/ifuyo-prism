@@ -76,6 +76,13 @@ fn run_contract_suite(fixture: &Fixture) {
     assert!(located.range.end.line >= located.range.start.line);
     assert!(located.range.start.byte_offset < located.range.end.byte_offset);
 
+    // 3.5 imports 语法事实必须被捕获（M3 关系解析输入）。
+    assert!(
+        !result.imports.is_empty(),
+        "[{tag}] valid fixture imports an external/local module"
+    );
+    assert!(result.imports.iter().all(|i| !i.specifier.is_empty()));
+
     // 4. hierarchy：方法挂在类下
     let class = result
         .symbols

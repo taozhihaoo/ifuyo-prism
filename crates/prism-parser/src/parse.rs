@@ -8,6 +8,29 @@ use prism_core::ids::FileId;
 use prism_project::Language;
 use serde::{Deserialize, Serialize};
 
+/// 一条 import 语法事实（M3 关系解析的输入；不做任何解析判定）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportInfo {
+    /// 原样 specifier（如 "./utils" / "os" / "System.Collections"）。
+    pub specifier: String,
+    pub kind: ImportKind,
+    /// 命名导入（如 `{ a, b }` / `from x import y`）；不确定时为空。
+    pub names: Vec<String>,
+    /// 语句起始位置（诊断/evidence 用）。
+    pub location: Option<crate::model::SourceLocation>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ImportKind {
+    /// 普通 import / using。
+    Plain,
+    /// `export ... from "./x"`（re-export 语法）。
+    ReExport,
+    /// `import type` / `import type {..}`。
+    TypeOnly,
+}
+
 /// 解析请求：按需读取的单文件内容（解析后即丢弃，不驻留）。
 #[derive(Debug, Clone)]
 pub struct ParseRequest {
@@ -92,6 +115,9 @@ pub struct ParseResult {
     pub parser_version: String,
     /// Skipped/Unsupported 的原因（如 "generated" / "no_parser"）。
     pub reason: Option<String>,
+    /// 文件内全部 import 语法事实（M3 起；M2 已构造处补空 Vec）。
+    #[serde(default)]
+    pub imports: Vec<ImportInfo>,
 }
 
 impl ParseResult {
@@ -130,6 +156,7 @@ mod tests {
             duration_ms: 1,
             parser_version: "test".to_string(),
             reason: None,
+            imports: Vec::new(),
         };
         assert!(!result.has_errors());
 
@@ -152,6 +179,7 @@ mod tests {
             duration_ms: 3,
             parser_version: "tree-sitter-test/1".to_string(),
             reason: None,
+            imports: Vec::new(),
         };
         let json = serde_json::to_value(&result).unwrap();
         for field in [

@@ -39,6 +39,17 @@ impl ParserRegistry {
         Self::default()
     }
 
+    /// M2 全量默认注册表：TypeScript / TSX / JavaScript / Python / C#。
+    pub fn with_defaults() -> Self {
+        let mut registry = ParserRegistry::new();
+        registry.register(Arc::new(crate::languages::WebParser::typescript()));
+        registry.register(Arc::new(crate::languages::WebParser::tsx()));
+        registry.register(Arc::new(crate::languages::WebParser::javascript()));
+        registry.register(Arc::new(crate::languages::PythonParser::new()));
+        registry.register(Arc::new(crate::languages::CSharpParser::new()));
+        registry
+    }
+
     pub fn register(&mut self, parser: Arc<dyn LanguageParser>) {
         self.parsers.insert(parser.language(), parser);
     }

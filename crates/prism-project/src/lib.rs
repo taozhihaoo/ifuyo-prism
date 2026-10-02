@@ -15,15 +15,21 @@
 //! Verify / Context / 快照历史。
 
 pub mod configuration;
+pub mod directory;
+pub mod entry_point;
 pub mod evidence;
 pub mod file;
 pub mod ignore;
 pub mod language;
 pub mod project;
+pub mod project_type;
 
 pub use configuration::{ConfigurationInfo, ConfigurationType};
+pub use directory::DirectoryInfo;
+pub use entry_point::{EntryPoint, EntryPointKind};
 pub use evidence::Evidence;
 pub use file::{FileClassification, FileInfo, FileKind};
 pub use ignore::{IgnoreEngine, ScanOptions};
 pub use language::{Language, LanguageRegistry};
 pub use project::Project;
+pub use project_type::ProjectTypeCandidate;

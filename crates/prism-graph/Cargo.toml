@@ -1,0 +1,15 @@
+[package]
+name = "prism-graph"
+description = "Prism dependency & architecture layer: modules, resolution, dependency/call relationships, graph model, cycles and metrics"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+prism-parser.workspace = true
+prism-analysis.workspace = true
+serde.workspace = true
+serde_json.workspace = true

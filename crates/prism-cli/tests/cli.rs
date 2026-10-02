@@ -72,7 +72,6 @@ fn info_json_output_is_valid_json() {
 #[test]
 fn future_commands_clearly_report_not_implemented() {
     for args in [
-        vec!["inspect", "."],
         vec!["changes", "."],
         vec!["health", "."],
         vec!["verify", "."],
@@ -165,5 +164,73 @@ fn scan_json_outputs_stable_discovery_contract() {
 fn scan_missing_path_is_invalid_input_exit_3() {
     let missing = std::env::temp_dir().join("prism-cli-scan-missing-xyz");
     let output = prism(&["scan", missing.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(3), "invalid input must exit 3");
+}
+
+// ---------- prism inspect（M2） ----------
+
+fn temp_code_project(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("prism-cli-inspect-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(
+        dir.join("src/app.ts"),
+        "export class App {\n    run(): void {}\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("src/svc.py"),
+        "class Svc:\n    def go(self):\n        pass\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("src/legacy.rs"), "struct Old;\n").unwrap();
+    dir
+}
+
+#[test]
+fn inspect_outputs_text_summary_with_symbols() {
+    let dir = temp_code_project("text");
+    let output = prism(&["inspect", dir.to_str().unwrap()]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "clean inspect must exit 0, stderr: {}",
+        stderr_text(&output)
+    );
+    let text = stdout_text(&output);
+    assert!(text.contains("Code Understanding"), "{text}");
+    assert!(text.contains("Parsed: 2"), "{text}");
+    assert!(text.contains("Unsupported: 1"), "{text}");
+    assert!(text.contains("class: 2"), "{text}");
+    assert!(text.contains("src/app.ts"), "{text}");
+    assert!(text.contains("App (class)"), "{text}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn inspect_json_outputs_stable_code_model_contract() {
+    let dir = temp_code_project("json");
+    let output = prism(&["inspect", dir.to_str().unwrap(), "--format", "json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let value: serde_json::Value =
+        serde_json::from_str(&stdout_text(&output)).expect("must be valid JSON");
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["summary"]["files_parsed"], 2);
+    assert_eq!(value["summary"]["files_unsupported"], 1);
+    // 符号必须带稳定 ID 与限定名（契约字段）。
+    let symbols = value["parse_results"].as_array().unwrap()[0]["symbols"]
+        .as_array()
+        .unwrap();
+    assert!(symbols
+        .iter()
+        .all(|s| s["id"].as_str().unwrap().starts_with("symbol:")));
+    assert!(symbols.iter().all(|s| s.get("qualified_name").is_some()));
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn inspect_missing_path_is_invalid_input_exit_3() {
+    let missing = std::env::temp_dir().join("prism-cli-inspect-missing-xyz");
+    let output = prism(&["inspect", missing.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(3), "invalid input must exit 3");
 }

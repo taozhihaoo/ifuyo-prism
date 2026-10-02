@@ -57,10 +57,13 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
-    /// 检查代码符号（M2）
+    /// 检查代码符号（M2 可用）
     Inspect {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = FormatArg::Text)]
+        format: FormatArg,
     },
     /// 查看变更与影响（M5/M6）
     Changes {

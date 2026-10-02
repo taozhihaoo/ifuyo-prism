@@ -14,12 +14,14 @@
 mod cli;
 
 use clap::{CommandFactory, Parser};
+use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
 use prism_core::application::AppInfoService;
 use prism_core::config::OutputFormat;
 use prism_core::logging;
 use prism_core::task::CancellationToken;
 use prism_core::PrismErrorCode;
 use prism_project::{DiscoveryService, ProjectDiscovery, ScanOptions};
+use std::collections::BTreeMap;
 use std::path::Path;
 
 const EXIT_OK: i32 = 0;
@@ -56,6 +58,7 @@ fn run() -> i32 {
         }
         Some(cli::Command::Info { format }) => run_info(format.into()),
         Some(cli::Command::Scan { path, format }) => run_scan(&path, format.into()),
+        Some(cli::Command::Inspect { path, format }) => run_inspect(&path, format.into()),
         Some(command) => not_implemented_yet(command.name()),
     }
 }
@@ -174,6 +177,95 @@ fn confidence_word(confidence: prism_core::Confidence) -> &'static str {
         prism_core::Confidence::High => "high",
         prism_core::Confidence::Medium => "medium",
         prism_core::Confidence::Low => "low",
+    }
+}
+
+fn run_inspect(path: &Path, format: OutputFormat) -> i32 {
+    let cancel = CancellationToken::new();
+    let model =
+        CodeAnalysisService::new().inspect(path, CodeAnalysisOptions::default(), &cancel, |_| {});
+    match model {
+        Ok(model) => {
+            match format {
+                OutputFormat::Json => match serde_json::to_string_pretty(&model) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("prism: failed to serialize code model: {err}");
+                        return EXIT_ERROR;
+                    }
+                },
+                OutputFormat::Text => print_inspect_text(&model),
+            }
+            match model.summary.status {
+                prism_core::task::TaskState::Cancelled => EXIT_CANCELLED,
+                _ if model.summary.files_failed > 0 || model.summary.error_count > 0 => {
+                    EXIT_WARNINGS
+                }
+                _ => EXIT_OK,
+            }
+        }
+        Err(err) => {
+            eprintln!("prism: inspect failed: {err}");
+            if matches!(
+                err.code(),
+                PrismErrorCode::InvalidInput | PrismErrorCode::NotFound
+            ) {
+                EXIT_INVALID_INPUT
+            } else {
+                EXIT_ERROR
+            }
+        }
+    }
+}
+
+fn print_inspect_text(model: &ProjectCodeModel) {
+    let summary = &model.summary;
+    println!("ifuyo-prism");
+    println!("Code Understanding");
+    println!();
+    println!("Project: {}", model.project.name);
+    println!("Root: {}", model.project.root_path.display());
+    println!();
+    println!("Files");
+    println!("  Source: {}", summary.files_total);
+    println!("  Parsed: {}", summary.files_parsed);
+    println!("  With diagnostics: {}", summary.files_with_diagnostics);
+    println!("  Unsupported: {}", summary.files_unsupported);
+    println!("  Skipped: {}", summary.files_skipped);
+    println!("  Failed: {}", summary.files_failed);
+    println!();
+    println!("Symbols: {}", summary.symbols_total);
+    let mut kind_counts: BTreeMap<&str, u64> = BTreeMap::new();
+    for symbol in model.symbols() {
+        *kind_counts.entry(symbol.kind.as_str()).or_insert(0) += 1;
+    }
+    for (kind, count) in &kind_counts {
+        println!("  {kind}: {count}");
+    }
+    println!();
+    println!("Diagnostics");
+    println!("  Errors: {}", summary.error_count);
+    println!("  Warnings: {}", summary.warning_count);
+    println!();
+    println!("Top files");
+    for result in model.parse_results.iter().take(5) {
+        println!("  {}", result.relative_path);
+        // 顶层符号（File 根的直接子级），每个最多展示 5 个。
+        let file_symbol = result.symbols.first();
+        let Some(root_symbol) = file_symbol else {
+            continue;
+        };
+        let top_level = model
+            .symbols()
+            .filter(|s| s.parent_id.as_ref() == Some(&root_symbol.id))
+            .take(5);
+        for symbol in top_level {
+            println!("    {} ({})", symbol.name, symbol.kind.as_str());
+        }
+    }
+    if summary.status == prism_core::task::TaskState::Cancelled {
+        println!();
+        println!("Inspect cancelled — partial results above.");
     }
 }
 

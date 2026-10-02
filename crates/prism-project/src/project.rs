@@ -23,7 +23,7 @@ pub struct Project {
 impl Project {
     /// 从磁盘上的一个根目录构造 Project（目录必须存在）。
     pub fn from_root(root: impl AsRef<Path>) -> PrismResult<Self> {
-        let canonical = root.as_ref().canonicalize()?;
+        let canonical = strip_windows_verbatim(&root.as_ref().canonicalize()?);
         if !canonical.is_dir() {
             return Err(PrismError::invalid_input(format!(
                 "project root is not a directory: {}",
@@ -42,6 +42,20 @@ impl Project {
             discovered_at: Timestamp::now_utc(),
         })
     }
+}
+
+/// 去掉 Windows canonicalize 产生的 verbatim 前缀（仅盘符路径），
+/// 让报告中的根路径保持常规形态（UNC 路径保留原样）。
+fn strip_windows_verbatim(path: &Path) -> PathBuf {
+    const VERBATIM: &str = r"\\?\";
+    let text = path.to_string_lossy();
+    if let Some(stripped) = text.strip_prefix(VERBATIM) {
+        let mut chars = stripped.chars();
+        if chars.next().is_some_and(|c| c.is_ascii_alphabetic()) && chars.next() == Some(':') {
+            return PathBuf::from(stripped);
+        }
+    }
+    path.to_path_buf()
 }
 
 #[cfg(test)]

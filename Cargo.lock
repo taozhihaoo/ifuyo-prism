@@ -2469,6 +2469,7 @@ dependencies = [
  "clap",
  "log",
  "prism-core",
+ "prism-project",
  "serde_json",
 ]
 

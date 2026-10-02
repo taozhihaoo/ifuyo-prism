@@ -72,7 +72,6 @@ fn info_json_output_is_valid_json() {
 #[test]
 fn future_commands_clearly_report_not_implemented() {
     for args in [
-        vec!["scan", "."],
         vec!["inspect", "."],
         vec!["changes", "."],
         vec!["health", "."],
@@ -98,4 +97,73 @@ fn usage_error_exits_with_code_2() {
         Some(2),
         "clap usage errors exit with 2"
     );
+}
+
+// ---------- prism scan（M1） ----------
+
+fn temp_project(name: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("prism-cli-scan-{name}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("src/main.ts"), "let x = 1;").unwrap();
+    std::fs::write(dir.join("README.md"), "doc").unwrap();
+    std::fs::write(dir.join("package.json"), "{}").unwrap();
+    std::fs::create_dir_all(dir.join("node_modules/pkg")).unwrap();
+    std::fs::write(dir.join("node_modules/pkg/index.js"), "x").unwrap();
+    dir
+}
+
+#[test]
+fn scan_outputs_human_readable_summary() {
+    let dir = temp_project("text");
+    let output = prism(&["scan", dir.to_str().unwrap()]);
+    assert_eq!(
+        output.status.code(),
+        Some(0),
+        "clean scan must exit 0, stderr: {}",
+        stderr_text(&output)
+    );
+    let text = stdout_text(&output);
+    assert!(text.contains("Project:"), "{text}");
+    assert!(text.contains("Files: 3"), "{text}");
+    // node_modules 与其子项 pkg 被忽略（walker 不进入被忽略目录）。
+    assert!(text.contains("Ignored: 1"), "{text}");
+    assert!(text.contains("TypeScript files: 1"), "{text}");
+    assert!(text.contains("Node.js (high"), "{text}");
+    assert!(text.contains("src/main.ts (high"), "{text}");
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn scan_json_outputs_stable_discovery_contract() {
+    let dir = temp_project("json");
+    let output = prism(&["scan", dir.to_str().unwrap(), "--format", "json"]);
+    assert_eq!(output.status.code(), Some(0));
+    let value: serde_json::Value =
+        serde_json::from_str(&stdout_text(&output)).expect("must be valid JSON");
+    assert_eq!(value["schema_version"], 1);
+    assert_eq!(value["scan"]["status"], "completed");
+    assert_eq!(value["statistics"]["total_files"], 3);
+    assert_eq!(value["files"].as_array().unwrap().len(), 3);
+    // JSON 中的文件路径必须是项目相对路径（纲领 §11/§51）。
+    let paths: Vec<&str> = value["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["relative_path"].as_str().unwrap())
+        .collect();
+    for path in &paths {
+        assert!(
+            !path.starts_with('/') && !path.starts_with("E:"),
+            "absolute path leaked: {path}"
+        );
+    }
+    std::fs::remove_dir_all(&dir).ok();
+}
+
+#[test]
+fn scan_missing_path_is_invalid_input_exit_3() {
+    let missing = std::env::temp_dir().join("prism-cli-scan-missing-xyz");
+    let output = prism(&["scan", missing.to_str().unwrap()]);
+    assert_eq!(output.status.code(), Some(3), "invalid input must exit 3");
 }

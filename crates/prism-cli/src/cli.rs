@@ -48,11 +48,14 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
-    /// 扫描项目结构（M1）
+    /// 扫描项目结构并输出 Discovery 结果（M1 可用）
     Scan {
         /// 项目根目录
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = FormatArg::Text)]
+        format: FormatArg,
     },
     /// 检查代码符号（M2）
     Inspect {
@@ -96,6 +99,7 @@ impl Command {
         match self {
             Command::Info { .. } => "info",
             Command::Scan { .. } => "scan",
+            Command::Inspect { .. } => "inspect",
             Command::Inspect { .. } => "inspect",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",

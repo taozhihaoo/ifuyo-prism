@@ -57,17 +57,11 @@ impl Default for GeneralConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PathsConfig {
     /// 覆盖缓存/数据目录；None 表示使用平台默认（见 [`data_dir`]）。
     pub data_dir: Option<PathBuf>,
-}
-
-impl Default for PathsConfig {
-    fn default() -> Self {
-        PathsConfig { data_dir: None }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

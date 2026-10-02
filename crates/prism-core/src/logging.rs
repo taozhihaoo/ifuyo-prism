@@ -82,11 +82,8 @@ pub fn init(level: Level, log_file: Option<&Path>) -> PrismResult<()> {
         None => None,
     };
     let logger = PrismLogger { level, file };
-    match log::set_boxed_logger(Box::new(logger)) {
-        Ok(()) => {}
-        // 已有 logger（例如宿主先初始化过）时保持现状，不视为错误。
-        Err(_) => {}
-    }
+    // 已有 logger（例如宿主先初始化过）时保持现状，不视为错误。
+    let _ = log::set_boxed_logger(Box::new(logger));
     log::set_max_level(level.to_level_filter());
     Ok(())
 }

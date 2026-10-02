@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn ordering_is_stable() {
-        let mut ids = vec![TaskId::from_string("b"), TaskId::from_string("a")];
+        let mut ids = [TaskId::from_string("b"), TaskId::from_string("a")];
         ids.sort();
         assert_eq!(ids[0].as_str(), "a");
     }

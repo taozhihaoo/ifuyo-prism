@@ -119,10 +119,12 @@ FACT：无网络依赖新增；文件内容按需读取且解析后丢弃（AST 
 
 ```text
 branch: main   工作树 clean   未 push
-M2 提交（10 个，子任务粒度）：
+M2 提交（9 个，子任务粒度）：
   748098b feat: add prism-parser model layer
-  eab441c feat: add tree-sitter based TypeScript/TSX/JavaScript adapters
-  b2aa10c feat: add Python and C# adapters with unified contract tests
+  b2aa10c feat: add tree-sitter language adapters（TS/TSX/JS/Python/C# 五个
+          parser 与统一契约测试；TS 子任务的独立提交 eab441c 因随后一次
+          amend 失误被并入本提交——内容完整，历史不再改写，如实记录）
+  896f054 feat: add prism-analysis orchestration layer
   896f054 feat: add prism-analysis orchestration layer
   de1bd35 feat: implement prism inspect CLI
   045e49f feat: add inspect IPC and symbol explorer in the GUI

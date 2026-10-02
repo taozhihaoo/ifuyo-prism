@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      // Rust 构建产物与 Tauri 后端不归前端 HMR 管；Windows 上 fs.watch
+      // 监视被 cargo 锁定的 exe/dll 会同步抛 EBUSY 使 vite 崩溃。
+      ignored: (path: string) => /[\\/]target[\\/]|[\\/]src-tauri[\\/]/.test(path),
+    },
   },
   build: {
     target: "es2022",

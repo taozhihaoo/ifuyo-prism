@@ -16,6 +16,7 @@
 
 pub mod configuration;
 pub mod directory;
+pub mod discovery;
 pub mod entry_point;
 pub mod evidence;
 pub mod file;
@@ -23,9 +24,13 @@ pub mod ignore;
 pub mod language;
 pub mod project;
 pub mod project_type;
+pub mod scanner;
+pub mod service;
+pub mod statistics;
 
 pub use configuration::{ConfigurationInfo, ConfigurationType};
 pub use directory::DirectoryInfo;
+pub use discovery::{ProjectDiscovery, ScanInfo, SCHEMA_VERSION};
 pub use entry_point::{EntryPoint, EntryPointKind};
 pub use evidence::Evidence;
 pub use file::{FileClassification, FileInfo, FileKind};
@@ -33,3 +38,6 @@ pub use ignore::{IgnoreEngine, ScanOptions};
 pub use language::{Language, LanguageRegistry};
 pub use project::Project;
 pub use project_type::ProjectTypeCandidate;
+pub use scanner::{ScanError, ScanErrorKind, ScanProgress};
+pub use service::DiscoveryService;
+pub use statistics::ProjectStatistics;

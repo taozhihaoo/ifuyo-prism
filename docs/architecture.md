@@ -33,6 +33,7 @@ CLI 自建业务逻辑（不经 Application/Core）✗
 | `crates/prism-project` | Project Discovery 领域层（M1） | scanner/ignore/language/file/configuration/project_type/entry_point/statistics + DiscoveryService |
 | `crates/prism-parser` | Code Understanding（M2） | Symbol 模型与坐标契约（UTF-8 字节）/LanguageParser/Registry + tree-sitter adapters（TS/TSX/JS/Python/C#） |
 | `crates/prism-analysis` | 分析编排（M2） | 源文件选择/有界并发/取消/ProjectCodeModel/SymbolIndex |
+| `crates/prism-graph` | 关系层（M3） | Module/Dependency/ResolutionStatus/GraphNode·Edge、四语言 import resolver、SCC 环检测、指标、DependencyService |
 | `crates/prism-cli` | CLI 壳 | clap 参数 → 领域服务；退出码契约见 development.md |
 | `src-tauri`（prism-app） | Tauri 壳 | IPC commands → 领域服务；扫描在后台线程、前端轮询 |
 | `tests/integration` | 集成测试 | M0/M1 验收场景 + prism-test-helper |
@@ -99,6 +100,12 @@ src/
     qualified_name 为路径根式（跨语言方案统一、稳定可复现），不做伪跨语言语义。
 11. **M2 解析技术**：tree-sitter 0.25 + 官方 grammar 0.23（统一 ABI，MIT/Apache）；
     ERROR 节点受限恢复（关键字序列合成），Python MISSING 节点诊断为必查项。
+12. **M3 关系解析边界**：Resolution 七态显式建模；external 判定只基于本地
+    元数据（package.json deps / 内置表 / 框架前缀），不做在线 lookup；
+    qualified_name 路径根式；C# using 解析经命名空间索引（exact > child >
+    framework prefix > unresolved）；环 = SCC（>1 节点）仅为记录。
+13. **M3 ModuleId**：`module:{kind}:{identity}`（相对路径/命名空间/包名），
+    不含 project 维度——M1 ProjectId 是运行期 UUID，稳定项目身份属 M11。
 8. **CommandRunner 超时用轮询**（25ms tick），管道由独立线程读取防死锁；
    进程树终止（Windows job object）留给 M8 Verify 执行器。
 9. **ID 生成策略**：运行期身份用 UUIDv4（TaskId 等）；需要跨运行稳定的
@@ -125,7 +132,7 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 ## 未来模块落位（随里程碑创建）
 
 ```text
-M3  （prism-analysis 内）模块/依赖/调用图、环检测
+M3  ✓ 已实现（prism-graph：模块/依赖/解析/图/环/指标；调用图仅可靠子集 P1）
 M4  prism-git         只读 Git 事实层（经 CommandRunner 调系统 git）
 M5  prism-changes     ChangeSet（或并入 prism-analysis，M5 开工时定案）
 M6  prism-impact      影响分析（反向遍历 M3 图）

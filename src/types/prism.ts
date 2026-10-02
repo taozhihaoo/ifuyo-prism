@@ -407,6 +407,7 @@ export interface DependencyGraphResultDto {
   dependencies: DependencyDto[];
   nodes: GraphNodeDto[];
   edges: GraphEdgeDto[];
+  calls: CallEdgeDto[];
   cycles: CycleDto[];
   metrics: GraphMetricsDto;
   diagnostics: ResolutionDiagnosticDto[];
@@ -419,4 +420,17 @@ export interface GraphStatus {
   cycle_count: number;
   unresolved_count: number;
   error: string | null;
+}
+
+export interface CallEdgeDto {
+  id: string;
+  caller_id: string;
+  caller_qualified: string;
+  callee_text: string;
+  callee_name: string;
+  callee_id: string | null;
+  callee_qualified: string | null;
+  resolution: ResolutionStatusDto;
+  confidence: Confidence;
+  location: SourceLocationDto | null;
 }

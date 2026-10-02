@@ -72,10 +72,8 @@ fn dependency_graph_fixture_full_resolution() {
     assert!(resolved >= 5, "chain + paths + cycle resolved: {resolved}");
     assert_eq!(external, 1, "react must be external");
     assert_eq!(builtin, 1, "fs must be builtin");
-    assert!(
-        unresolved >= 2,
-        "./ghost + ghost must be unresolved: {unresolved}"
-    );
+    // ./ghost 未命中项目文件（ghost 裸名在本 fixture 无独立导入）。
+    assert!(unresolved >= 1, "./ghost must be unresolved: {unresolved}");
 
     // tsconfig paths：@/helpers/helper → src/helpers/helper.ts。
     assert!(result.dependencies.iter().any(|d| {

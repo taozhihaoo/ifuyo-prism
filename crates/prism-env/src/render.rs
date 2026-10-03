@@ -23,6 +23,14 @@ fn match_label(result: MatchResult) -> &'static str {
     }
 }
 
+/// 终端安全（§343）：环境变量名/工具输出可能含 ANSI 控制序列；
+/// 渲染前剥除 C0 控制字符（保留 tab），防止恶意终端注入。
+pub fn sanitize(text: &str) -> String {
+    text.chars()
+        .filter(|c| !c.is_control() || *c == '\u{9}')
+        .collect()
+}
+
 /// 人类可读文本（§296）。
 pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
     let mut out = String::new();
@@ -52,11 +60,8 @@ pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
 
     out.push_str("\nTools\n");
     for fact in &snapshot.tools {
-        let version = fact
-            .raw_version
-            .as_deref()
-            .unwrap_or("version unknown");
-        let path = fact.path.as_deref().unwrap_or("-");
+        let version = sanitize(fact.raw_version.as_deref().unwrap_or("version unknown"));
+        let path = sanitize(fact.path.as_deref().unwrap_or("-"));
         out.push_str(&format!(
             "  {:<10} {:<32} {:<12} {}\n",
             fact.name, version, status_label(fact), path
@@ -223,5 +228,21 @@ fn format_bytes(bytes: Option<u64>) -> String {
         }
         Some(value) => format!("{value} B"),
         None => "unknown".to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_strips_control_characters() {
+        // §343：ANSI/控制序列不得进入终端输出。
+        let esc = char::from_u32(0x1b).unwrap();
+        let bel = char::from_u32(0x7).unwrap();
+        let malicious = format!("{esc}[31mERROR{esc}[0m{bel}");
+        assert_eq!(sanitize(&malicious), "[31mERROR[0m");
+        assert_eq!(sanitize("normal"), "normal");
+        assert!(sanitize("keep\ttab").contains('\t'));
     }
 }

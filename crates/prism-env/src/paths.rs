@@ -158,6 +158,16 @@ mod tests {
     }
 
     #[test]
+    fn unicode_and_space_paths_survive_normalization() {
+        // §193：CJK/空格/emoji 路径逐字符保留。
+        let raw = "C:\\项目\\测试 dir\\📚";
+        let normalized = normalize_path(raw);
+        assert!(normalized.contains("项目"));
+        assert!(normalized.contains("测试 dir"));
+        assert!(normalized.contains("📚"));
+    }
+
+    #[test]
     fn caps_entries_and_flags_truncation() {
         let sep = if cfg!(windows) { ';' } else { ':' };
         let raw = (0..PATH_ENTRY_CAP + 10)

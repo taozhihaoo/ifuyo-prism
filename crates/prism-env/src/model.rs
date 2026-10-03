@@ -257,6 +257,19 @@ pub enum VariableSource {
 /// 环境变量名上限（§315：不读取无界 env 数据）。
 pub const VARIABLE_CAP: usize = 500;
 
+/// 平台能力模型（§146–§147）：能力不可用 ⇒ 对应事实 Unknown/缺省 +
+/// 诊断，而不是引擎失败（§307 Unsupported）。M9a 实际覆盖前四项。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnvironmentCapability {
+    ExecutableDiscovery,
+    ToolVersionProbe,
+    EnvironmentVariableInspection,
+    ResourceInspection,
+    ProcessInspection,
+    PortInspection,
+}
+
 /// 诊断（§150：复用 Core 的 Diagnostic 形态；部分失败 ≠ 整体 Failed）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvironmentDiagnostic {

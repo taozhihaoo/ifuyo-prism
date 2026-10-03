@@ -25,7 +25,7 @@ pub mod version;
 
 pub use host::{collect_host, collect_resources, collect_shell};
 pub use model::{
-    Architecture, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
+    Architecture, EnvironmentCapability, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
     EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
     PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
     RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
@@ -44,7 +44,7 @@ pub use tools::{
 };
 pub use requirement::{base_requirements, match_requirements};
 pub use variables::{collect_variables, is_possibly_sensitive};
-pub use render::render_text;
+pub use render::{render_text, sanitize};
 pub use service::{EnvironmentScanOptions, EnvironmentService};
 pub use version::{
     compare_versions, parse_version_output, parse_version_token, satisfies, ToolVersion,

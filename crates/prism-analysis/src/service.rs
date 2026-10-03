@@ -3,7 +3,8 @@
 //! 生命周期（规格 §28/§30/§31）：
 //!
 //! ```text
-//! ProjectDiscovery → 选择 Source&&analyzable 文件（Generated 策略性跳过）
+//! ProjectDiscovery → 选择 Source/Test&&analyzable 文件（Generated 策略性跳过；
+//! M6 起纳入 Test 文件——测试是影响分析的一等事实，M1 已将其单独分类）
 //!   → N 个 worker（各自 ParserRegistry）→ read once → parse once → index
 //! ```
 //!
@@ -94,7 +95,11 @@ impl CodeAnalysisService {
                 placeholders.push(Self::placeholder(file, ParseStatus::Skipped, "generated"));
                 continue;
             }
-            if file.classification.kind != FileKind::Source {
+            // M6：Test 文件进入分析管线（影响分析需要 test → production 关系）。
+            // M1 已保证 Test 与 Source 分类互斥且证据充分。
+            if file.classification.kind != FileKind::Source
+                && file.classification.kind != FileKind::Test
+            {
                 continue;
             }
             if !file.analyzable {

@@ -24,6 +24,7 @@ pub mod matcher;
 pub mod model;
 pub mod module_change;
 pub mod revision;
+pub mod service;
 pub mod symbol_change;
 
 pub use diagnostic::{ChangeDiagnostic, ChangeDiagnosticKind};
@@ -41,4 +42,5 @@ pub use revision::{
     SideModel, SourceState,
 };
 pub use model::LineRange;
+pub use service::{ChangeSetOptions, ChangeSetService};
 pub use symbol_change::{SymbolChange, SymbolChangeType, SymbolCharacteristic};

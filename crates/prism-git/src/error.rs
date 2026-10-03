@@ -108,6 +108,23 @@ impl From<GitError> for prism_core::PrismErrorDto {
     }
 }
 
+/// 上层（M5 ChangeSet 等）统一用 PrismError；Cancelled 语义原样保留。
+impl From<GitError> for prism_core::PrismError {
+    fn from(err: GitError) -> Self {
+        match err {
+            GitError::Cancelled => prism_core::PrismError::Cancelled,
+            GitError::NotGitRepository { .. } | GitError::InvalidRepository { .. } => {
+                prism_core::PrismError::Git {
+                    message: err.message(),
+                }
+            }
+            other => prism_core::PrismError::Command {
+                message: other.message(),
+            },
+        }
+    }
+}
+
 impl From<prism_core::PrismError> for GitError {
     fn from(err: prism_core::PrismError) -> Self {
         use prism_core::PrismError;

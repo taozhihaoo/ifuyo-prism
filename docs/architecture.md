@@ -113,6 +113,12 @@ src/
     Ambiguous）；对侧解析带 error 时抑制 Added/Deleted 孤儿（§42）。
     历史源只读：`git cat-file`（含 `:0` index 侧），blob 字节长度核对防
     非 UTF-8 假空文件；绝不改写用户工作区。
+14. **M6 影响语义**：只输出 Potential Impact；Changed 与 Impacted 集合严格分离；
+    反向索引一次构建不复制 M3 模型；只遍历 Resolved 边，未解析/歧义保持不确定；
+    deleted 符号经名字索引（精确限定名 HighConfidence / 同名 Probable）；
+    confidence weakest-wins 分类传播；风险信号只有计数+证据、无阈值无总分；
+    Added 符号不做消费者遍历。CallEdge.caller_id 必须与 M2 SymbolId 同构
+    （含 #kind 段）——M6 曾因格式断裂丢失传递调用者。
 13. **M3 ModuleId**：`module:{kind}:{identity}`（相对路径/命名空间/包名），
     不含 project 维度——M1 ProjectId 是运行期 UUID，稳定项目身份属 M11。
 8. **CommandRunner 超时用轮询**（25ms tick），管道由独立线程读取防死锁；
@@ -147,7 +153,8 @@ M4  ✓ 已实现（prism-git：porcelain v2 -z status、for-each-ref、log、
     三作用域 diff、只读 cat-file/rev-parse 历史源）
 M5  ✓ 已实现（prism-changes：ChangeSet 集成层 —— GitDiff × 代码模型 ×
     M3 模块事实 → FileChange/SymbolChange/ModuleChange + 证据/诊断/汇总）
-M6  prism-impact      影响分析（反向遍历 M3 图）
+M6  ✓ 已实现（prism-impact：反向索引 + 有界 BFS + 证据路径 + 事实风险信号；
+    ChangeSet × 代码模型 × M3 图 → ImpactAnalysis，candidate 语义）
 M7  prism-health      Finding 体系 + 规则引擎
 M8  prism-verify      Check 发现/计划/调度/执行/结果归一
 M9  prism-environment 环境采集/匹配/解释

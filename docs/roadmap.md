@@ -16,7 +16,7 @@ Final Audit → 本地 commit（不 push）。
 | M3 | Dependency & Architecture | 模块/依赖/解析状态/环/指标（调用图仅可靠子集，P1） | ✅ |
 | M4 | Git Basics | 只读 Git 事实层（status/log/diff/refs，porcelain v2 -z） | ✅ |
 | M5 | ChangeSet | GitDiff → FileChange → SymbolChange → ModuleChange → ChangeSet（prism-changes；`prism changes` + GUI） | ✅ |
-| M6 | Change Impact Analysis | 反向图遍历、distance/confidence、blast radius | |
+| M6 | Change Impact Analysis | 反向图遍历、distance/confidence、blast radius（prism-impact；`prism impact` + GUI） | ✅ |
 | M7 | Health Engine | 统一 Finding 体系 + 首批高确定性规则 | |
 | M8 | Verify Engine | build/test/lint 编排与结果归一 | |
 | M9 | Environment Engine | 环境要求 vs 机器事实的采集/匹配/解释 | |

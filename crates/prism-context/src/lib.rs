@@ -1,5 +1,6 @@
 pub mod collectors;
 pub mod model;
+pub mod selector;
 pub mod task;
 
 pub use model::{

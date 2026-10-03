@@ -38,6 +38,15 @@ pub enum ContextScope {
     Full,
 }
 
+pub fn scope_str(scope: ContextScope) -> &'static str {
+    match scope {
+        ContextScope::Auto => "auto",
+        ContextScope::CurrentChange => "current_change",
+        ContextScope::Target => "target",
+        ContextScope::Full => "full",
+    }
+}
+
 /// 任务分类（§12/§13：允许多 kind）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

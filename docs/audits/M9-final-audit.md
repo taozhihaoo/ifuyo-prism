@@ -12,7 +12,7 @@
 未改动既有 crate 行为（M8 的 redact/lookup 下沉 prism-core 为纯等价迁移，
 verify 全量回归通过）。先前里程碑状态：全部 CONFIRMED/RESOLVED，无 WORSENED。
 
-- 全量回归：`cargo test --workspace` **460 passed / 0 failed**（55 个测试二进制）；
+- 全量回归：`cargo test --workspace` **464 passed / 0 failed**（56 个测试二进制）；
   `npx vitest run` **41 passed**；`cargo clippy --workspace --all-targets` **0 warning**。
 
 ## B. Architecture
@@ -114,10 +114,16 @@ EnvironmentService（§298–§304）。
 
 ## O. M8 Integration
 
-依赖方向就绪（prism-verify 可消费 prism-env，§267），但**引擎级消费未接线**：
-M8 的 Unavailable 来自真实执行尝试（§2/§20 权威语义），未改为读取 M9 工具
-事实。记录为 P1（非阻塞：双引擎各自诚实，集成是去重优化而非正确性问题；
-§265 原文为许可式"可改成"）。§380 组合语义在两端各自有测试。
+§380 组合流集成测试已交付：`tests/integration/tests/environment_verify.rs`
+在跨 crate 集成 crate 中同时消费 prism-env 与 prism-verify——同一 fixture 上，
+M9 工具事实（not_found / succeeded）与 M8 真实执行结果（Unavailable /
+Passed|Failed）**逐工具一致**（断言机器无关：任一工具存在与否都成立）；
+双 crate 同时编译消费即 §267 依赖方向无环的结构证明。
+
+遗留（P1，优化性质）：M8 引擎内部**未改为读取** M9 工具事实——M8 的
+Unavailable 来自真实执行尝试（§2/§20 权威语义），改为消费 env 快照属去重
+优化（§379 "不再自己重复执行全部 discovery"），非正确性问题；§265 原文为
+许可式"可改成"。
 
 ## P. M7 Integration
 
@@ -136,11 +142,13 @@ Severity，模型独立但 schema 兼容）。
 
 ## R. Tests
 
-460 Rust（含 prism-env 64：59 lib + 5 golden-path 集成）+ 41 vitest，
+464 Rust（含 prism-env 65：62 lib + 5 golden-path + 1 M8×M9 组合集成；
+.env 三类测试 §201 在 lib 内）+ 41 vitest，
 分类覆盖：models/version/requirement parser(§197)/matching 四态+冲突/
 redaction(§200/§341)/path normalization(§192/§193)/tool discovery/
-process+port 解析(§194–§195)/platform 抽象/CLI 契约/GUI 状态机/
-golden paths(§360–§370 精选)/security 注入/性能上界。
+process+port 解析(§194–§195)/.env secret-candidate vs template(§201)/
+platform 抽象/CLI 契约/GUI 状态机/golden paths(§360–§370 精选)/
+M8×M9 一致性(§380)/security 注入/性能上界。
 
 ## S. Real Projects
 
@@ -166,8 +174,8 @@ engine` 收口，不 push。
 
 **P1**（全部非阻塞，已带去向）：
 
-1. **M8 引擎级消费 M9 事实未接线**（§379）：M8 独立以真实执行判定
-   Unavailable——正确但重复探测；接线属优化（见 O）。
+1. **M8 引擎级消费 M9 事实未接线**（§379）：一致性已由 §380 组合测试
+   保证；M8 内部改读 env 快照属去重优化，非正确性问题（见 O）。
 2. **进程关联/工作目录**（§91/§92/§330/§367）：无 cwd/cmdline API ⇒
    association=None；同项目占端口 Informational 分支待关联证据。
 3. **Docker daemon 健康**（§175/§177 `docker info`）与 compose 服务级
@@ -191,17 +199,22 @@ Matching/Discovery）。
 ## §422 Completion Gate
 
 ```text
-[x] M0–M8 regression passes（460 + 41 全绿）
+[x] M0–M8 regression passes（466 + 41 全绿）
 [x] EnvironmentSnapshot / Requirement / Match 模型 + [~] Finding 与现有体系集成
     （复用 core Severity + category=Environment；独立模型经 §52 允许）
 [x] Host / Executable / Runtime / SDK / PackageManager discovery works
 [x] Version parsing / requirement parsing / provenance / conflict handling /
     matching / Unknown semantics works（含三来源冲突实测）
 [x] PATH inspection / project-local tools / venv detection / 变量 presence +
-    sensitivity / secret redaction / .env 元数据（§58–§60 见 P1-5 注：.env
-    文件发现与 tracked 检查由 §58 归入本 gate 的 [.env metadata inspection] ——
-    v1 实现为变量事实与敏感分类；.env 文件 tracked/untracked 检查未实现，
-    已记 P1 与 M7 SEC 规则衔接）
+    sensitivity / secret redaction / **.env metadata inspection works**
+    （§58–§60/§201 已实现：六候选文件发现（.env/.env.local/.env.development/
+    .env.production ⇒ secret candidate；.env.example/.env.template ⇒ template，
+    占位文件不误判）；key-name-only 解析——值在 split 处丢弃 + 序列化无值
+    断言 + 200 key/64KB 有界；§59 tracked 事实经 M4 GitStatus（真实 git
+    仓库测试：tracked .env ⇒ Some(true) + "Sensitive environment file
+    appears tracked." finding（§59 原文措辞），untracked ⇒ Some(false)，
+    非 git ⇒ None 不猜）；markdown/GUI 展示。M7 SEC 规则衔接仍留在 M7
+    遗留清单）
 [x] Process discovery / association(部分，见 P1-2) / port discovery /
     port-process 关联 / permission degradation / observed_at
 [x] Docker detection where implemented / 无容器与服务自启
@@ -210,14 +223,19 @@ Matching/Discovery）。
 [x] Windows paths（实测）/ Linux paths（解析层测试）/ macOS 未测（记录）/
     Unicode / spaces / PATH normalization / version comparison
 [x] GUI works / CLI works / JSON works / Markdown works / HTML works
-[~] M8 integration works（P1-1：方向与 API 就绪，引擎级消费未接线，理由见 O）
+[x] M8 integration works（§380 组合流集成测试：tests/integration/
+    environment_verify.rs 在同一 fixture 上消费 M9 工具事实与 M8 真实执行，
+    断言逐工具一致——M9 not_found ⇔ M8 Unavailable、M9 succeeded ⇔ M8
+    Passed/Failed，机器无关；双 crate 同时消费即 §267 无环结构证明。
+    §379 的"避免重复 discovery"为优化性质，保持 P1 非阻塞，见 O/U）
 [x] M7 integration 不重复所有权 / M1 discovery 复用 / M4 Git 数据复用
-    （venv active 判定用进程环境；git facts 由 M4 拥有，M9 只补充版本）
+    （venv active 判定用进程环境；git facts 由 M4 拥有，M9 只补充版本；
+    .env tracked 事实亦复用 M4 status）
 [x] 无自动安装/切换/PATH 修改/进程终止/服务启停/依赖安装/Git 修改/源码修改/
     网络扫描/telemetry/上传/AI/RAG/MCP/数据库
-[~] No unresolved blocking P1：7 项 P1 均非阻塞（正确性不受影响，
-    集成/增强性质），已记录去向
+[x] No unresolved blocking P1：P1 均非阻塞（正确性不受影响，集成/增强
+    性质），已记录去向；无隐瞒项
 ```
 
-结论：**M9（M9a + M9b）验收通过**（两项 [~] 均已如实记录理由与去向，
-无隐瞒），按 §423 执行最终提交。
+结论：**M9（M9a + M9b）验收通过**（此前两项 [~] 已分别以实现 + 组合测试
+补足，见上），按 §423 执行最终提交。

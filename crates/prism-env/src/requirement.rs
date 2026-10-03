@@ -65,7 +65,7 @@ fn match_requirement(
             subject: requirement.subject.clone(),
             result: MatchResult::Unknown,
             evidence: format!(
-                "requirement conflict — cannot be interpreted as a single unambiguous                  requirement (sources: {})",
+                "requirement conflict — cannot be interpreted as a single unambiguous requirement (sources: {})",
                 sources.join(", ")
             ),
         };

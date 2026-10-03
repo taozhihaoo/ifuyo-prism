@@ -73,18 +73,6 @@ fn run() -> i32 {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
             git_command::run(&path, command, runner)
         }
-        Some(cli::Command::Git { path, command }) => {
-            let runner: Arc<dyn CommandRunner> =
-                Arc::new(prism_core::runtime::command::StdCommandRunner::new());
-            git_command::run(&path, command, runner)
-        }
-        Some(cli::Command::Graph { path, kind, format }) => {
-            run_graph(&path, kind.as_str(), format.into())
-        }
-        Some(cli::Command::Git { path, command }) => {
-            let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
-            git_command::run(&path, command, runner)
-        }
         Some(command) => not_implemented_yet(command.name()),
     }
 }

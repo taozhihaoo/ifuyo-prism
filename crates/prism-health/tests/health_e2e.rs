@@ -3,14 +3,12 @@
 
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService};
 use prism_core::config::{HealthConfig, HealthRuleConfig};
-use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::CancellationToken;
 use prism_health::{
     analyze, FindingStatus, HealthContext, HealthOptions, HealthRuleRegistry,
 };
 use std::path::PathBuf;
 use std::process::Command;
-use std::sync::Arc;
 
 struct Fixture {
     root: PathBuf,
@@ -151,8 +149,10 @@ fn suppression_config_marks_detected_findings() {
     assert_eq!(first.stats.findings_active, 2);
     let target_id = first.findings[0].id.as_str().to_string();
 
-    let mut config = HealthConfig::default();
-    config.suppressed_findings = vec![target_id.clone()];
+    let config = HealthConfig {
+        suppressed_findings: vec![target_id.clone()],
+        ..HealthConfig::default()
+    };
     let second = fixture.analyze(&config, &HealthOptions::default());
     assert_eq!(second.stats.findings_detected, 2, "still detected (§67)");
     assert_eq!(second.stats.findings_suppressed, 1);

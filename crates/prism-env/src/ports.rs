@@ -144,7 +144,9 @@ pub fn collect_processes(
     observed_at: &str,
 ) -> Vec<ProcessInfo> {
     // 端口归属的 PID（§85）。
-    let pids: Vec<u32> = ports.iter().filter_map(|info| info.pid).collect();
+    let unique_pids: std::collections::BTreeSet<u32> =
+        ports.iter().filter_map(|info| info.pid).collect();
+    let pids: Vec<u32> = unique_pids.into_iter().collect();
     if pids.is_empty() {
         return Vec::new();
     }
@@ -152,11 +154,13 @@ pub fn collect_processes(
     let mut processes: Vec<ProcessInfo> = Vec::new();
     for pid in pids {
         let name = name_by_pid.get(&pid).cloned();
-        let listening: Vec<u16> = ports
+        let mut listening: Vec<u16> = ports
             .iter()
             .filter(|info| info.pid == Some(pid))
             .map(|info| info.port)
             .collect();
+        listening.sort_unstable();
+        listening.dedup();
         processes.push(ProcessInfo {
             pid,
             name: name.clone().unwrap_or_else(|| format!("pid-{pid}")),

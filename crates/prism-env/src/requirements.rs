@@ -60,7 +60,9 @@ pub fn collect_requirements(
     for provider in &providers {
         all.extend(provider.provide(facts));
     }
-    all.push(package_manager_requirement(facts.root));
+    if let Some(requirement) = package_manager_requirement(facts.root) {
+        all.push(requirement);
+    }
     resolve_conflicts(all)
 }
 
@@ -588,25 +590,24 @@ fn scan_documentation_version(
         // 行内找 ">= 22" / "20+" / "3.12" 形态。
         for segment in line.split([' ', '(', ')', ',', ':']) {
             let segment = segment.trim().trim_end_matches('+');
-            if let Some((operator, version)) = parse_version_spec(segment) {
-                // 要求同行确实出现工具关键词（已保证）且版本与关键词相邻语义
-                // 由"行内"近似——Documentation 层本就是 Probable（§43）。
-                return Some((operator, version));
+            // Documentation 层（§43 Probable）：裸版本按"最低版本"取 AtLeast
+            // ——README "Node 20" 语义是"需要 Node 20+"，不是精确 pin。
+            if let Some(version) = numeric(segment) {
+                return Some((RequirementOperator::AtLeast, version));
             }
         }
     }
     None
 }
 
-/// packageManager 字段 → PackageManager 需求（M9a 已有，§106）。
-pub fn package_manager_requirement(root: &Path) -> EnvironmentRequirement {
-    let (manager, version) = crate::runtime::package_manager_field(root)
-        .unwrap_or_else(|| ("corepack-managed".to_string(), None));
+/// packageManager 字段 → PackageManager 需求（§106）；字段不存在 ⇒ None。
+pub fn package_manager_requirement(root: &Path) -> Option<EnvironmentRequirement> {
+    let (manager, version) = crate::runtime::package_manager_field(root)?;
     let (operator, expected) = match version {
         Some(version) => (RequirementOperator::Equals, version),
         None => (RequirementOperator::Exists, String::new()),
     };
-    requirement(
+    Some(requirement(
         RequirementKind::PackageManager,
         &manager,
         operator,
@@ -615,7 +616,7 @@ pub fn package_manager_requirement(root: &Path) -> EnvironmentRequirement {
         SourceKind::EcosystemMetadata,
         "package.json packageManager field",
         Confidence::High,
-    )
+    ))
 }
 
 #[cfg(test)]
@@ -776,6 +777,7 @@ mod tests {
             .unwrap();
         assert_eq!(readme_entry.source_kind, SourceKind::Documentation);
         assert_eq!(readme_entry.expected, "20");
+        assert_eq!(readme_entry.operator, RequirementOperator::AtLeast);
         // §43/§364：两条都保留。
         assert_eq!(requirements.iter().filter(|r| r.subject == "node").count(), 2);
         let _ = std::fs::remove_dir_all(&dir);

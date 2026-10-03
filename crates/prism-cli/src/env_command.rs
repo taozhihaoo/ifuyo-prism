@@ -10,7 +10,44 @@ use prism_env::{EnvironmentScanOptions, EnvironmentService};
 use std::path::Path;
 use std::sync::Arc;
 
-pub fn run(path: &Path, json: bool, strict: bool, all_tools: bool) -> i32 {
+pub fn run(
+    path: &Path,
+    json: bool,
+    strict: bool,
+    all_tools: bool,
+    refresh: bool,
+    format: Option<crate::cli::HealthFormatArg>,
+) -> i32 {
+    let _ = refresh; // §378：扫描本就每次全新执行；标志仅声明语义。
+    scan_and_report(path, json, strict, all_tools, format, Section::Full)
+}
+
+/// §237/§238 子命令：按节输出。
+pub fn run_section(
+    section: Section,
+    path: &Path,
+    json: bool,
+) -> i32 {
+    scan_and_report(path, json, false, false, None, section)
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Section {
+    Full,
+    Requirements,
+    Tools,
+    Ports,
+    Processes,
+}
+
+fn scan_and_report(
+    path: &Path,
+    json: bool,
+    strict: bool,
+    all_tools: bool,
+    format: Option<crate::cli::HealthFormatArg>,
+    section: Section,
+) -> i32 {
     if !path.exists() {
         eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
@@ -49,19 +86,14 @@ pub fn run(path: &Path, json: bool, strict: bool, all_tools: bool) -> i32 {
     };
     snapshot.project_id = project.id.as_str().to_string();
 
-    if json {
-        match serde_json::to_string_pretty(&snapshot) {
-            Ok(text) => println!("{text}"),
-            Err(err) => {
-                eprintln!("prism: failed to serialize environment snapshot: {err}");
-                return crate::EXIT_ERROR;
-            }
-        }
-    } else {
-        print!("{}", prism_env::render_text(&snapshot));
+    let wants_json = json || format == Some(crate::cli::HealthFormatArg::Json);
+    let exit_code = report(&snapshot, section, wants_json, format);
+    if exit_code != 0 {
+        return exit_code;
     }
 
     // §240/§242：Unsatisfied ⇒ 非零；Unknown 默认不算失败；--strict 才算（§241）。
+    // （Full 视图才参与 exit code；分节视图只读。）
     let mut unsatisfied = 0usize;
     let mut unknown = 0usize;
     for matched in &snapshot.matches {
@@ -71,17 +103,138 @@ pub fn run(path: &Path, json: bool, strict: bool, all_tools: bool) -> i32 {
             _ => {}
         }
     }
-    if unsatisfied > 0 {
+    if section == Section::Full && unsatisfied > 0 {
         eprintln!(
             "prism: {unsatisfied} environment requirement(s) unsatisfied"
         );
         return crate::EXIT_ERROR;
     }
-    if strict && unknown > 0 {
+    if section == Section::Full && strict && unknown > 0 {
         eprintln!(
             "prism: --strict: {unknown} environment requirement(s) unknown (treated as failure)"
         );
         return crate::EXIT_ERROR;
+    }
+    crate::EXIT_OK
+}
+
+
+/// 分节/全量输出（§237/§239：stdout 只有数据）。
+fn report(
+    snapshot: &prism_env::EnvironmentSnapshot,
+    section: Section,
+    json: bool,
+    format: Option<crate::cli::HealthFormatArg>,
+) -> i32 {
+    if json {
+        let value = match section {
+            Section::Full => serde_json::json!(snapshot),
+            Section::Requirements => serde_json::json!({
+                "requirements": snapshot.requirements,
+                "conflicts": snapshot.conflicts,
+                "matches": snapshot.matches,
+            }),
+            Section::Tools => serde_json::json!({
+                "tools": snapshot.tools,
+                "runtimes": snapshot.runtimes,
+                "sdks": snapshot.sdks,
+                "package_managers": snapshot.package_managers,
+                "virtualenvs": snapshot.virtualenvs,
+            }),
+            Section::Ports => serde_json::json!({
+                "ports": snapshot.ports,
+                "expected_ports": snapshot.expected_ports,
+            }),
+            Section::Processes => serde_json::json!({
+                "processes": snapshot.processes,
+            }),
+        };
+        match serde_json::to_string_pretty(&value) {
+            Ok(text) => println!("{text}"),
+            Err(err) => {
+                eprintln!("prism: failed to serialize environment data: {err}");
+                return crate::EXIT_ERROR;
+            }
+        }
+        return crate::EXIT_OK;
+    }
+    match section {
+        Section::Full => match format {
+            Some(crate::cli::HealthFormatArg::Markdown) => {
+                print!("{}", prism_env::render_markdown(snapshot))
+            }
+            Some(crate::cli::HealthFormatArg::Html) => {
+                print!("{}", prism_env::render_html(snapshot))
+            }
+            _ => print!("{}", prism_env::render_text(snapshot)),
+        },
+        Section::Requirements => {
+            println!("Requirements ({} total)", snapshot.requirements.len());
+            for (requirement, matched) in snapshot
+                .requirements
+                .iter()
+                .zip(snapshot.matches.iter())
+            {
+                println!(
+                    "  {:<16} {} {}  =>  {:<12} [{}]",
+                    requirement.subject,
+                    requirement.operator.as_str(),
+                    requirement.expected,
+                    matched.result.as_str(),
+                    requirement.source
+                );
+            }
+            for conflict in &snapshot.conflicts {
+                println!(
+                    "  CONFLICT {} ({} sources):",
+                    conflict.subject,
+                    conflict.entries.len()
+                );
+                for entry in &conflict.entries {
+                    println!(
+                        "    {} ({}): {} {}",
+                        entry.source,
+                        entry.source_kind.as_str(),
+                        entry.operator.as_str(),
+                        entry.expected
+                    );
+                }
+            }
+        }
+        Section::Tools => {
+            for tool in &snapshot.tools {
+                println!(
+                    "  {:<10} {:<36} {:<12} {}",
+                    tool.name,
+                    tool.raw_version.as_deref().unwrap_or("version unknown"),
+                    format!("{:?}", tool.probe),
+                    tool.path.as_deref().unwrap_or("-")
+                );
+            }
+        }
+        Section::Ports => {
+            for expected in &snapshot.expected_ports {
+                println!("  expected {} (from {})", expected.port, expected.source);
+            }
+            for port in &snapshot.ports {
+                println!(
+                    "  {:<6} LISTENING {} pid={:?} process={:?} observed={}",
+                    port.port, port.address, port.pid, port.process_name, port.observed_at
+                );
+            }
+        }
+        Section::Processes => {
+            for process in &snapshot.processes {
+                println!(
+                    "  pid {:<7} {:<24} ports={:?} class={} observed={}",
+                    process.pid,
+                    process.name,
+                    process.ports,
+                    process.classification.as_str(),
+                    process.observed_at
+                );
+            }
+        }
     }
     crate::EXIT_OK
 }

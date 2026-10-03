@@ -103,6 +103,39 @@ pub enum HealthFormatArg {
     Html,
 }
 
+/// `prism env` 子命令（§237/§238：按节输出）。
+#[derive(Debug, Subcommand)]
+pub enum EnvCommand {
+    /// 只输出需求与匹配结果（§238）
+    Requirements {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// 只输出工具链事实
+    Tools {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// 只输出监听端口与期望端口（动态事实 §211）
+    Ports {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+    /// 只输出相关进程（动态事实 §211）
+    Processes {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
+}
+
 /// `prism health` 子命令（M7a 仅 rules；M7b 增加完整分析）。
 #[derive(Debug, Subcommand)]
 pub enum HealthCommand {
@@ -262,7 +295,7 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<VerifyCommand>,
     },
-    /// 检查开发环境（M9a：host/工具链/需求匹配基础输出）
+    /// 检查开发环境（M9：环境事实/需求匹配/findings）
     Env {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
@@ -275,6 +308,14 @@ pub enum Command {
         /// 探测全部 allowlist 工具（§270 heavy，默认项目相关）
         #[arg(long)]
         all_tools: bool,
+        /// 显式重扫（§378：扫描本就每次全新执行；此标志声明语义，不接受 cache-only）
+        #[arg(long)]
+        refresh: bool,
+        /// 输出格式（§236 markdown/html 报告）
+        #[arg(long)]
+        format: Option<HealthFormatArg>,
+        #[command(subcommand)]
+        command: Option<EnvCommand>,
     },
     /// 生成 AI 上下文包（M10）
     Context {

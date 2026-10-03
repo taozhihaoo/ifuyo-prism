@@ -175,7 +175,24 @@ fn run() -> i32 {
             json,
             strict,
             all_tools,
-        }) => env_command::run(&path, json, strict, all_tools),
+            refresh,
+            format,
+            command,
+        }) => match command {
+            Some(cli::EnvCommand::Requirements { path: sub, json: sub_json }) => {
+                env_command::run_section(env_command::Section::Requirements, &sub, sub_json)
+            }
+            Some(cli::EnvCommand::Tools { path: sub, json: sub_json }) => {
+                env_command::run_section(env_command::Section::Tools, &sub, sub_json)
+            }
+            Some(cli::EnvCommand::Ports { path: sub, json: sub_json }) => {
+                env_command::run_section(env_command::Section::Ports, &sub, sub_json)
+            }
+            Some(cli::EnvCommand::Processes { path: sub, json: sub_json }) => {
+                env_command::run_section(env_command::Section::Processes, &sub, sub_json)
+            }
+            None => env_command::run(&path, json, strict, all_tools, refresh, format),
+        },
         Some(command) => not_implemented_yet(command.name()),
     }
 }

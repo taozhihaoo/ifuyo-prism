@@ -232,7 +232,7 @@ fn max_brace_nesting(body: &[&str]) -> Option<u64> {
             }
         }
     }
-    Some(max.max(0))
+    Some(max)
 }
 
 #[cfg(test)]

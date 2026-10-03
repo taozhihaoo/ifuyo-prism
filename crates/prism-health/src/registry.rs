@@ -54,6 +54,15 @@ impl HealthRuleRegistry {
     pub fn with_builtins() -> Self {
         let mut registry = HealthRuleRegistry::default();
         registry.register(Box::new(crate::rules::maintenance::MaintenanceMarkerRule));
+        registry.register(Box::new(crate::rules::architecture::CircularDependencyRule));
+        registry.register(Box::new(crate::rules::architecture::FanOutRule));
+        registry.register(Box::new(crate::rules::architecture::FanInRule));
+        registry.register(Box::new(crate::rules::dependency::UnresolvedDependencyRule));
+        registry.register(Box::new(crate::rules::dependency::AmbiguousDependencyRule));
+        registry.register(Box::new(crate::rules::code::HighComplexityRule));
+        registry.register(Box::new(crate::rules::code::LargeFunctionRule));
+        registry.register(Box::new(crate::rules::code::LargeTypeRule));
+        registry.register(Box::new(crate::rules::code::ExcessiveNestingRule));
         registry
     }
 

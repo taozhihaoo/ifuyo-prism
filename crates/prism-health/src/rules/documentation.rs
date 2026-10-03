@@ -37,6 +37,15 @@ static DOC002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     needs_derived: true,
 });
 
+/// 行内的 `inline code` 片段（DOC001 命令引用常见于行内代码，§53）。
+fn inline_code_spans(line: &str) -> Vec<&str> {
+    line.split('`')
+        .enumerate()
+        .filter(|(index, _)| index % 2 == 1)
+        .map(|(_, span)| span)
+        .collect()
+}
+
 /// fenced code block 内的行集合（``` 界定；~~~ 忽略——第一版）。
 fn fenced_lines(content: &str) -> Vec<(usize, &str)> {
     let mut inside = false;
@@ -191,7 +200,20 @@ impl HealthRule for CommandDriftRule {
             return Ok(result);
         }
         let scripts = scripts.unwrap();
-        for (line_number, line) in fenced_lines(&readme) {
+        // 扫描面：fenced 块行 + 行内代码片段（`npm run build` 常见形式，§53）。
+        let mut scan_lines: Vec<(usize, String)> = fenced_lines(&readme)
+            .into_iter()
+            .map(|(number, line)| (number, line.to_string()))
+            .collect();
+        for (index, line) in readme.lines().enumerate() {
+            for span in inline_code_spans(line) {
+                scan_lines.push((index + 1, span.to_string()));
+            }
+        }
+        scan_lines.sort();
+        scan_lines.dedup();
+        for (line_number, line) in &scan_lines {
+            let line = line.as_str();
             if cancel.is_cancelled() {
                 return Err(PrismError::Cancelled);
             }
@@ -203,7 +225,7 @@ impl HealthRule for CommandDriftRule {
                         format!(
                             "Documented command \"npm run {name}\" appears inconsistent with package.json scripts."
                         ),
-                        line_number,
+                        *line_number,
                         name.clone(),
                         format!(
                             "documented command = \"npm run {name}\"; package.json defines: {}",

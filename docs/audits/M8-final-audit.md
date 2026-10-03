@@ -85,8 +85,10 @@ Queued / Running（中间态）。真实项目复现：fail、blocked、unavaila
 - stdout/stderr 分流捕获、不互换（§206 抽查确认：pytest 摘要在 stdout、
   dotnet 诊断在 stdout、cargo 错误在 stderr）
 - exit code 逐 run 记录并与进程一致（§206）
-- 结构化解析（保守，§288-§291）：pytest 摘要行 / dotnet MSBuild 行 / JUnit XML（解析器
-  就绪供后续 junitxml 路径使用）；解析仅增补 diagnostics，绝不改变 state/exit code
+- 结构化解析（保守，§288-§291）：pytest 摘要行 / dotnet MSBuild 行 / SARIF JSON
+  （stdout 嗅探：以 `{` 开头且含 `"runs"` 才尝试，解析失败回退逐行）/ JUnit XML
+  （内容解析器已实现，供后续 config 声明 junitxml 产物路径时接入）；解析仅增补
+  diagnostics，绝不改变 state/exit code
 - 解析失败 ⇒ 空诊断（无 parser_error 污染执行结果）
 - 截断：1 MiB/流 head 保留 + output_truncated 标记 + e2e 测试
 - 真实复现：CS0103 编译错误 → `[dotnet] path:5:26: CS0103: …`；pytest 失败 →
@@ -225,8 +227,9 @@ Windows 文件锁语义，非引擎缺陷。
    timeout/cancel 时可能残留。平台修复（Job Object / process group）已文档化延后。
 2. CI 抽取器为缩进式保守解析，仅覆盖 `- run:` / `run:` 常见形态；复杂 YAML
    （anchors、多行块标量）不解析——表现为少列出命令（保守方向），不误判。
-3. JUnit/SARIF 解析器就绪但默认执行路径不读取文件产物（不擅自追加 `--junitxml`
-   参数）；接入需 config 显式声明输出文件，留后续。
+3. SARIF 已实现并在执行路径上保守嗅探 stdout（`parse_sarif` + `parse_failure_output`
+   集成，单元测试覆盖）；JUnit 解析器已实现但默认执行路径不读取文件产物（不擅自追加
+   `--junitxml` 参数）；读取工具产物文件需 config 显式声明输出路径，留后续。
 
 ## V. Deferred
 
@@ -257,7 +260,8 @@ Windows 文件锁语义，非引擎缺陷。
 [x] Build/Test/Lint/Format/Typecheck/Static analysis works where configured
 [x] Unavailable/Blocked/Failed/Cancelled/TimedOut/Error semantics work（各有测试）
 [x] Structured output parsing works where implemented（pytest/dotnet 默认路径；
-    junit/sarif 解析器就绪待 config 声明）
+    SARIF 已实现并接入 stdout 嗅探；junit 内容解析器已实现，
+    产物文件路径待 config 声明）
 [x] Diagnostic normalization works（§278 真实 CS0103 / pytest 复现）
 [x] stdout/stderr handling works（分流不互换）
 [x] output truncation works（1 MiB head + 标记 + 测试）

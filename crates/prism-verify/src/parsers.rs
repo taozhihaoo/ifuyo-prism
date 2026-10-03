@@ -165,16 +165,107 @@ pub fn parse_pytest_line(line: &str) -> Option<ToolDiagnostic> {
     })
 }
 
+/// 解析 SARIF 2.x JSON（§49；保守，§288-§291）：遍历 `runs[].results[]`，
+/// 只提取 ruleId / level / message.text / 物理位置。字段缺失的 result 跳过
+/// 相应部分而非猜测（§101）；JSON 无效或缺 `runs` ⇒ `parser_error`、
+/// 零诊断——调用方据此回退，绝不改变执行结果。
+pub fn parse_sarif(text: &str) -> ParseOutcome {
+    let mut outcome = ParseOutcome::default();
+    let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else {
+        return ParseOutcome::failed("invalid JSON");
+    };
+    let Some(runs) = value.get("runs").and_then(|runs| runs.as_array()) else {
+        return ParseOutcome::failed("no runs array");
+    };
+    for run in runs {
+        // tool.driver.name 仅在真实存在时作为 source 标注（缺失 ⇒ "sarif"）。
+        let tool = run
+            .get("tool")
+            .and_then(|tool| tool.get("driver"))
+            .and_then(|driver| driver.get("name"))
+            .and_then(|name| name.as_str())
+            .unwrap_or("sarif");
+        let Some(results) = run.get("results").and_then(|results| results.as_array()) else {
+            continue;
+        };
+        for result in results {
+            let rule = result
+                .get("ruleId")
+                .and_then(|rule| rule.as_str())
+                .unwrap_or_default();
+            let Some(message) = result
+                .get("message")
+                .and_then(|message| message.get("text"))
+                .and_then(|text| text.as_str())
+            else {
+                continue; // 无消息文本 ⇒ 无法构成有意义的诊断，跳过（不猜）。
+            };
+            // level：error ⇒ error；其余（warning/note/none/缺失）保守 ⇒ warning。
+            let severity = if result.get("level").and_then(|l| l.as_str()) == Some("error") {
+                "error"
+            } else {
+                "warning"
+            };
+            let location = result
+                .get("locations")
+                .and_then(|locations| locations.as_array())
+                .and_then(|locations| locations.first())
+                .and_then(|location| location.get("physicalLocation"))
+                .and_then(sarif_physical_location);
+            outcome.diagnostics.push(ToolDiagnostic {
+                source: tool.to_string(),
+                code: rule.to_string(),
+                severity: severity.to_string(),
+                message: message.to_string(),
+                location,
+            });
+        }
+    }
+    outcome
+}
+
+/// physicalLocation → "uri:line:column"（行/列存在且 ≥1 才追加；§101 不猜）。
+fn sarif_physical_location(physical: &serde_json::Value) -> Option<String> {
+    let uri = physical
+        .get("artifactLocation")
+        .and_then(|artifact| artifact.get("uri"))
+        .and_then(|uri| uri.as_str())?;
+    // file:// 前缀剥除（本地文件场景）；其余 URI 形式按原样保留。
+    let uri = uri.strip_prefix("file://").unwrap_or(uri);
+    let region = physical.get("region");
+    let line = region
+        .and_then(|region| region.get("startLine"))
+        .and_then(|line| line.as_u64())
+        .filter(|line| *line >= 1);
+    let column = region
+        .and_then(|region| region.get("startColumn"))
+        .and_then(|column| column.as_u64())
+        .filter(|column| *column >= 1);
+    Some(match (line, column) {
+        (Some(line), Some(column)) => format!("{uri}:{line}:{column}"),
+        (Some(line), None) => format!("{uri}:{line}"),
+        _ => uri.to_string(),
+    })
+}
+
 /// 解析诊断条数上限（有界采集，§201 思路）。
 pub const MAX_PARSED_DIAGNOSTICS: usize = 50;
 
 /// §278/§279 失败输出 → 结构化诊断（保守，§288-§291）：
 /// 只解析**已经打印**的 stdout/stderr；不认识的行直接跳过；
 /// 解析失败/零匹配 ⇒ 空表——绝不改变执行状态或退出码。
-/// 按触发 check 的 program 选择解析器（python 家族 ⇒ pytest 摘要行，
-/// dotnet ⇒ MSBuild/VSTest 诊断行）。
+/// 优先嗅探 SARIF JSON（任意工具都可能打印 SARIF：stdout 以 `{` 开头且含
+/// `"runs"` 才尝试；解析失败 ⇒ 回退逐行解析器）；否则按 program 选择
+/// 逐行解析器（python 家族 ⇒ pytest 摘要行，dotnet ⇒ MSBuild/VSTest 诊断行）。
 pub fn parse_failure_output(program: &str, stdout: &str, stderr: &str) -> Vec<ToolDiagnostic> {
     let mut diagnostics = Vec::new();
+    let trimmed = stdout.trim_start();
+    if trimmed.starts_with('{') && stdout.contains("\"runs\"") {
+        let sarif = parse_sarif(stdout);
+        if sarif.parser_error.is_none() {
+            diagnostics.extend(sarif.diagnostics);
+        }
+    }
     match program {
         "dotnet" => {
             for line in stdout.lines().chain(stderr.lines()) {
@@ -261,5 +352,93 @@ mod tests {
             parse_pytest_line("FAILED tests/test_a.py::test_x - assert 1 == 2").unwrap();
         assert_eq!(diagnostic.severity, "error");
         assert_eq!(diagnostic.location.as_deref(), Some("tests/test_a.py"));
+    }
+
+    // ---------- SARIF（§49，保守） ----------
+
+    const SARIF_SAMPLE: &str = r#"{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": { "driver": { "name": "roslyn" } },
+      "results": [
+        {
+          "ruleId": "CS0103",
+          "level": "error",
+          "message": { "text": "The name 'x' does not exist" },
+          "locations": [
+            { "physicalLocation": {
+                "artifactLocation": { "uri": "src/foo.cs" },
+                "region": { "startLine": 42, "startColumn": 13 } } }
+          ]
+        },
+        {
+          "ruleId": "STYLE001",
+          "level": "warning",
+          "message": { "text": "unused variable" },
+          "locations": [
+            { "physicalLocation": {
+                "artifactLocation": { "uri": "file:///abs/bar.cs" },
+                "region": { "startLine": 0 } } }
+          ]
+        },
+        {
+          "ruleId": "NOTE002",
+          "message": { "text": "no level and no location" }
+        }
+      ]
+    }
+  ]
+}"#;
+
+    #[test]
+    fn sarif_parse_extracts_results_conservatively() {
+        let outcome = parse_sarif(SARIF_SAMPLE);
+        assert!(outcome.parser_error.is_none());
+        assert_eq!(outcome.diagnostics.len(), 3);
+        let error = &outcome.diagnostics[0];
+        assert_eq!(error.source, "roslyn");
+        assert_eq!(error.code, "CS0103");
+        assert_eq!(error.severity, "error");
+        assert_eq!(error.location.as_deref(), Some("src/foo.cs:42:13"));
+        // file:// 剥除；region 行 <1 视为缺失（§101 不猜）⇒ 仅 uri。
+        let warning = &outcome.diagnostics[1];
+        assert_eq!(warning.severity, "warning");
+        assert_eq!(warning.location.as_deref(), Some("/abs/bar.cs"));
+        // level 缺失 ⇒ 保守 warning；无 locations ⇒ location None。
+        let note = &outcome.diagnostics[2];
+        assert_eq!(note.severity, "warning");
+        assert!(note.location.is_none());
+    }
+
+    #[test]
+    fn sarif_parse_conservative_on_invalid_input() {
+        for input in ["not json", "{\"other\": 1}", "[1, 2]"] {
+            let outcome = parse_sarif(input);
+            assert!(outcome.parser_error.is_some(), "{input}");
+            assert!(outcome.diagnostics.is_empty(), "§288: no fake data");
+        }
+    }
+
+    #[test]
+    fn sarif_sniff_only_when_output_looks_like_sarif() {
+        // SARIF JSON 打印在 stdout ⇒ 提取诊断，与 program 无关。
+        let diagnostics =
+            parse_failure_output("some-sarif-tool", SARIF_SAMPLE, "");
+        assert_eq!(diagnostics.len(), 3);
+        assert_eq!(diagnostics[0].code, "CS0103");
+
+        // 看起来像 JSON 但解析失败 ⇒ 回退（pytest 行仍可解析）。
+        let fallback = parse_failure_output(
+            "python",
+            "{\"runs\": broken\nFAILED tests/test_a.py::test_x",
+            "",
+        );
+        assert_eq!(fallback.len(), 1);
+        assert_eq!(fallback[0].source, "pytest");
+
+        // 普通输出不触发嗅探（无 '{' 开头）。
+        let none = parse_failure_output("some-tool", "plain failure text", "");
+        assert!(none.is_empty());
     }
 }

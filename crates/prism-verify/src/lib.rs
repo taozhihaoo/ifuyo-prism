@@ -40,7 +40,7 @@ pub use changed::impacted_test_candidates;
 pub use ci::{compare_with_local, inspect_github_actions, CICheck, CIInspection, VerificationCoverage};
 pub use parsers::{
     format_tool_diagnostic, parse_dotnet_line, parse_failure_output, parse_junit,
-    parse_pytest_line, ParseOutcome, ToolDiagnostic, MAX_PARSED_DIAGNOSTICS,
+    parse_pytest_line, parse_sarif, ParseOutcome, ToolDiagnostic, MAX_PARSED_DIAGNOSTICS,
 };
 pub use planner::plan_checks;
 pub use release::{build_test_conclusions, evaluate_release, ReleaseCheck, ReleaseReport};

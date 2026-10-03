@@ -4,6 +4,7 @@
 //! 返回 Core 数据。业务逻辑一律在 `prism-core`，GUI 不自建逻辑。
 
 mod verify_commands;
+mod env_commands;
 mod commands;
 mod state;
 
@@ -76,6 +77,10 @@ pub fn run() {
             verify_commands::get_verify_status,
             verify_commands::get_verify_results,
             verify_commands::cancel_verify,
+            env_commands::start_environment_scan,
+            env_commands::get_environment_status,
+            env_commands::get_environment_results,
+            env_commands::cancel_environment_scan,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

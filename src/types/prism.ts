@@ -859,3 +859,194 @@ export interface VerifyStatusDto {
   status: "idle" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
 }
+
+// ---------- M9：Environment ----------
+
+export interface HostInfoDto {
+  os: "windows" | "macos" | "linux" | "other";
+  os_name: string;
+  os_version: string | null;
+  architecture: string;
+  hostname: string | null;
+  username: string | null;
+  locale: string | null;
+  timezone: string | null;
+}
+
+export interface ShellInfoDto {
+  kind: string;
+  executable: string | null;
+  version: string | null;
+}
+
+export interface PathFactsDto {
+  scope: string;
+  entries: { raw: string; normalized: string; identity: string; exists: boolean }[];
+  duplicates: string[];
+  missing: string[];
+  truncated: boolean;
+}
+
+export interface ToolVersionDto {
+  raw: string;
+  major: number;
+  minor: number | null;
+  patch: number | null;
+  extra: string | null;
+}
+
+export interface ToolFactDto {
+  name: string;
+  path: string | null;
+  additional_paths: string[];
+  version: ToolVersionDto | null;
+  raw_version: string | null;
+  source: string;
+  probe: "not_probed" | "succeeded" | "failed" | "not_found";
+}
+
+export interface RuntimeInfoDto {
+  name: string;
+  version: ToolVersionDto | null;
+  raw_version: string | null;
+  path: string | null;
+  architecture: string | null;
+  source: string;
+}
+
+export interface SdkInfoDto {
+  name: string;
+  version: ToolVersionDto | null;
+  raw_version: string | null;
+  source: string;
+}
+
+export interface PackageManagerInfoDto {
+  name: string;
+  version: ToolVersionDto | null;
+  raw_version: string | null;
+  path: string | null;
+  project_association: {
+    manager: string;
+    evidence: string;
+    required_version: string | null;
+  } | null;
+  source: string;
+}
+
+export interface VirtualEnvInfoDto {
+  kind: string;
+  path: string;
+  interpreter: string | null;
+  version: ToolVersionDto | null;
+  raw_version: string | null;
+  active: boolean;
+}
+
+export interface VariableFactDto {
+  name: string;
+  present: boolean;
+  possibly_sensitive: boolean;
+  source: string;
+}
+
+export interface PortInfoDto {
+  port: number;
+  protocol: string;
+  address: string;
+  state: string;
+  pid: number | null;
+  process_name: string | null;
+  source: string;
+  observed_at: string;
+}
+
+export interface ProcessInfoDto {
+  pid: number;
+  name: string;
+  executable: string | null;
+  ports: number[];
+  classification: string;
+  project_association: string | null;
+  observed_at: string;
+}
+
+export interface ExpectedPortDto {
+  port: number;
+  source: string;
+  confidence: string;
+}
+
+export interface EnvironmentRequirementDto {
+  id: string;
+  kind: string;
+  subject: string;
+  operator: string;
+  expected: string;
+  source: string;
+  source_kind: string;
+  evidence: string;
+  confidence: string;
+  applicable: boolean;
+}
+
+export interface RequirementConflictDto {
+  kind: string;
+  subject: string;
+  entries: { source: string; source_kind: string; expected: string; operator: string }[];
+}
+
+export interface RequirementMatchDto {
+  requirement_id: string;
+  subject: string;
+  result: "satisfied" | "unsatisfied" | "unknown" | "not_applicable";
+  evidence: string;
+}
+
+export interface EnvironmentFindingDto {
+  id: string;
+  kind: string;
+  category: string;
+  severity: "info" | "warning" | "critical";
+  confidence: string;
+  subject: string;
+  message: string;
+  evidence: string[];
+  suggestion: string | null;
+}
+
+export interface ResourceFactsDto {
+  logical_cpus: number | null;
+  memory_total_bytes: number | null;
+  disk_free_bytes: number | null;
+  disk_path: string | null;
+}
+
+export interface EnvironmentSnapshotDto {
+  schema_version: number;
+  id: string;
+  project_id: string;
+  project_root: string;
+  captured_at: string;
+  host: HostInfoDto;
+  shell: ShellInfoDto;
+  paths: PathFactsDto;
+  tools: ToolFactDto[];
+  virtualenvs: VirtualEnvInfoDto[];
+  runtimes: RuntimeInfoDto[];
+  sdks: SdkInfoDto[];
+  package_managers: PackageManagerInfoDto[];
+  variables: VariableFactDto[];
+  ports: PortInfoDto[];
+  processes: ProcessInfoDto[];
+  expected_ports: ExpectedPortDto[];
+  resources: ResourceFactsDto;
+  requirements: EnvironmentRequirementDto[];
+  conflicts: RequirementConflictDto[];
+  matches: RequirementMatchDto[];
+  findings: EnvironmentFindingDto[];
+  status: "satisfied" | "unsatisfied" | "attention" | "unknown" | "conflict" | "partial";
+  diagnostics: { kind: string; subject: string | null; detail: string }[];
+  scan_outcome: "completed" | "partial" | "cancelled";
+  completeness: "complete" | "partial" | "unknown";
+}

@@ -5,6 +5,8 @@ import ChangesPage from "./ChangesPage";
 import UnderstandPage from "./UnderstandPage";
 import PlaceholderPage from "../components/PlaceholderPage";
 import HealthPage from "./HealthPage";
+import VerifyPage from "./VerifyPage";
+import EnvironmentPage from "./EnvironmentPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
 export type PageKey =
@@ -49,24 +51,12 @@ export const PAGES: PageDef[] = [
   {
     key: "verify",
     label: "Verify",
-    milestoneTag: "M8",
-    render: () => (
-      <PlaceholderPage
-        milestone="M8"
-        description="Build, test, lint and type-check orchestration with unified, evidence-preserving results."
-      />
-    ),
+    render: () => <VerifyPage />,
   },
   {
     key: "environment",
     label: "Environment",
-    milestoneTag: "M9",
-    render: () => (
-      <PlaceholderPage
-        milestone="M9"
-        description="Runtime, SDK and toolchain detection: whether this machine fits this project."
-      />
-    ),
+    render: () => <EnvironmentPage />,
   },
   {
     key: "context",

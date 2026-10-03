@@ -15,6 +15,7 @@ import type {
   VerifyPlanDto,
   VerificationReportDto,
   VerifyStatusDto,
+  EnvironmentSnapshotDto,
   ImpactAnalysisDto,
   ImpactStatusDto,
   GitFactsDto,
@@ -223,4 +224,22 @@ export function getVerifyResults(): Promise<VerifyResults | null> {
 
 export function cancelVerify(): Promise<void> {
   return invoke<void>("cancel_verify");
+}
+
+// ---------- M9：Environment ----------
+
+export function startEnvironmentScan(allTools?: boolean): Promise<string> {
+  return invoke<string>("start_environment_scan", { allTools: allTools ?? null });
+}
+
+export function getEnvironmentStatus(): Promise<{ status: string; error: string | null }> {
+  return invoke<{ status: string; error: string | null }>("get_environment_status");
+}
+
+export function getEnvironmentResults(): Promise<EnvironmentSnapshotDto | null> {
+  return invoke<EnvironmentSnapshotDto | null>("get_environment_results");
+}
+
+export function cancelEnvironmentScan(): Promise<void> {
+  return invoke<void>("cancel_environment_scan");
 }

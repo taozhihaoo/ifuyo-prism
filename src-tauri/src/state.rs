@@ -82,6 +82,15 @@ pub struct ScanSession {
     pub verify_report: Option<prism_verify::VerificationReport>,
     /// verify Failed 时的错误描述。
     pub verify_error: Option<String>,
+    /// ---- M9 Environment ----
+    /// environment 扫描取消令牌。
+    pub env_token: CancellationToken,
+    /// environment 扫描状态：None = 尚未执行。
+    pub env_status: Option<TaskState>,
+    /// 最近一次完成的 EnvironmentSnapshot。
+    pub env_snapshot: Option<prism_env::EnvironmentSnapshot>,
+    /// environment Failed 时的错误描述。
+    pub env_error: Option<String>,
     /// ---- M5 ChangeSet ----
     /// changeset 取消令牌（独立于扫描/inspect/graph）。
     pub changeset_token: CancellationToken,
@@ -137,6 +146,9 @@ impl ScanSession {
         self.verify_plan = None;
         self.verify_report = None;
         self.verify_error = None;
+        self.env_status = None;
+        self.env_snapshot = None;
+        self.env_error = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;

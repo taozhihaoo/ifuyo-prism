@@ -2551,6 +2551,7 @@ dependencies = [
  "prism-changes",
  "prism-core",
  "prism-graph",
+ "prism-parser",
  "prism-project",
  "serde",
  "serde_json",

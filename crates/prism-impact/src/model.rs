@@ -67,6 +67,20 @@ pub enum NodeKind {
     Documentation,
 }
 
+impl NodeKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            NodeKind::File => "file",
+            NodeKind::Symbol => "symbol",
+            NodeKind::FileModule => "file_module",
+            NodeKind::Package => "package",
+            NodeKind::Namespace => "namespace",
+            NodeKind::Project => "project",
+            NodeKind::Documentation => "documentation",
+        }
+    }
+}
+
 /// 影响种类（§9/§84：同一节点允许多个分类，不强迫单一 enum）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 #[serde(rename_all = "snake_case")]

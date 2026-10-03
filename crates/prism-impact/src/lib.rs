@@ -19,9 +19,11 @@
 //! `analysis_completeness` 显式表达 Complete/Partial/Truncated/Failed。
 
 pub mod model;
+pub mod traversal;
 
 pub use model::{
     ImpactAnalysis, ImpactCompleteness, ImpactConfidence, ImpactDiagnostic, ImpactDiagnosticKind,
     ImpactKind, ImpactOptions, ImpactPath, ImpactReason, ImpactSummary, ImpactableNode, NodeKind,
     PathHop, RelationKind, RiskSignal, RiskSignalKind, IMPACT_SCHEMA_VERSION,
 };
+pub use traversal::{build_seeds, traverse, ImpactedAccumulator, NodeKey, ReverseEdge, ReverseIndex, Seed, TraversalOutput};

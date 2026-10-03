@@ -16,6 +16,7 @@ use prism_impact::{
 use std::path::Path;
 use std::sync::Arc;
 
+#[allow(clippy::too_many_arguments)] // CLI 参数直传；结构体化只会转移同样的数量
 pub fn run(
     path: &Path,
     staged: bool,

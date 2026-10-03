@@ -54,7 +54,7 @@ fn temp_impact_project(name: &str) -> PathBuf {
     git(&dir, &["config", "user.email", "test@prism.local"]);
     git(&dir, &["add", "-A"]);
     git(&dir, &["commit", "-m", "base"]);
-    std::fs::write(dir.join("lib.ts"), &LIB.replace("amount * 2", "amount * 9")).unwrap();
+    std::fs::write(dir.join("lib.ts"), LIB.replace("amount * 2", "amount * 9")).unwrap();
     dir
 }
 
@@ -86,8 +86,8 @@ fn impact_json_outputs_stable_contract() {
     assert!(value["id"].as_str().unwrap().starts_with("impact:"));
     assert_eq!(value["schema_version"], 1);
     assert_eq!(value["analysis_completeness"], "complete");
-    assert!(value["changed_items"].as_array().unwrap().len() >= 1);
-    assert!(value["impacted_items"].as_array().unwrap().len() >= 1);
+    assert!(!value["changed_items"].as_array().unwrap().is_empty());
+    assert!(!value["impacted_items"].as_array().unwrap().is_empty());
     // §126 的 schema 字段齐备。
     for field in ["impact_paths", "summary", "diagnostics", "risk_signals"] {
         assert!(value.get(field).is_some(), "schema field {field} expected");

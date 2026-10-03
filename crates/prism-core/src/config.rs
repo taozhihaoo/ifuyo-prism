@@ -96,6 +96,43 @@ impl Default for LoggingConfig {
     }
 }
 
+/// 单条健康规则的配置覆盖（§71）。键 = 稳定规则 id；
+/// `deny_unknown_fields` 把拼写错误（如 threshhold）变成解析错误而非静默忽略（§72）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct HealthRuleConfig {
+    /// None = 使用规则默认开关（precedence：built-in → config → CLI，§221）。
+    pub enabled: Option<bool>,
+    /// 覆盖规则默认 severity（§219；必须用 M0 Severity 词表）。
+    pub severity: Option<crate::severity::Severity>,
+    /// 规则自定义阈值；各规则在元数据中声明语义，未声明阈值语义的规则
+    /// 收到 threshold ⇒ 引擎期 diagnostic（§72 unknown option）。
+    pub threshold: Option<u64>,
+}
+
+/// health 配置节（M7）。复用唯一配置系统 prism.config.json（§70 只选一种）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct HealthConfig {
+    /// 规则级覆盖，键 = 稳定规则 id（如 "MAINT001"）。
+    pub rules: std::collections::BTreeMap<String, HealthRuleConfig>,
+    /// 整规则禁用列表（§65 快捷方式；与 rules.<id>.enabled=false 等效）。
+    pub disabled_rules: Vec<String>,
+}
+
+impl HealthConfig {
+    /// 规则的最终开关（config 合并后；CLI 覆盖由引擎再叠加，§221）。
+    pub fn is_rule_enabled(&self, rule_id: &str, default_enabled: bool) -> Option<bool> {
+        if self.disabled_rules.iter().any(|id| id == rule_id) {
+            return Some(false);
+        }
+        self.rules
+            .get(rule_id)
+            .and_then(|rule| rule.enabled)
+            .or(Some(default_enabled))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct PrivacyConfig {
@@ -125,6 +162,9 @@ pub struct PrismConfig {
     pub analysis: AnalysisConfig,
     pub logging: LoggingConfig,
     pub privacy: PrivacyConfig,
+    /// M7 健康规则配置（规则开关/覆盖 severity/阈值；§70 复用唯一配置系统）。
+    #[serde(default)]
+    pub health: HealthConfig,
 }
 
 impl Default for PrismConfig {
@@ -136,6 +176,7 @@ impl Default for PrismConfig {
             analysis: AnalysisConfig::default(),
             logging: LoggingConfig::default(),
             privacy: PrivacyConfig::default(),
+            health: HealthConfig::default(),
         }
     }
 }

@@ -24,6 +24,7 @@ pub mod config;
 pub mod error;
 pub mod ids;
 pub mod logging;
+pub mod privacy;
 pub mod progress;
 pub mod runtime;
 pub mod severity;

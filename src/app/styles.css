@@ -538,3 +538,15 @@ body {
   border-color: var(--accent, #4a9eff);
   color: var(--accent, #4a9eff);
 }
+
+/* M7 Health 页：severity 着色（无健康分、无游戏化，§145）。 */
+.sev-critical { color: #b00020; font-weight: 600; }
+.sev-warning { color: #9a6700; font-weight: 600; }
+.sev-info { color: #555; }
+
+.finding-detail {
+  margin: .4rem 0 .6rem .9rem;
+  padding: .5rem .8rem;
+  border-left: 3px solid var(--border, #ddd);
+  background: rgba(0, 0, 0, 0.03);
+}

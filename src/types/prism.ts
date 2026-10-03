@@ -711,3 +711,74 @@ export interface ImpactStatusDto {
   status: "idle" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
 }
+
+// ---------- M7：Health ----------
+
+export interface FindingLocationDto {
+  relative_path: string;
+  line: number;
+  column: number;
+}
+
+export interface FindingExplanationDto {
+  what: string;
+  evidence_summary: string;
+  why_it_matters: string | null;
+}
+
+export interface FindingDto {
+  id: string;
+  rule_id: string;
+  category: string;
+  severity: "info" | "warning" | "critical";
+  confidence: string;
+  title: string;
+  message: string;
+  explanation: FindingExplanationDto;
+  location: FindingLocationDto;
+  related_locations: FindingLocationDto[];
+  related_symbols: string[];
+  related_modules: string[];
+  related_files: string[];
+  evidence: { kind: string; subject: string; detail: string }[];
+  suggested_action: string | null;
+  status: "active" | "suppressed" | "ignored";
+  change_relation: "directly_changed" | "impacted" | "unrelated" | null;
+}
+
+export interface HealthSummaryDto {
+  total_findings: number;
+  critical_count: number;
+  warning_count: number;
+  info_count: number;
+  by_category: Record<string, number>;
+  by_rule: Record<string, number>;
+  files_with_findings: number;
+  modules_with_findings: number;
+  symbols_with_findings: number;
+}
+
+export interface HealthDiagnosticDto {
+  kind: string;
+  subject: string | null;
+  detail: string;
+}
+
+export interface HealthAnalysisDto {
+  schema_version: number;
+  project_name: string;
+  scope: string;
+  change_related_findings: number;
+  findings: FindingDto[];
+  diagnostics: HealthDiagnosticDto[];
+  analysis_completeness: "complete" | "partial" | "truncated" | "failed";
+  checked_rules: string[];
+  disabled_rules: string[];
+  failed_rules: string[];
+  summary: HealthSummaryDto;
+}
+
+export interface HealthStatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  error: string | null;
+}

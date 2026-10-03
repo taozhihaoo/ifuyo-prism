@@ -10,6 +10,8 @@ import type {
   DependencyGraphResultDto,
   ChangeSetDto,
   ChangesetStatusDto,
+  HealthAnalysisDto,
+  HealthStatusDto,
   ImpactAnalysisDto,
   ImpactStatusDto,
   GitFactsDto,
@@ -170,4 +172,22 @@ export function getImpact(): Promise<ImpactAnalysisDto | null> {
 
 export function cancelImpact(): Promise<void> {
   return invoke<void>("cancel_impact");
+}
+
+// ---------- M7：Health ----------
+
+export function startHealth(): Promise<string> {
+  return invoke<string>("start_health");
+}
+
+export function getHealthStatus(): Promise<HealthStatusDto> {
+  return invoke<HealthStatusDto>("get_health_status");
+}
+
+export function getHealthAnalysis(): Promise<HealthAnalysisDto | null> {
+  return invoke<HealthAnalysisDto | null>("get_health_analysis");
+}
+
+export function cancelHealth(): Promise<void> {
+  return invoke<void>("cancel_health");
 }

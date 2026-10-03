@@ -4,6 +4,7 @@ import OverviewPage from "./OverviewPage";
 import ChangesPage from "./ChangesPage";
 import UnderstandPage from "./UnderstandPage";
 import PlaceholderPage from "../components/PlaceholderPage";
+import HealthPage from "./HealthPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
 export type PageKey =
@@ -43,13 +44,7 @@ export const PAGES: PageDef[] = [
   {
     key: "health",
     label: "Health",
-    milestoneTag: "M7",
-    render: () => (
-      <PlaceholderPage
-        milestone="M7"
-        description="Evidence-based findings: architecture, dependency, secret, documentation and maintenance risks."
-      />
-    ),
+    render: () => <HealthPage />,
   },
   {
     key: "verify",

@@ -740,3 +740,122 @@ pub fn cancel_impact(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
     session.impact_token.cancel();
     Ok(())
 }
+
+// ---------- M7：Health ----------
+
+/// health 会话状态 DTO（前端轮询）。
+#[derive(Debug, Clone, Serialize)]
+pub struct HealthAnalysisStatusDto {
+    /// "idle" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub error: Option<String>,
+}
+
+/// 启动一次完整健康分析（自包含：discovery + 代码模型 + M3 图）。
+#[tauri::command]
+pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
+    let (root, token, session_arc) = {
+        let mut session = lock_session(&state.session);
+        let Some(project) = session.project.as_ref() else {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        };
+        if session.health_status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "a health analysis is already running",
+            ));
+        }
+        let root = project.root_path.clone();
+        session.begin_health();
+        let token = session.health_token.clone();
+        (root, token, state.session.clone())
+    };
+
+    std::thread::spawn(move || {
+        let outcome = (|| -> prism_core::PrismResult<prism_health::HealthAnalysis> {
+            let discovery = prism_project::DiscoveryService::new().discover(
+                &root,
+                prism_project::ScanOptions::default(),
+                &token,
+                |_| {},
+            )?;
+            let model = prism_analysis::CodeAnalysisService::new().analyze(
+                &discovery,
+                prism_analysis::CodeAnalysisOptions::default(),
+                &token,
+                |_| {},
+            )?;
+            let graph = prism_graph::DependencyService::new().analyze(&discovery, &model)?;
+            let context = prism_health::HealthContext {
+                project: &discovery.project,
+                code_model: Some(&model),
+                discovery: Some(&discovery),
+                graph: Some(&graph),
+                git: None,
+                change_set: None,
+                impact: None,
+                root: &root,
+                derived: None,
+            };
+            prism_health::analyze(
+                &prism_health::HealthRuleRegistry::with_builtins(),
+                &prism_core::config::HealthConfig::default(),
+                &context,
+                &prism_health::HealthOptions::default(),
+                &token,
+            )
+        })();
+
+        let mut session = lock_session(&session_arc);
+        match outcome {
+            Ok(analysis) => {
+                session.health_status = Some(TaskState::Completed);
+                session.health_model = Some(analysis);
+            }
+            Err(prism_core::PrismError::Cancelled) => {
+                session.health_status = Some(TaskState::Cancelled);
+            }
+            Err(err) => {
+                session.health_status = Some(TaskState::Failed);
+                session.health_error = Some(err.to_string());
+            }
+        }
+    });
+
+    Ok("started".to_string())
+}
+
+/// 查询 health 会话状态。
+#[tauri::command]
+pub fn get_health_status(state: State<'_, AppState>) -> HealthAnalysisStatusDto {
+    let session = lock_session(&state.session);
+    let status = match session.health_status {
+        None => "idle".to_string(),
+        Some(status) => serde_json::to_value(status)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+    HealthAnalysisStatusDto {
+        status,
+        error: session.health_error.clone(),
+    }
+}
+
+/// 获取最近一次完成的 HealthAnalysis。
+#[tauri::command]
+pub fn get_health_analysis(state: State<'_, AppState>) -> Option<prism_health::HealthAnalysis> {
+    let session = lock_session(&state.session);
+    session.health_model.clone()
+}
+
+/// 取消当前 health 分析（§102/§160）。
+#[tauri::command]
+pub fn cancel_health(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
+    let session = lock_session(&state.session);
+    session.health_token.cancel();
+    Ok(())
+}

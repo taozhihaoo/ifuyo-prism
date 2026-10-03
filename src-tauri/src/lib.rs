@@ -66,6 +66,10 @@ pub fn run() {
             commands::get_impact_status,
             commands::get_impact,
             commands::cancel_impact,
+            commands::start_health,
+            commands::get_health_status,
+            commands::get_health_analysis,
+            commands::cancel_health,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

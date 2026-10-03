@@ -63,6 +63,15 @@ pub struct ScanSession {
     pub impact_model: Option<prism_impact::ImpactAnalysis>,
     /// impact Failed 时的错误描述。
     pub impact_error: Option<String>,
+    /// ---- M7 Health ----
+    /// health 取消令牌（独立于其他任务）。
+    pub health_token: CancellationToken,
+    /// health 状态：None = 尚未执行。
+    pub health_status: Option<TaskState>,
+    /// 最近一次完成的 HealthAnalysis。
+    pub health_model: Option<prism_health::HealthAnalysis>,
+    /// health Failed 时的错误描述。
+    pub health_error: Option<String>,
     /// ---- M5 ChangeSet ----
     /// changeset 取消令牌（独立于扫描/inspect/graph）。
     pub changeset_token: CancellationToken,
@@ -111,6 +120,9 @@ impl ScanSession {
         self.impact_status = None;
         self.impact_model = None;
         self.impact_error = None;
+        self.health_status = None;
+        self.health_model = None;
+        self.health_error = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;
@@ -129,6 +141,14 @@ impl ScanSession {
         self.graph_model = None;
         self.graph_error = None;
         task_id
+    }
+
+    /// 准备一次 health 分析。
+    pub fn begin_health(&mut self) {
+        self.health_token = CancellationToken::new();
+        self.health_status = Some(TaskState::Running);
+        self.health_model = None;
+        self.health_error = None;
     }
 
     /// 准备一次 impact 分析。

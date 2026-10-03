@@ -349,7 +349,8 @@ mod tests {
         use ImpactConfidence::*;
         assert_eq!(Exact.weakest(HighConfidence), HighConfidence);
         assert_eq!(Probable.weakest(Exact), Probable);
-        assert_eq!(Ambiguous.weakest(Unknown), Ambiguous);
+        // Unknown 最弱：取弱得 Unknown，不得静默升为 Ambiguous（§46）。
+        assert_eq!(Ambiguous.weakest(Unknown), Unknown);
         // 序：Exact < HighConfidence < Probable < Ambiguous < Unknown
         assert!(Exact < HighConfidence && HighConfidence < Probable);
     }

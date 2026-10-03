@@ -20,6 +20,7 @@
 pub mod diagnostic;
 pub mod evidence;
 pub mod file_change;
+pub mod matcher;
 pub mod model;
 pub mod module_change;
 pub mod revision;
@@ -27,6 +28,7 @@ pub mod symbol_change;
 
 pub use diagnostic::{ChangeDiagnostic, ChangeDiagnosticKind};
 pub use evidence::ChangeEvidence;
+pub use matcher::{compute_symbol_changes, ChangedLines, SymbolMatchInput};
 pub use model::ChangedRange;
 pub use file_change::{FileChange, FileChangeType};
 pub use model::{

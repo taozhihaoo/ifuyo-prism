@@ -15,6 +15,7 @@ pub mod host;
 pub mod model;
 pub mod paths;
 pub mod probe;
+pub mod runtime;
 pub mod tools;
 pub mod version;
 
@@ -24,8 +25,13 @@ pub use model::{
     EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
     PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
     RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
-    ToolFact, ToolSource, VariableFact, VariableSource, ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP,
-    VARIABLE_CAP,
+    ToolFact, ToolSource, VariableFact, VariableSource, VirtualEnvInfo,
+    ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP, VARIABLE_CAP,
+};
+pub use runtime::{
+    discover_package_managers, discover_sdks, discover_virtualenvs,
+    package_manager_field, parse_dotnet_sdks, parse_rustup_toolchains, resolve_project_local,
+    runtimes_from_tools, LOCKFILES,
 };
 pub use paths::{collect_path_facts, normalize_path, path_facts_from_raw, path_identity};
 pub use probe::{run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe, DEFAULT_PROBE_TIMEOUT_MS};

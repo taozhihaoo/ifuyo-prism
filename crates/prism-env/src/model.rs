@@ -27,6 +27,8 @@ pub struct EnvironmentSnapshot {
     pub paths: PathFacts,
     /// 项目相关工具链事实（§22–§30；lazily 按 profile 选择，§120）。
     pub tools: Vec<ToolFact>,
+    /// 项目虚拟环境（§69：exists/interpreter/version/active，绝不 activate）。
+    pub virtualenvs: Vec<VirtualEnvInfo>,
     pub runtimes: Vec<RuntimeInfo>,
     pub sdks: Vec<SdkInfo>,
     pub package_managers: Vec<PackageManagerInfo>,
@@ -318,6 +320,19 @@ pub enum ProbeOutcome {
     Failed,
     /// 可执行文件未找到（lookup 确认）。
     NotFound,
+}
+
+/// 虚拟环境（§69：只识别记录；不切换、不 activate）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct VirtualEnvInfo {
+    /// "venv" / "virtualenv" / "conda"（按目录特征）。
+    pub kind: String,
+    pub path: String,
+    pub interpreter: Option<String>,
+    pub version: Option<crate::version::ToolVersion>,
+    pub raw_version: Option<String>,
+    /// 是否是当前进程激活的环境（VIRTUAL_ENV 指向此处）。
+    pub active: bool,
 }
 
 /// 运行时（§31：Node.js/Python/.NET/JVM/Go/Rust…）。

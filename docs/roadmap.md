@@ -14,7 +14,7 @@ Final Audit → 本地 commit（不 push）。
 | M1 | Project Discovery | 文件扫描、ignore 引擎、语言/项目类型/入口点识别 | ✅ |
 | M2 | Code Understanding | 语言无关 Symbol 模型 + TS/JS/Python/C# parser | ✅ |
 | M3 | Dependency & Architecture | 模块/依赖/解析状态/环/指标（调用图仅可靠子集，P1） | ✅ |
-| M4 | Git Basics | 只读 Git 事实层（status/log/diff，porcelain 解析） | ✅ |
+| M4 | Git Basics | 只读 Git 事实层（status/log/diff/refs，porcelain v2 -z） | ✅ |
 | M5 | ChangeSet | GitDiff → FileChange → SymbolChange → ChangeSet | |
 | M6 | Change Impact Analysis | 反向图遍历、distance/confidence、blast radius | |
 | M7 | Health Engine | 统一 Finding 体系 + 首批高确定性规则 | |

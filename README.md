@@ -13,7 +13,7 @@
 ```
 
 - **Understand** — 结构/符号/依赖图（M1-M3）+ Git 事实（M4）+ ChangeSet（M5 已交付）
-- **Changes** — Git 变化 → ChangeSet（M5）→ 影响分析（M6 已交付：潜在波及 + 证据路径 + 风险信号）
+- **Changes** — Git 变化 → ChangeSet（M5）→ 影响分析（M6）→ 健康发现（M7 已交付：13 条确定性规则 + 证据化 Findings）
 - **Health** — 基于 Evidence 的 Finding 体系（不做“项目评分”）
 - **Verify** — 构建/测试/lint 的统一编排（Orchestrator，不重造工具）
 - **Environment** — 项目要求 vs 机器事实
@@ -51,8 +51,8 @@ ifuyo-prism/
 │  ├─ prism-git/             # Git facts 层：只读 status/log/diff/refs（M4）
 │  ├─ prism-changes/         # ChangeSet 层：Git diff × 代码模型 → 变更事实（M5）
 │  ├─ prism-impact/          # 影响层：ChangeSet × 关系图 → 潜在波及与证据（M6）
-│  ├─ prism-health/          # 健康层：确定性规则 → 证据化 Findings（M7a 地基）
-│  └─ prism-cli/             # prism 命令行（M0-M7a）
+│  ├─ prism-health/          # 健康层：13 条确定性规则 → 证据化 Findings + 报告（M7）
+│  └─ prism-cli/             # prism 命令行（M0-M7）
 ├─ src-tauri/                # Tauri 2 应用壳（IPC 边界，无业务逻辑）
 ├─ src/                      # React 前端（app/components/pages/services/types）
 ├─ tests/
@@ -84,7 +84,8 @@ cargo run -p prism-cli -- inspect <path>   # 代码符号（M2）
 cargo run -p prism-cli -- graph <path>     # 依赖与架构图（M3）
 cargo run -p prism-cli -- changes <path>     # ChangeSet：文件/符号/模块变更（M5）
 cargo run -p prism-cli -- impact <path>      # 影响分析：潜在波及 + 证据（M6）
-cargo run -p prism-cli -- health <path> rules # 健康规则检视（M7a；完整 health 分析在 M7b）
+cargo run -p prism-cli -- health <path>       # 健康体检：Findings + 证据（M7）
+cargo run -p prism-cli -- health <path> rules # 规则检视（M7）
 cargo run -p prism-cli -- git status <path>  # Git 状态（M4，只读）
 cargo run -p prism-cli -- git log <path>     # 最近提交（M4）
 cargo run -p prism-cli -- git diff <path>    # 文件级 diff（M4）

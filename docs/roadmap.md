@@ -17,7 +17,7 @@ Final Audit → 本地 commit（不 push）。
 | M4 | Git Basics | 只读 Git 事实层（status/log/diff/refs，porcelain v2 -z） | ✅ |
 | M5 | ChangeSet | GitDiff → FileChange → SymbolChange → ModuleChange → ChangeSet（prism-changes；`prism changes` + GUI） | ✅ |
 | M6 | Change Impact Analysis | 反向图遍历、distance/confidence、blast radius（prism-impact；`prism impact` + GUI） | ✅ |
-| M7 | Health Engine | 统一 Finding 体系 + 首批高确定性规则（M7a 地基已交付：Finding/引擎骨架/MAINT001/`prism health rules`；完整规则目录与报告在 M7b） | ◐ |
+| M7 | Health Engine | 统一 Finding 体系 + 13 条确定性规则 + HealthReport（JSON/MD/HTML）+ GUI Health 页（`prism health` 完整命令面） | ✅ |
 | M8 | Verify Engine | build/test/lint 编排与结果归一 | |
 | M9 | Environment Engine | 环境要求 vs 机器事实的采集/匹配/解释 | |
 | M10 | Context Engine | ContextPack：任务分类→收集→优先级→预算→脱敏 | |

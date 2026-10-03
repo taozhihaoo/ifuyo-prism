@@ -208,10 +208,25 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<HealthCommand>,
     },
-    /// 运行构建/测试/静态检查（M8）
+    /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a）
     Verify {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// JSON 输出（§165）
+        #[arg(long, conflicts_with = "format")]
+        json: bool,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = HealthFormatArg::Text)]
+        format: HealthFormatArg,
+        /// 只执行指定 check id（可多次，§147）
+        #[arg(long = "check")]
+        checks: Vec<String>,
+        /// 只发现 + 展示计划，零命令执行（§144）
+        #[arg(long)]
+        dry_run: bool,
+        /// 有 Unavailable/Blocked 时也非零退出（§79 变体；默认仅 required failed 才非零）
+        #[arg(long)]
+        fail_on_unavailable: bool,
     },
     /// 检查开发环境（M9）
     Env {

@@ -2511,6 +2511,7 @@ dependencies = [
  "prism-health",
  "prism-impact",
  "prism-project",
+ "prism-verify",
  "serde",
  "serde_json",
 ]
@@ -2612,6 +2613,17 @@ dependencies = [
  "prism-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "prism-verify"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-project",
+ "serde",
+ "serde_json",
+ "uuid",
 ]
 
 [[package]]

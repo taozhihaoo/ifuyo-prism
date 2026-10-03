@@ -1,0 +1,16 @@
+[package]
+name = "prism-verify"
+description = "Prism verify engine core: discover verification entry points, plan, schedule and execute real project commands via M0 CommandRunner (M8a)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true
+
+[dev-dependencies]

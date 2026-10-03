@@ -15,6 +15,7 @@
 mod changes_command;
 mod cli;
 mod health_command;
+mod verify_command;
 mod impact_command;
 mod git_command;
 
@@ -135,6 +136,24 @@ fn run() -> i32 {
                 max_files,
             ),
         },
+        Some(cli::Command::Verify {
+            path,
+            json,
+            format,
+            checks,
+            dry_run,
+            fail_on_unavailable,
+        }) => verify_command::run(
+            &path,
+            if json {
+                crate::cli::HealthFormatArg::Json
+            } else {
+                format
+            },
+            checks.as_slice(),
+            dry_run,
+            fail_on_unavailable,
+        ),
         Some(command) => not_implemented_yet(command.name()),
     }
 }

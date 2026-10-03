@@ -82,12 +82,22 @@ pub fn run_verification(
         return Err(PrismError::Cancelled);
     }
 
+    // §27 一致性：执行使用与计划相同的依赖解析（显式 + 同 toolchain 约定依赖），
+    // 否则计划里的 Blocked 语义只是展示，不影响调度。
+    let resolved = crate::planner::resolved_dependencies(&selected_specs);
+    let mut executable_specs: Vec<CheckSpec> = selected_specs.clone();
+    for spec in &mut executable_specs {
+        if let Some(deps) = resolved.get(&spec.id) {
+            spec.depends_on = deps.clone();
+        }
+    }
+
     let runs = match (enforce_prerequisites, git) {
         (true, None) => {
-            execute_plan_with(&selected_specs, runner, root, max_concurrency, cancel)?
+            execute_plan_with(&executable_specs, runner, root, max_concurrency, cancel)?
         }
         (true, Some(git)) => crate::executor::execute_plan_observed(
-            &selected_specs,
+            &executable_specs,
             runner,
             root,
             max_concurrency,
@@ -95,7 +105,7 @@ pub fn run_verification(
             cancel,
         )?,
         (false, git) => execute_plan_without_prereqs(
-            &selected_specs,
+            &executable_specs,
             runner,
             root,
             max_concurrency,

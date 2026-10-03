@@ -204,6 +204,46 @@ fn optional_unavailable_keeps_partial_not_fail() {
     assert_eq!(report.counts.unavailable, 1);
 }
 
+#[test]
+fn convention_build_failure_blocks_same_toolchain_only() {
+    // §27：cargo-build 失败 ⇒ cargo-test Blocked；npm 生态不受牵连。
+    let specs = vec![
+        spec("npm-build", CheckKind::Build, "npm", false, &[]),
+        spec("npm-test", CheckKind::Test, "npm", false, &[]),
+        spec("cargo-build", CheckKind::Build, "cargo", false, &[]),
+        spec("cargo-test", CheckKind::Test, "cargo", false, &[]),
+    ];
+    let mut runner = FakeCommandRunner::new();
+    runner.script("npm", FakeResponse::Output { exit_code: 0, stdout: String::new(), stderr: String::new() });
+    runner.script("cargo", FakeResponse::Output { exit_code: 101, stdout: String::new(), stderr: String::new() });
+    let dir = PathBuf::from(".");
+    let report = run_verification(
+        &specs,
+        &dir,
+        "demo",
+        &prism_verify::VerifyOptions::default(),
+        Arc::new(runner),
+        2,
+        false,
+        None,
+        &[],
+        &CancellationToken::new(),
+    )
+    .unwrap();
+    let state_of = |id: &str| {
+        report
+            .runs
+            .iter()
+            .find(|run| run.check_id == id)
+            .map(|run| run.state)
+            .unwrap()
+    };
+    assert_eq!(state_of("cargo-build"), CheckState::Failed);
+    assert_eq!(state_of("cargo-test"), CheckState::Blocked, "same-toolchain build failure must block (§27)");
+    assert_eq!(state_of("npm-build"), CheckState::Passed);
+    assert_eq!(state_of("npm-test"), CheckState::Passed, "npm test must not gate on cargo build");
+}
+
 // ---------- §87/§85：WritePolicy 默认拒绝 ----------
 
 #[test]
@@ -256,6 +296,71 @@ fn dry_run_never_spawns_commands() {
 
 fn config_default() -> VerifyConfig {
     VerifyConfig::default()
+}
+
+// ---------- §128/§260-§264：polyglot 发现 id 不冲突 ----------
+
+#[test]
+fn polyglot_discovery_assigns_unique_ecosystem_ids() {
+    let dir = std::env::temp_dir().join(format!(
+        "prism-verify-poly-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0)
+    ));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(
+        dir.join("package.json"),
+        r#"{ "scripts": { "build": "tsc", "test": "vitest" } }"#,
+    )
+    .unwrap();
+    std::fs::write(dir.join("Cargo.toml"), "[workspace]\nmembers = []\n").unwrap();
+    std::fs::write(
+        dir.join("pyproject.toml"),
+        "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n",
+    )
+    .unwrap();
+    std::fs::write(dir.join("demo.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />").unwrap();
+
+    let specs = discover_checks(&dir, &config_default());
+    let ids: Vec<&str> = specs.iter().map(|s| s.id.as_str()).collect();
+
+    // 四个生态都被发现（§260），id 全部唯一（§128）。
+    for expected in [
+        "build",
+        "test",
+        "cargo-build",
+        "cargo-test",
+        "cargo-check",
+        "cargo-clippy",
+        "pytest",
+        "dotnet-build",
+        "dotnet-test",
+    ] {
+        assert!(ids.contains(&expected), "missing id {expected}: {ids:?}");
+    }
+    let mut sorted = ids.clone();
+    sorted.sort();
+    sorted.dedup();
+    assert_eq!(ids.len(), sorted.len(), "duplicate check ids: {ids:?}");
+
+    // 约定依赖限同一 toolchain：cargo-test → cargo-build（不是 npm build）。
+    let plan = build_plan(&dir, &config_default(), &prism_verify::VerifyOptions::default()).unwrap();
+    let cargo_test = plan
+        .checks
+        .iter()
+        .find(|check| check.id == "cargo-test")
+        .unwrap();
+    assert!(cargo_test.depends_on.contains(&"cargo-build".to_string()));
+    assert!(
+        !cargo_test.depends_on.contains(&"build".to_string()),
+        "cargo-test must not gate on the npm build: {:?}",
+        cargo_test.depends_on
+    );
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 // ---------- §148：unknown check ----------

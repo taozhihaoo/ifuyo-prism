@@ -58,18 +58,42 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
         }
     }
 
-    // ---- Rust 生态：Cargo.toml 存在 ⇒ cargo build/test（约定，§235 第三优先）----
+    // ---- Rust 生态：Cargo.toml 存在 ⇒ cargo build/test/check/clippy（§264）----
+    // id 带生态前缀：polyglot 仓库（如 Prism 自身 = npm + cargo）不与
+    // package.json scripts 的 build/test 撞 id（§128 稳定 id；§59 不静默覆盖）。
     if root.join("Cargo.toml").is_file() {
-        for (kind, program, args, name) in [
-            (CheckKind::Build, "cargo", vec!["build".to_string()], "cargo build"),
-            (CheckKind::Test, "cargo", vec!["test".to_string()], "cargo test"),
+        for (kind, id, program_args, name) in [
+            (
+                CheckKind::Build,
+                "cargo-build",
+                vec!["build".to_string()],
+                "cargo build",
+            ),
+            (
+                CheckKind::Test,
+                "cargo-test",
+                vec!["test".to_string()],
+                "cargo test",
+            ),
+            (
+                CheckKind::Typecheck,
+                "cargo-check",
+                vec!["check".to_string()],
+                "cargo check",
+            ),
+            (
+                CheckKind::Lint,
+                "cargo-clippy",
+                vec!["clippy".to_string()],
+                "cargo clippy",
+            ),
         ] {
             specs.push(CheckSpec {
-                id: kind.as_str().to_string(),
+                id: id.to_string(),
                 kind,
                 name: name.to_string(),
-                program: program.to_string(),
-                args,
+                program: "cargo".to_string(),
+                args: program_args,
                 working_directory: None,
                 timeout_ms: DEFAULT_TIMEOUT_MS,
                 max_output_bytes: None,
@@ -89,7 +113,7 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
         if let Ok(content) = std::fs::read_to_string(&pyproject) {
             if content.contains("[tool.pytest") {
                 specs.push(CheckSpec {
-                    id: "test".to_string(),
+                    id: "pytest".to_string(),
                     kind: CheckKind::Test,
                     name: "pytest".to_string(),
                     program: "python".to_string(),
@@ -105,6 +129,52 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
                     detected_from: "pyproject.toml [tool.pytest]".to_string(),
                 });
             }
+        }
+    }
+
+    // ---- C# 生态：.sln / .csproj ⇒ dotnet build/test（§263）----
+    // 工具未安装时执行报 Unavailable（§207），发现本身不撒谎。
+    let has_csproj = root.join("global.json").is_file()
+        || std::fs::read_dir(root)
+            .map(|entries| {
+                entries.filter_map(|entry| entry.ok()).any(|entry| {
+                    let name = entry.file_name();
+                    let name = name.to_string_lossy();
+                    name.ends_with(".csproj") || name.ends_with(".sln")
+                })
+            })
+            .unwrap_or(false);
+    if has_csproj {
+        for (kind, id, args, name) in [
+            (
+                CheckKind::Build,
+                "dotnet-build",
+                vec!["build".to_string()],
+                "dotnet build",
+            ),
+            (
+                CheckKind::Test,
+                "dotnet-test",
+                vec!["test".to_string()],
+                "dotnet test",
+            ),
+        ] {
+            specs.push(CheckSpec {
+                id: id.to_string(),
+                kind,
+                name: name.to_string(),
+                program: "dotnet".to_string(),
+                args,
+                working_directory: None,
+                timeout_ms: DEFAULT_TIMEOUT_MS,
+                max_output_bytes: None,
+                required: false,
+                write_policy: WritePolicy::BuildArtifacts,
+                depends_on: Vec::new(),
+                source: CheckSource::BuiltIn, // 生态约定内建（非用户配置）
+                confidence: CheckConfidence::HighConfidence,
+                detected_from: format!(".csproj/.sln ({name})"),
+            });
         }
     }
 

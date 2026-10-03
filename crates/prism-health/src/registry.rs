@@ -63,6 +63,10 @@ impl HealthRuleRegistry {
         registry.register(Box::new(crate::rules::code::LargeFunctionRule));
         registry.register(Box::new(crate::rules::code::LargeTypeRule));
         registry.register(Box::new(crate::rules::code::ExcessiveNestingRule));
+        registry.register(Box::new(crate::rules::security::HardcodedSecretRule));
+        registry.register(Box::new(crate::rules::security::PrivateKeyRule));
+        registry.register(Box::new(crate::rules::documentation::CommandDriftRule));
+        registry.register(Box::new(crate::rules::documentation::PathDriftRule));
         registry
     }
 

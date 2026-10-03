@@ -2,4 +2,6 @@
 pub mod architecture;
 pub mod code;
 pub mod dependency;
+pub mod documentation;
 pub mod maintenance;
+pub mod security;

@@ -2600,9 +2600,11 @@ version = "0.1.0"
 dependencies = [
  "prism-analysis",
  "prism-core",
+ "prism-env",
  "prism-graph",
  "prism-parser",
  "prism-project",
+ "prism-verify",
  "serde_json",
 ]
 

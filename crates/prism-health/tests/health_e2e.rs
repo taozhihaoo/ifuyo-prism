@@ -76,6 +76,7 @@ impl Fixture {
             change_set: None,
             impact: None,
             root: &self.root,
+            derived: None,
         };
         analyze(&HealthRuleRegistry::with_builtins(), config, &context, options, &cancel)
             .expect("health analysis")

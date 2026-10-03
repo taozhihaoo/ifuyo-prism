@@ -50,6 +50,8 @@ pub struct HealthContext<'a> {
     pub impact: Option<&'a prism_impact::ImpactAnalysis>,
     /// 项目根：规则按需读取文件内容（MAINT 词法扫描），不复制进上下文。
     pub root: &'a std::path::Path,
+    /// 派生事实（引擎按需构建一次共享，§91-§94）；调用方也可预构建传入。
+    pub derived: Option<&'a crate::derived::DerivedFacts>,
 }
 
 /// 引擎执行统计（§104：真实计数 progress，不造假百分比）。
@@ -94,6 +96,30 @@ pub fn analyze(
     options: &HealthOptions,
     cancel: &CancellationToken,
 ) -> PrismResult<HealthAnalysis> {
+    // ---- §91-§94：任一启用规则需要派生事实 ⇒ 构建一次共享 ----
+    let any_needs_derived = registry.rules().any(|rule| {
+        let meta = rule.meta();
+        config.is_rule_enabled(meta.id, meta.default_enabled).unwrap_or(meta.default_enabled)
+            && !options.disabled_rules.iter().any(|id| id == meta.id)
+            || options.enabled_rules.iter().any(|id| id == meta.id)
+    });
+    let derived_storage;
+    let shadow;
+    let context: &HealthContext = if any_needs_derived && context.derived.is_none() {
+        derived_storage = crate::derived::DerivedFacts::build(
+            context.code_model,
+            context.discovery,
+            context.graph,
+            context.root,
+        );
+        shadow = HealthContext {
+            derived: Some(&derived_storage),
+            ..*context
+        };
+        &shadow
+    } else {
+        context
+    };
     let mut diagnostics: Vec<HealthDiagnostic> = Vec::new();
     let mut checked: Vec<String> = Vec::new();
     let mut disabled: Vec<String> = Vec::new();
@@ -317,6 +343,7 @@ mod tests {
         default_severity: Severity::Warning,
         default_enabled: true,
         threshold_meaning: None,
+        needs_derived: false,
     });
     static META_B: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
         id: "TEST002",
@@ -326,6 +353,7 @@ mod tests {
         default_severity: Severity::Critical,
         default_enabled: true,
         threshold_meaning: None,
+        needs_derived: false,
     });
     static META_C: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
         id: "TEST003",
@@ -335,6 +363,7 @@ mod tests {
         default_severity: Severity::Info,
         default_enabled: false,
         threshold_meaning: None,
+        needs_derived: false,
     });
 
     struct RuleA;
@@ -424,6 +453,7 @@ mod tests {
             change_set: None,
             impact: None,
             root: std::path::Path::new("."),
+            derived: None,
         };
         analyze(registry, config, &context, options, cancel)
     }
@@ -563,6 +593,7 @@ mod tests {
             default_severity: Severity::Critical,
             default_enabled: true,
             threshold_meaning: None,
+            needs_derived: false,
         });
         impl HealthRule for RuleHigh {
             fn meta(&self) -> &'static HealthRuleMeta {
@@ -628,6 +659,7 @@ mod tests {
         default_severity: Severity::Info,
         default_enabled: true,
         threshold_meaning: None,
+        needs_derived: false,
     });
 
     struct RuleBulk {

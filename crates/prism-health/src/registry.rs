@@ -22,6 +22,9 @@ pub struct HealthRuleMeta {
     /// 规则声明的 threshold 语义；None = 该规则不接受 threshold
     /// （收到配置 threshold ⇒ 引擎期 unknown-option 诊断，§72）。
     pub threshold_meaning: Option<&'static str>,
+    /// 规则是否需要派生事实（文件内容/代码度量/fan 统计）；
+    /// 引擎据此决定是否构建一次供全部规则共享（§91-§94）。
+    pub needs_derived: bool,
 }
 
 /// 一条健康规则（§18：Inputs → Evaluation → Findings → Evidence）。

@@ -31,6 +31,7 @@ static META: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: None,
+    needs_derived: true,
 });
 
 const MARKERS: [&str; 4] = ["TODO", "FIXME", "HACK", "XXX"];
@@ -112,15 +113,33 @@ impl HealthRule for MaintenanceMarkerRule {
             return Ok(result);
         };
 
-        for parse_result in &code_model.parse_results {
+
+        // §91：优先消费引擎共享内容（一次读取）；否则回退直读。
+        let mut files: Vec<(String, String)> = Vec::new();
+        if let Some(derived) = context.derived {
+            for result in &code_model.parse_results {
+                if result.status == prism_parser::ParseStatus::Skipped {
+                    continue;
+                }
+                if let Some(content) = derived.file_contents.get(&result.relative_path) {
+                    files.push((result.relative_path.clone(), content.clone()));
+                }
+            }
+        } else {
+            for result in &code_model.parse_results {
+                if result.status == prism_parser::ParseStatus::Skipped {
+                    continue;
+                }
+                if let Ok(content) = std::fs::read_to_string(context.root.join(&result.relative_path)) {
+                    files.push((result.relative_path.clone(), content));
+                }
+            }
+        }
+
+        for (path, content) in &files {
             if cancel.is_cancelled() {
                 return Err(prism_core::PrismError::Cancelled);
             }
-            // Generated / 策略性跳过文件不扫描（与 M2 管线语义一致）。
-            if parse_result.status == prism_parser::ParseStatus::Skipped {
-                continue;
-            }
-            let path = &parse_result.relative_path;
             let extension = std::path::Path::new(path)
                 .extension()
                 .map(|value| value.to_string_lossy().to_ascii_lowercase());
@@ -128,10 +147,6 @@ impl HealthRule for MaintenanceMarkerRule {
             if introducers.is_empty() {
                 continue;
             }
-            let Ok(content) = std::fs::read_to_string(context.root.join(path)) else {
-                // 文件不可读（被删除/非 UTF-8）：词法扫描不适用，安静跳过（§208）。
-                continue;
-            };
 
             for (index, line) in content.lines().enumerate() {
                 if cancel.is_cancelled() {

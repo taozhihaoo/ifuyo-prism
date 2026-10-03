@@ -14,6 +14,7 @@
 
 mod changes_command;
 mod cli;
+mod health_command;
 mod impact_command;
 mod git_command;
 
@@ -106,6 +107,11 @@ fn run() -> i32 {
             format,
             max_files,
         }) => changes_command::run(&path, staged, from.as_deref(), to.as_deref(), format, max_files),
+        Some(cli::Command::Health { path, command }) => match command {
+            cli::HealthCommand::Rules { json } => {
+                health_command::run_rules(&path, json)
+            }
+        },
         Some(command) => not_implemented_yet(command.name()),
     }
 }

@@ -65,6 +65,17 @@ impl From<FormatArg> for OutputFormat {
     }
 }
 
+/// `prism health` 子命令（M7a 仅 rules；M7b 增加完整分析）。
+#[derive(Debug, Subcommand)]
+pub enum HealthCommand {
+    /// 列出内建规则与合并配置后的最终开关状态
+    Rules {
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
+}
+
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// 显示应用与运行时信息（真实数据，M0 可用）
@@ -160,10 +171,12 @@ pub enum Command {
         #[command(subcommand)]
         command: crate::git_command::GitCommand,
     },
-    /// 项目健康体检（M7）
+    /// 项目健康（M7a：规则检视；完整分析在 M7b）
     Health {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        #[command(subcommand)]
+        command: HealthCommand,
     },
     /// 运行构建/测试/静态检查（M8）
     Verify {

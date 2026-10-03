@@ -211,6 +211,11 @@ impl PrismConfig {
     }
 
     /// 从指定路径加载配置（文件不存在返回默认值与 `false`）。
+    /// 默认配置文件名（CLI/GUI 组装路径用）。
+    pub fn config_file_name() -> &'static str {
+        CONFIG_FILE_NAME
+    }
+
     pub fn load(path: &Path) -> PrismResult<(Self, bool)> {
         if !path.exists() {
             return Ok((Self::default(), false));

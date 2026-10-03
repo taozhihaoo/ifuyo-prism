@@ -2507,6 +2507,7 @@ dependencies = [
  "prism-core",
  "prism-git",
  "prism-graph",
+ "prism-health",
  "prism-impact",
  "prism-project",
  "serde",

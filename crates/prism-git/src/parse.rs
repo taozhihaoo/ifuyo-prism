@@ -78,7 +78,6 @@ pub fn parse_status_v2(output: &str) -> GitResult<(Vec<GitFileStatus>, Vec<Strin
                 i += 1;
             }
             "2" => {
-                eprintln!("DEBUG status 2 record: {:?}", record);
                 let xy = fields.next().ok_or(malformed("status", "missing XY"))?;
                 let path = record
                     .splitn(10, ' ')
@@ -254,13 +253,6 @@ pub fn parse_log(output: &str) -> Vec<GitCommit> {
         }
         let fields: Vec<&str> = record.split('\u{1f}').collect();
         if fields.len() < 10 {
-            eprintln!(
-                "DEBUG parse_log skip: {} fields, first={:?}",
-                fields.len(),
-                fields
-                    .first()
-                    .map(|f| f.chars().take(24).collect::<String>())
-            );
             continue;
         }
         let person = |name: &str, email: &str| GitPerson {
@@ -482,7 +474,6 @@ pub fn parse_patch(output: &str) -> Vec<GitDiffFile> {
                 ' ' => GitDiffLineKind::Context,
                 _ => continue, // "\ No newline..." 等不计行
             };
-            eprintln!("DEBUG patch line kind={:?} content={:?}", kind, line);
             let (old_line, new_line) = match kind {
                 GitDiffLineKind::Context => (Some(state.old_cursor), Some(state.new_cursor)),
                 GitDiffLineKind::Addition => (None, Some(state.new_cursor)),

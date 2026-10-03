@@ -140,7 +140,6 @@ impl Command {
             Command::Inspect { .. } => "inspect",
             Command::Graph { .. } => "graph",
             Command::Git { .. } => "git",
-            Command::Graph { .. } => "graph",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
             Command::Verify { .. } => "verify",

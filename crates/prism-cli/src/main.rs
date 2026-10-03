@@ -71,7 +71,7 @@ fn run() -> i32 {
         }
         Some(cli::Command::Git { path, command }) => {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
-            git_command::run(&path, command, runner)
+            git_command::run(&path, &command, runner)
         }
         Some(command) => not_implemented_yet(command.name()),
     }

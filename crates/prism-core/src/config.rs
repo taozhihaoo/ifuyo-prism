@@ -96,6 +96,41 @@ impl Default for LoggingConfig {
     }
 }
 
+/// 自定义验证命令（§52/§53：program+args 显式建模，不用 shell 字符串）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VerifyCheckConfig {
+    /// build/test/lint/format/typecheck/static_analysis/custom（小写，§8）。
+    pub kind: String,
+    pub program: String,
+    #[serde(default)]
+    pub args: Vec<String>,
+    /// 项目相对工作目录（默认项目根）。
+    #[serde(default)]
+    pub working_directory: Option<String>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+    /// required=true ⇒ 失败/不可用会拉低整体结论（§72/§73）。
+    #[serde(default)]
+    pub required: Option<bool>,
+    /// 显式声明写策略：read_only/build_artifacts/arbitrary_write（§86）。
+    #[serde(default)]
+    pub write_policy: Option<String>,
+    /// 依赖的其他 check id（§28：依赖失败/不可用 ⇒ Blocked）。
+    #[serde(default)]
+    pub depends_on: Vec<String>,
+}
+
+/// verify 配置节（M8a §233）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct VerifyConfig {
+    /// 自定义 checks，键 = 稳定 check id；同 id 覆盖自动检测（§59）。
+    pub checks: std::collections::BTreeMap<String, VerifyCheckConfig>,
+    /// required check id 清单（§72；整体结论据此判定）。
+    pub required: Vec<String>,
+}
+
 /// 单条健康规则的配置覆盖（§71）。键 = 稳定规则 id；
 /// `deny_unknown_fields` 把拼写错误（如 threshhold）变成解析错误而非静默忽略（§72）。
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -141,6 +176,8 @@ pub struct HealthConfig {
     pub suppressed_findings: Vec<String>,
     /// 架构规则配置（ARCH004 forbidden dependencies，§28/§133）。
     pub architecture: ArchitectureConfig,
+    /// Verify 配置（M8：自定义 checks + required 清单，§52/§72/§233）。
+    pub verify: VerifyConfig,
 }
 
 impl HealthConfig {
@@ -200,6 +237,7 @@ impl Default for PrismConfig {
             logging: LoggingConfig::default(),
             privacy: PrivacyConfig::default(),
             health: HealthConfig::default(),
+            verify: VerifyConfig::default(),
         }
     }
 }

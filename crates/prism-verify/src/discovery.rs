@@ -45,6 +45,7 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
                         args: manager.run_args(name),
                         working_directory: None,
                         timeout_ms: DEFAULT_TIMEOUT_MS,
+                        max_output_bytes: None,
                         required: false,
                         write_policy: discovered_write_policy(kind),
                         depends_on: Vec::new(),
@@ -71,6 +72,7 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
                 args,
                 working_directory: None,
                 timeout_ms: DEFAULT_TIMEOUT_MS,
+                max_output_bytes: None,
                 required: false,
                 write_policy: WritePolicy::BuildArtifacts,
                 depends_on: Vec::new(),
@@ -94,6 +96,7 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
                     args: vec!["-m".to_string(), "pytest".to_string()],
                     working_directory: None,
                     timeout_ms: DEFAULT_TIMEOUT_MS,
+                    max_output_bytes: None,
                     required: false,
                     write_policy: WritePolicy::BuildArtifacts,
                     depends_on: Vec::new(),
@@ -116,6 +119,7 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
             args: check.args.clone(),
             working_directory: check.working_directory.clone(),
             timeout_ms: check.timeout_ms.unwrap_or(DEFAULT_TIMEOUT_MS),
+            max_output_bytes: None,
             required: check.required.unwrap_or(false),
             write_policy: check
                 .write_policy

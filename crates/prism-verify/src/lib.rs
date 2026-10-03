@@ -24,7 +24,7 @@ pub mod tool;
 
 pub use discovery::discover_checks;
 pub use engine::{build_plan, run_verification};
-pub use executor::{execute_check, execute_plan, execute_plan_with, execute_plan_without_prereqs};
+pub use executor::{execute_check, execute_plan, execute_plan_observed, execute_plan_with, execute_plan_without_prereqs};
 pub use fake::{FakeCommandRunner, FakeResponse};
 pub use model::{
     CheckConfidence, CheckKind, CheckPolicy, CheckRun, CheckSource, CheckSpec, CheckState,

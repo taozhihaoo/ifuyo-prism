@@ -3,6 +3,11 @@
 //! 只记录执行事实（§98），不做质量判断。命令经 M0 CommandRunner 执行（§2）。
 //! 输出/命令脱敏（§77/§173）+ 有界采集（M0 max_output_bytes）+ TimedOut/
 //! Unavailable/Error 分类（§95）。
+//!
+//! 进程树边界（§92/§229 如实记录）：M0 `terminate` 仅终止**直接子进程**；
+//! 孙进程孤儿（npm→node→vitest worker 链）是已文档化的平台限制——
+//! Windows Job Object / POSIX process group 清理在 M8b 完善。
+//! timeout/cancel 路径已测试直接子进程被终止且状态正确（TimedOut/Cancelled）。
 
 use crate::model::{CheckRun, CheckSpec, CheckState, WritePolicy};
 use crate::redact::command_display;
@@ -58,6 +63,7 @@ pub fn execute_check_with_prereqs(
         environment_metadata: Vec::new(),
         diagnostics: Vec::new(),
         reason: None,
+        side_effects: Vec::new(),
     };
 
     // ---- WritePolicy（§85–§87）：ArbitraryWrite 默认拒绝执行 ----
@@ -88,9 +94,12 @@ pub fn execute_check_with_prereqs(
     }
 
     // ---- 真实执行（M0 CommandRunner，§2）----
-    let command_spec = CommandSpec::new(spec.program.clone(), spec.args.iter().cloned())
+    let mut command_spec = CommandSpec::new(spec.program.clone(), spec.args.iter().cloned())
         .with_working_directory(workdir)
         .with_timeout_ms(spec.timeout_ms);
+    if let Some(max_bytes) = spec.max_output_bytes {
+        command_spec.max_output_bytes = Some(max_bytes);
+    }
 
     match runner.run(&command_spec, Some(cancel)) {
         Ok(output) => {
@@ -189,7 +198,19 @@ fn cancelled_run(spec: &CheckSpec, reason: &str) -> CheckRun {
         environment_metadata: Vec::new(),
         diagnostics: Vec::new(),
         reason: Some(reason.to_string()),
+        side_effects: Vec::new(),
     }
+}
+
+/// `enforce_prerequisites=false`：FakeCommandRunner 测试基座（§180）。
+pub fn execute_plan_without_prereqs(
+    plan: &[CheckSpec],
+    runner: Arc<dyn CommandRunner>,
+    project_root: &Path,
+    max_concurrency: usize,
+    cancel: &prism_core::task::CancellationToken,
+) -> PrismResult<Vec<CheckRun>> {
+    execute_plan_inner(plan, runner, project_root, max_concurrency, false, None, cancel)
 }
 
 /// 有界并发执行（§29–§30）：按拓扑层分组，层间顺序（依赖语义），
@@ -202,26 +223,38 @@ pub fn execute_plan_with(
     max_concurrency: usize,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
-    execute_plan_inner(plan, runner, project_root, max_concurrency, true, cancel)
+    execute_plan_inner(plan, runner, project_root, max_concurrency, true, None, cancel)
 }
 
-/// `enforce_prerequisites=false`：FakeCommandRunner 测试基座（§180）。
-pub fn execute_plan_without_prereqs(
+/// 带 M4 Git 副作用观察的执行（§167/§198）：每层前后各取一次 GitStatus，
+/// 差异路径归因到该层所有 runs（层粒度，§168 只记录不回滚不归类为问题）。
+pub fn execute_plan_observed(
     plan: &[CheckSpec],
     runner: Arc<dyn CommandRunner>,
     project_root: &Path,
     max_concurrency: usize,
+    git: &prism_git::GitService,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
-    execute_plan_inner(plan, runner, project_root, max_concurrency, false, cancel)
+    execute_plan_inner(
+        plan,
+        runner,
+        project_root,
+        max_concurrency,
+        true,
+        Some(git),
+        cancel,
+    )
 }
 
-fn execute_plan_inner(
+
+pub(crate) fn execute_plan_inner(
     plan: &[CheckSpec],
     runner: Arc<dyn CommandRunner>,
     project_root: &Path,
     max_concurrency: usize,
     enforce_prerequisites: bool,
+    git: Option<&prism_git::GitService>,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
     let mut dependencies: std::collections::BTreeMap<String, Vec<String>> = Default::default();
@@ -286,6 +319,8 @@ fn execute_plan_inner(
         let (sender, receiver) = std::sync::mpsc::channel::<CheckRun>();
         let pending: Vec<CheckSpec> = batch.iter().map(|spec| (*spec).clone()).collect();
         let mut remaining_count = pending.len();
+        // §167/§198：层前 Git status 快照（仅在提供 GitService 时）。
+        let level_before = git.map(|git| snapshot_status(git, project_root, cancel));
 
         for spec in &pending {
             if cancel.is_cancelled() {
@@ -346,17 +381,30 @@ fn execute_plan_inner(
             });
         }
         drop(sender);
+        let mut level_runs: Vec<CheckRun> = Vec::new();
         for run in receiver {
             placed.insert(run.check_id.clone());
             outcomes.insert(run.check_id.clone(), run.state);
-            results.push(run);
             remaining_count -= 1;
+            level_runs.push(run);
             if remaining_count == 0 {
                 break;
             }
         }
         // §269/§35：已落位的 check 从剩余集合移除——缺失此行会导致无限重排。
         remaining.retain(|spec| !placed.contains(&spec.id));
+
+        // §167/§198：层后快照 ⇒ 副作用路径归因到本层全部 runs。
+        if let (Some(git), Some(before)) = (git, &level_before) {
+            let after = snapshot_status(git, project_root, cancel);
+            let side = diff_statuses(before, &after);
+            if !side.is_empty() {
+                for run in &mut level_runs {
+                    run.side_effects = side.clone();
+                }
+            }
+        }
+        results.extend(level_runs);
     }
 
     // —— 按 plan 顺序排序（§225）——
@@ -374,4 +422,46 @@ pub fn execute_plan(
     _config: &prism_core::config::HealthConfig,
 ) -> PrismResult<Vec<CheckRun>> {
     execute_plan_with(plan, runner, project_root, max_concurrency, cancel)
+}
+
+/// GitStatus 快照：path → (index_state, working_tree_state, is_untracked)。
+type StatusSnapshot = std::collections::BTreeMap<String, (String, String, bool)>;
+
+fn snapshot_status(
+    git: &prism_git::GitService,
+    root: &Path,
+    cancel: &prism_core::task::CancellationToken,
+) -> StatusSnapshot {
+    let mut snapshot = StatusSnapshot::new();
+    if let Ok(status) = git.status(root, false, cancel) {
+        for entry in &status.entries {
+            snapshot.insert(
+                entry.path.clone(),
+                (
+                    entry.index_state.as_str().to_string(),
+                    entry.working_tree_state.as_str().to_string(),
+                    entry.is_untracked,
+                ),
+            );
+        }
+    }
+    snapshot
+}
+
+/// before/after 差异：新增、删除或状态变化的路径（§167 verification side effect）。
+fn diff_statuses(before: &StatusSnapshot, after: &StatusSnapshot) -> Vec<String> {
+    let mut paths: Vec<String> = Vec::new();
+    for (path, state) in after {
+        if before.get(path) != Some(state) {
+            paths.push(path.clone());
+        }
+    }
+    for path in before.keys() {
+        if !after.contains_key(path) {
+            paths.push(path.clone());
+        }
+    }
+    paths.sort();
+    paths.dedup();
+    paths
 }

@@ -158,6 +158,8 @@ pub struct CheckSpec {
     /// 项目相对工作目录；None = 项目根（§16）。
     pub working_directory: Option<String>,
     pub timeout_ms: u64,
+    /// 输出采集上限（透传 M0 CommandSpec.max_output_bytes；§201/§202）。
+    pub max_output_bytes: Option<usize>,
     pub required: bool,
     pub write_policy: WritePolicy,
     /// 依赖的其他 check id（§28）。
@@ -233,6 +235,9 @@ pub struct CheckRun {
     pub diagnostics: Vec<VerifyDiagnostic>,
     /// 写策略执行结果备注（如 "skipped: arbitrary_write not allowed"）。
     pub reason: Option<String>,
+    /// 执行期间该 check 观测到的验证副作用（§167/§168：仅记录，不回滚、
+    /// 不归类为问题）。M8a 为层粒度归因（同层并发共享同一窗口）。
+    pub side_effects: Vec<String>,
 }
 
 /// Verify 诊断（§95/§154：分类明确，不都变成 "Command failed"）。
@@ -281,6 +286,8 @@ pub struct VerificationReport {
     pub conclusion: OverallConclusion,
     pub completeness: prism_core::PrismCompleteness,
     pub counts: VerifyCounts,
+    /// 整次验证观测到的副作用路径（执行前后 Git status 差异；§167/§198）。
+    pub side_effects: Vec<String>,
 }
 
 /// 引擎选项。

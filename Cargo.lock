@@ -2620,6 +2620,7 @@ name = "prism-verify"
 version = "0.1.0"
 dependencies = [
  "prism-core",
+ "prism-git",
  "prism-project",
  "serde",
  "serde_json",

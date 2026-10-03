@@ -71,6 +71,7 @@ pub fn run_verification(
             conclusion: OverallConclusion::NotRun,
             completeness: prism_core::PrismCompleteness::Complete,
             counts: VerifyCounts::default(),
+            side_effects: Vec::new(),
         });
     }
     if cancel.is_cancelled() {
@@ -130,6 +131,14 @@ pub fn run_verification(
         prism_core::PrismCompleteness::Complete
     };
 
+    // §167/§198：执行期间观测到的验证副作用（去重排序）。
+    let mut report_side_effects: Vec<String> = runs
+        .iter()
+        .flat_map(|run| run.side_effects.iter().cloned())
+        .collect();
+    report_side_effects.sort();
+    report_side_effects.dedup();
+
     Ok(VerificationReport {
         schema_version: VERIFY_SCHEMA_VERSION,
         project_name: project_name.to_string(),
@@ -138,5 +147,6 @@ pub fn run_verification(
         conclusion,
         completeness,
         counts,
+        side_effects: report_side_effects,
     })
 }

@@ -2529,6 +2529,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-env"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-project",
+ "serde",
+ "serde_json",
+ "uuid",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "prism-git"
 version = "0.1.0"
 dependencies = [

@@ -64,7 +64,7 @@ fn package_scripts(content: &str) -> Option<Vec<String>> {
 /// fenced 行中的 `npm/yarn/pnpm run <name>` 引用。
 fn referenced_runs(line: &str) -> Vec<String> {
     let mut names = Vec::new();
-    for manager in ["npm run", "yarn run", "pnpm run", "pnpm", "yarn", "npm"] {
+    for manager in ["npm run", "yarn run", "pnpm run"] {
         let mut cursor = 0;
         while let Some(found) = line[cursor..].find(manager) {
             let start = cursor + found + manager.len();
@@ -233,7 +233,14 @@ impl HealthRule for PathDriftRule {
         let Some((_, readme)) = readme_content(context) else {
             return Ok(result);
         };
-        for (line_number, line) in fenced_lines(&readme) {
+        // §53：markdown 链接本身即优先信号（全文扫描）；代码块行同样纳入。
+        let mut scan_targets: Vec<(usize, &str)> = fenced_lines(&readme);
+        for (index, line) in readme.lines().enumerate() {
+            scan_targets.push((index + 1, line));
+        }
+        scan_targets.sort();
+        scan_targets.dedup();
+        for (line_number, line) in scan_targets {
             if cancel.is_cancelled() {
                 return Err(PrismError::Cancelled);
             }

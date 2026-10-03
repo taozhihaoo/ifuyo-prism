@@ -69,10 +69,11 @@ impl DerivedFacts {
         }
         if let Some(discovery) = discovery {
             for file in &discovery.files {
-                if matches!(
-                    file.classification.kind,
-                    prism_project::FileKind::Documentation | prism_project::FileKind::Config
-                ) {
+                // 安全扫描面（§120/§49）：除 Generated 外的全部已发现文件
+                // ——secret 模式精确（键名+分隔符+长值/PEM 标记），宁宽收集、
+                // 报告时以 [REDACTED] 与 confidence 约束噪声；非 UTF-8 与
+                // 超大文件在读取防线被跳过。CODE/MAINT 规则仍只消费代码模型。
+                if file.classification.kind != prism_project::FileKind::Generated {
                     wanted.entry(file.relative_path.clone()).or_insert(file.language);
                 }
             }

@@ -172,9 +172,20 @@ impl HealthRule for HardcodedSecretRule {
         _config: &prism_core::config::HealthRuleConfig,
         cancel: &CancellationToken,
     ) -> prism_core::PrismResult<RuleResult> {
+        #[cfg(feature = "debug-health")]
+        eprintln!(
+            "[SEC001] derived={} files={}",
+            context.derived.is_some(),
+            context.derived.map(|d| d.file_contents.len()).unwrap_or(0)
+        );
         let mut result = RuleResult::default();
         scan_contents(context, cancel, |path, line_number, line| {
-            let Some((key, column)) = credential_line(line) else {
+            let probe = credential_line(line);
+            #[cfg(feature = "debug-health")]
+            if line.contains("api_key") {
+                eprintln!("[SEC001] line {line_number} = {line:?} probe={probe:?}");
+            }
+            let Some((key, column)) = probe else {
                 return;
             };
             result.findings.push(secret_finding(
@@ -227,12 +238,21 @@ impl HealthRule for PrivateKeyRule {
     }
 }
 
+/// 测试窥视口：返回 (key, column) 调试结果。
+pub fn debug_credential_line(line: &str) -> Option<(String, usize)> {
+    credential_line(line)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn credential_line_detects_assignment_shapes() {
+        let export_line = "export const api_key = \"sk-live-0123456789abcdef\";";
+        let probe = credential_line(export_line);
+        eprintln!("PROBE export_line -> {probe:?}");
+        assert!(probe.is_some(), "export-prefixed assignment must match: {probe:?}");
         assert!(credential_line("api_key = \"supersecret12345678\"").is_some());
         assert!(credential_line("client_secret: verylongsecretvalue12345").is_some());
         // 占位符（§48/§110）。

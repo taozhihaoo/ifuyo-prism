@@ -14,6 +14,7 @@
 
 mod changes_command;
 mod cli;
+mod impact_command;
 mod git_command;
 
 use clap::{CommandFactory, Parser};
@@ -74,6 +75,29 @@ fn run() -> i32 {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
             git_command::run(&path, &command, runner)
         }
+        Some(cli::Command::Impact {
+            path,
+            staged,
+            from,
+            to,
+            format,
+            max_files,
+            max_depth,
+            max_nodes,
+            include_tests,
+            include_docs,
+        }) => impact_command::run(
+            &path,
+            staged,
+            from.as_deref(),
+            to.as_deref(),
+            format,
+            max_files,
+            max_depth,
+            max_nodes,
+            include_tests,
+            include_docs,
+        ),
         Some(cli::Command::Changes {
             path,
             staged,

@@ -110,6 +110,38 @@ pub enum Command {
         #[arg(long, default_value_t = 200)]
         max_files: usize,
     },
+    /// 影响分析：ChangeSet × 关系图 → 潜在波及 + 证据（M6 可用）
+    Impact {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 比较 index 与 HEAD（staged），默认 HEAD → 工作区
+        #[arg(long)]
+        staged: bool,
+        /// RevisionRange 起点（与 --to 搭配，如 HEAD~1）
+        #[arg(long)]
+        from: Option<String>,
+        /// RevisionRange 终点（默认 HEAD）
+        #[arg(long)]
+        to: Option<String>,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = ChangesFormatArg::Text)]
+        format: ChangesFormatArg,
+        /// 变更文件数上限（透传 ChangeSet）
+        #[arg(long, default_value_t = 200)]
+        max_files: usize,
+        /// 反向遍历最大深度（关系跳数）
+        #[arg(long, default_value_t = 10)]
+        max_depth: u32,
+        /// 受影响节点上限
+        #[arg(long, default_value_t = 2000)]
+        max_nodes: u64,
+        /// 收集测试候选
+        #[arg(long, default_value_t = true)]
+        include_tests: bool,
+        /// 收集文档候选（无证据则记诊断）
+        #[arg(long, default_value_t = true)]
+        include_docs: bool,
+    },
     /// 依赖与架构图（M3 可用）
     Graph {
         #[arg(default_value = ".")]
@@ -163,6 +195,7 @@ impl Command {
             Command::Inspect { .. } => "inspect",
             Command::Graph { .. } => "graph",
             Command::Git { .. } => "git",
+            Command::Impact { .. } => "impact",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
             Command::Verify { .. } => "verify",

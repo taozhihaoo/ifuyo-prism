@@ -104,6 +104,15 @@ src/
     元数据（package.json deps / 内置表 / 框架前缀），不做在线 lookup；
     qualified_name 路径根式；C# using 解析经命名空间索引（exact > child >
     framework prefix > unresolved）；环 = SCC（>1 节点）仅为记录。
+13. **M5 ChangeSet 归属**：ChangeSet 是集成层（Git facts × 代码事实 × 模块事实），
+    独立 crate `prism-changes`，不并入 prism-git/prism-analysis —— 未来可从
+    Snapshot/Patch 产生 ChangeSource（M5 §103/§104）。确定性身份 =
+    `changeset:{repository}#{base}#{target}#{scope}`（base/target 为解析后 SHA，
+    repository 为目录名；绝对路径不入契约）。符号匹配分级保守：稳定 ID →
+    git rename local identity → 同文件 body 证据（唯一候选才成立，多候选
+    Ambiguous）；对侧解析带 error 时抑制 Added/Deleted 孤儿（§42）。
+    历史源只读：`git cat-file`（含 `:0` index 侧），blob 字节长度核对防
+    非 UTF-8 假空文件；绝不改写用户工作区。
 13. **M3 ModuleId**：`module:{kind}:{identity}`（相对路径/命名空间/包名），
     不含 project 维度——M1 ProjectId 是运行期 UUID，稳定项目身份属 M11。
 8. **CommandRunner 超时用轮询**（25ms tick），管道由独立线程读取防死锁；
@@ -134,8 +143,10 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 ```text
 M3  ✓ 已实现（prism-graph：模块/依赖/解析/图/环/指标/有限调用图——
     直接调用经名字解析，同文件 High、resolved-import Medium，其余 Unresolved）
-M4  prism-git         只读 Git 事实层（经 CommandRunner 调系统 git）
-M5  prism-changes     ChangeSet（或并入 prism-analysis，M5 开工时定案）
+M4  ✓ 已实现（prism-git：porcelain v2 -z status、for-each-ref、log、
+    三作用域 diff、只读 cat-file/rev-parse 历史源）
+M5  ✓ 已实现（prism-changes：ChangeSet 集成层 —— GitDiff × 代码模型 ×
+    M3 模块事实 → FileChange/SymbolChange/ModuleChange + 证据/诊断/汇总）
 M6  prism-impact      影响分析（反向遍历 M3 图）
 M7  prism-health      Finding 体系 + 规则引擎
 M8  prism-verify      Check 发现/计划/调度/执行/结果归一

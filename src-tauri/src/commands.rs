@@ -482,7 +482,7 @@ fn parse_changeset_scope(scope: &str) -> Result<prism_changes::ChangeScope, Pris
         "revision_range" => Ok(prism_changes::ChangeScope::RevisionRange),
         other => Err(PrismErrorDto::new(
             "invalid_input",
-            &format!("unknown changeset scope: {other}"),
+            format!("unknown changeset scope: {other}"),
         )),
     }
 }

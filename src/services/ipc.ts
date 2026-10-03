@@ -8,6 +8,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
   DependencyGraphResultDto,
+  ChangeSetDto,
+  ChangesetStatusDto,
   GitFactsDto,
   GraphStatus,
   InspectStatus,
@@ -108,4 +110,32 @@ export function getDependencyGraph(): Promise<DependencyGraphResultDto | null> {
 
 export function getGitFacts(includeIgnored: boolean): Promise<GitFactsDto> {
   return invoke<GitFactsDto>("get_git_facts", { includeIgnored });
+}
+
+// ---------- M5：ChangeSet ----------
+
+export function startChangeset(
+  scope: "working_tree" | "staged" | "revision_range",
+  from?: string,
+  to?: string,
+  maxFiles?: number,
+): Promise<string> {
+  return invoke<string>("start_changeset", {
+    scope,
+    from: from ?? null,
+    to: to ?? null,
+    maxFiles: maxFiles ?? null,
+  });
+}
+
+export function getChangesetStatus(): Promise<ChangesetStatusDto> {
+  return invoke<ChangesetStatusDto>("get_changeset_status");
+}
+
+export function getChangeset(): Promise<ChangeSetDto | null> {
+  return invoke<ChangeSetDto | null>("get_changeset");
+}
+
+export function cancelChangeset(): Promise<void> {
+  return invoke<void>("cancel_changeset");
 }

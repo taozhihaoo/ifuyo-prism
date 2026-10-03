@@ -520,3 +520,108 @@ export interface GitFactsDto {
   recent_commits: GitCommitDto[];
   refs: GitRefDto[];
 }
+
+// ---------- M5：ChangeSet ----------
+
+export type ChangeScopeDto = "working_tree" | "staged" | "revision_range";
+
+export interface ChangeSummaryDto {
+  files_total: number;
+  files_added: number;
+  files_modified: number;
+  files_deleted: number;
+  files_renamed: number;
+  files_copied: number;
+  files_type_changed: number;
+  files_other: number;
+  symbols_total: number;
+  symbols_added: number;
+  symbols_deleted: number;
+  symbols_modified: number;
+  symbols_renamed: number;
+  symbols_moved: number;
+  modules_changed: number;
+  files_with_ambiguous_symbols: number;
+  test_files_changed: number;
+  documentation_files_changed: number;
+  diagnostics_total: number;
+}
+
+export interface FileChangeDto {
+  id: string;
+  old_path: string | null;
+  new_path: string | null;
+  change_type: string;
+  additions: number | null;
+  deletions: number | null;
+  old_exists: boolean;
+  new_exists: boolean;
+  old_language: string | null;
+  new_language: string | null;
+  old_file_kind: string | null;
+  new_file_kind: string | null;
+  language_changed: boolean;
+  is_binary: boolean;
+  similarity: number | null;
+  mapping_status: string;
+}
+
+export interface LineRangeDto {
+  start_line: number;
+  end_line: number;
+}
+
+export interface SymbolChangeDto {
+  file_change_id: string;
+  path: string;
+  before_symbol_id: string | null;
+  after_symbol_id: string | null;
+  before_qualified_name: string | null;
+  after_qualified_name: string | null;
+  name: string;
+  kind: string;
+  change_type: string;
+  characteristics: string[];
+  location_before: LineRangeDto | null;
+  location_after: LineRangeDto | null;
+  mapping_status: string;
+  confidence: string;
+}
+
+export interface ModuleChangeDto {
+  id: string;
+  module_id: string;
+  module_name: string;
+  module_kind: string;
+  change_type: string;
+  changed_files: string[];
+  changed_symbol_count: number;
+  mapping_status: string;
+}
+
+export interface ChangeDiagnosticDto {
+  kind: string;
+  path: string | null;
+  detail: string;
+}
+
+export interface ChangeSetDto {
+  schema_version: number;
+  id: string;
+  source: string;
+  scope: ChangeScopeDto;
+  base: string | null;
+  target: string | null;
+  repository: string | null;
+  files: FileChangeDto[];
+  symbols: SymbolChangeDto[];
+  modules: ModuleChangeDto[];
+  summary: ChangeSummaryDto;
+  diagnostics: ChangeDiagnosticDto[];
+  truncated: boolean;
+}
+
+export interface ChangesetStatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  error: string | null;
+}

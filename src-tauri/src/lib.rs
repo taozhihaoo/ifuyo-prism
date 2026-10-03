@@ -58,6 +58,10 @@ pub fn run() {
             commands::get_graph_status,
             commands::get_dependency_graph,
             commands::get_git_facts,
+            commands::start_changeset,
+            commands::get_changeset_status,
+            commands::get_changeset,
+            commands::cancel_changeset,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

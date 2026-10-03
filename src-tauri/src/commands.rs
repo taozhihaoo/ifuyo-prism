@@ -464,3 +464,131 @@ pub fn get_git_facts(
         refs,
     })
 }
+
+// ---------- M5：ChangeSet ----------
+
+/// changeset 会话状态（前端轮询入口的 DTO）。
+#[derive(Debug, Clone, Serialize)]
+pub struct ChangesetStatusDto {
+    /// "idle" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub error: Option<String>,
+}
+
+fn parse_changeset_scope(scope: &str) -> Result<prism_changes::ChangeScope, PrismErrorDto> {
+    match scope {
+        "working_tree" => Ok(prism_changes::ChangeScope::WorkingTree),
+        "staged" => Ok(prism_changes::ChangeScope::Staged),
+        "revision_range" => Ok(prism_changes::ChangeScope::RevisionRange),
+        other => Err(PrismErrorDto::new(
+            "invalid_input",
+            &format!("unknown changeset scope: {other}"),
+        )),
+    }
+}
+
+/// 启动一次 ChangeSet 分析（后台线程；规格 M5 §71/§79：有界 + 可取消）。
+#[tauri::command]
+pub fn start_changeset(
+    state: State<'_, AppState>,
+    scope: String,
+    from: Option<String>,
+    to: Option<String>,
+    max_files: Option<usize>,
+) -> Result<String, PrismErrorDto> {
+    let scope = parse_changeset_scope(&scope)?;
+    if scope == prism_changes::ChangeScope::RevisionRange && (from.is_none() || to.is_none()) {
+        return Err(PrismErrorDto::new(
+            "invalid_input",
+            "revision_range scope requires from and to",
+        ));
+    }
+    let (root, token, session_arc) = {
+        let mut session = lock_session(&state.session);
+        let Some(project) = session.project.as_ref() else {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        };
+        if session.changeset_status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "a changeset analysis is already running",
+            ));
+        }
+        let root = project.root_path.clone();
+        session.begin_changeset();
+        let token = session.changeset_token.clone();
+        (root, token, state.session.clone())
+    };
+
+    std::thread::spawn(move || {
+        let options = prism_changes::ChangeSetOptions {
+            max_files: max_files.unwrap_or(200),
+            ..prism_changes::ChangeSetOptions::default()
+        };
+        let service = prism_changes::ChangeSetService::new(Arc::new(StdCommandRunner::new()));
+        let outcome = service.build(
+            &root,
+            scope,
+            from.as_deref(),
+            to.as_deref(),
+            &options,
+            &token,
+        );
+        let mut session = lock_session(&session_arc);
+        match outcome {
+            Ok(Some(changeset)) => {
+                session.changeset_status = Some(TaskState::Completed);
+                session.changeset_model = Some(changeset);
+            }
+            // 非 Git 项目：保留 completed + 空模型由 get_changeset 表达 None。
+            Ok(None) => {
+                session.changeset_status = Some(TaskState::Completed);
+                session.changeset_model = None;
+            }
+            Err(prism_core::PrismError::Cancelled) => {
+                session.changeset_status = Some(TaskState::Cancelled);
+            }
+            Err(err) => {
+                session.changeset_status = Some(TaskState::Failed);
+                session.changeset_error = Some(err.to_string());
+            }
+        }
+    });
+
+    Ok("started".to_string())
+}
+
+/// 查询 changeset 会话状态。
+#[tauri::command]
+pub fn get_changeset_status(state: State<'_, AppState>) -> ChangesetStatusDto {
+    let session = lock_session(&state.session);
+    let status = match session.changeset_status {
+        None => "idle".to_string(),
+        Some(status) => serde_json::to_value(status)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+    ChangesetStatusDto {
+        status,
+        error: session.changeset_error.clone(),
+    }
+}
+
+/// 获取最近一次完成的 ChangeSet（非 Git 项目/未完成为 None）。
+#[tauri::command]
+pub fn get_changeset(state: State<'_, AppState>) -> Option<prism_changes::ChangeSet> {
+    let session = lock_session(&state.session);
+    session.changeset_model.clone()
+}
+
+/// 取消当前 changeset 分析（页面关闭时调用，§79）。
+#[tauri::command]
+pub fn cancel_changeset(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
+    let session = lock_session(&state.session);
+    session.changeset_token.cancel();
+    Ok(())
+}

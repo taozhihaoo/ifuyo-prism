@@ -3,6 +3,7 @@
 //! 本 crate 只是 IPC 边界：commands 接收前端调用、调用 Application 层、
 //! 返回 Core 数据。业务逻辑一律在 `prism-core`，GUI 不自建逻辑。
 
+mod verify_commands;
 mod commands;
 mod state;
 
@@ -42,7 +43,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(state::AppState::new(config))
         .invoke_handler(tauri::generate_handler![
-            commands::get_app_info,
+              commands::get_app_info,
             commands::get_prism_version,
             commands::get_runtime_info,
             commands::open_project,
@@ -70,6 +71,11 @@ pub fn run() {
             commands::get_health_status,
             commands::get_health_analysis,
             commands::cancel_health,
+            verify_commands::verify_plan,
+            verify_commands::start_verify,
+            verify_commands::get_verify_status,
+            verify_commands::get_verify_results,
+            verify_commands::cancel_verify,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

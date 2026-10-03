@@ -782,3 +782,75 @@ export interface HealthStatusDto {
   status: "idle" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
 }
+
+// ---------- M8：Verify ----------
+
+export interface PlannedCheckDto {
+  id: string;
+  kind: string;
+  name: string;
+  program: string;
+  args: string[];
+  required: boolean;
+  source: string;
+  detected_from: string;
+  depends_on: string[];
+}
+
+export interface VerifyPlanDto {
+  checks: PlannedCheckDto[];
+}
+
+export interface VerifyCountsDto {
+  passed: number;
+  failed: number;
+  unavailable: number;
+  blocked: number;
+  skipped: number;
+  cancelled: number;
+  timed_out: number;
+  error: number;
+}
+
+export interface VerifyDiagnosticDto {
+  kind: string;
+  detail: string;
+}
+
+export interface CheckRunDto {
+  run_id: string;
+  check_id: string;
+  kind: string;
+  name: string;
+  required: boolean;
+  state: string;
+  command_display: string;
+  working_directory: string;
+  started_at: string | null;
+  finished_at: string | null;
+  duration_ms: number;
+  exit_code: number | null;
+  stdout: string;
+  stderr: string;
+  output_truncated: boolean;
+  diagnostics: VerifyDiagnosticDto[];
+  reason: string | null;
+  side_effects: string[];
+}
+
+export interface VerificationReportDto {
+  schema_version: number;
+  project_name: string;
+  plan: VerifyPlanDto;
+  runs: CheckRunDto[];
+  conclusion: "pass" | "fail" | "partial" | "not_run";
+  completeness: string;
+  counts: VerifyCountsDto;
+  side_effects: string[];
+  impacted_test_candidates: string[];
+}
+
+export interface VerifyStatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  error: string | null;
+}

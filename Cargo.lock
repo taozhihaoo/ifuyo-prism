@@ -2476,6 +2476,7 @@ dependencies = [
  "prism-health",
  "prism-impact",
  "prism-project",
+ "prism-verify",
  "serde",
  "serde_json",
  "tauri",

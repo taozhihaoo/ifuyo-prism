@@ -22,6 +22,7 @@ prism-git.workspace = true
 prism-changes.workspace = true
 prism-impact.workspace = true
 prism-health.workspace = true
+prism-verify.workspace = true
 serde.workspace = true
 log.workspace = true
 serde_json.workspace = true

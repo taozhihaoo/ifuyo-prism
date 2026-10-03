@@ -72,6 +72,16 @@ pub struct ScanSession {
     pub health_model: Option<prism_health::HealthAnalysis>,
     /// health Failed 时的错误描述。
     pub health_error: Option<String>,
+    /// ---- M8 Verify ----
+    /// verify 取消令牌。
+    pub verify_token: CancellationToken,
+    /// verify 状态：None = 尚未执行。
+    pub verify_status: Option<TaskState>,
+    /// 最近一次完成的验证计划+结果。
+    pub verify_plan: Option<prism_verify::VerifyPlan>,
+    pub verify_report: Option<prism_verify::VerificationReport>,
+    /// verify Failed 时的错误描述。
+    pub verify_error: Option<String>,
     /// ---- M5 ChangeSet ----
     /// changeset 取消令牌（独立于扫描/inspect/graph）。
     pub changeset_token: CancellationToken,
@@ -123,6 +133,10 @@ impl ScanSession {
         self.health_status = None;
         self.health_model = None;
         self.health_error = None;
+        self.verify_status = None;
+        self.verify_plan = None;
+        self.verify_report = None;
+        self.verify_error = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;
@@ -141,6 +155,15 @@ impl ScanSession {
         self.graph_model = None;
         self.graph_error = None;
         task_id
+    }
+
+    /// 准备一次 verify（plan 阶段或执行阶段共用）。
+    pub fn begin_verify(&mut self) {
+        self.verify_token = CancellationToken::new();
+        self.verify_status = Some(TaskState::Running);
+        self.verify_plan = None;
+        self.verify_report = None;
+        self.verify_error = None;
     }
 
     /// 准备一次 health 分析。

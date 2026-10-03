@@ -12,6 +12,9 @@ import type {
   ChangesetStatusDto,
   HealthAnalysisDto,
   HealthStatusDto,
+  VerifyPlanDto,
+  VerificationReportDto,
+  VerifyStatusDto,
   ImpactAnalysisDto,
   ImpactStatusDto,
   GitFactsDto,
@@ -190,4 +193,31 @@ export function getHealthAnalysis(): Promise<HealthAnalysisDto | null> {
 
 export function cancelHealth(): Promise<void> {
   return invoke<void>("cancel_health");
+}
+
+// ---------- M8：Verify ----------
+
+export function getVerifyPlan(): Promise<VerifyPlanDto> {
+  return invoke<VerifyPlanDto>("verify_plan");
+}
+
+export function startVerify(checks?: string[]): Promise<string> {
+  return invoke<string>("start_verify", { checks: checks ?? null });
+}
+
+export function getVerifyStatus(): Promise<VerifyStatusDto> {
+  return invoke<VerifyStatusDto>("get_verify_status");
+}
+
+export interface VerifyResults {
+  plan: VerifyPlanDto;
+  report: VerificationReportDto | null;
+}
+
+export function getVerifyResults(): Promise<VerifyResults | null> {
+  return invoke<VerifyResults | null>("get_verify_results");
+}
+
+export function cancelVerify(): Promise<void> {
+  return invoke<void>("cancel_verify");
 }

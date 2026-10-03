@@ -179,9 +179,11 @@ M8  ✓ 已实现（prism-verify：Check 发现（Node/Python/C#/Rust/CI/自定�
     计划/拓扑调度/有界并发执行/WritePolicy 默认拒绝/超时取消/副作用观察/
     保守结构化解析（pytest/dotnet/junit/SARIF）/verified_state/CI 静态抽取/
     Release 检查/--changed 候选链；CLI verify checks/ci/release + GUI Verify 页）
-M9  ◐ M9a 已实现（prism-env：host/shell/PATH 采集与规范化、allowlist ToolProbe、
-    结构化版本、runtime/SDK/包管理器/venv、需求匹配四态、敏感变量无值采集、
-    `prism env` 基础输出；M9b：requirements/findings/reports/动态事实）
+M9  ✓ 已实现（prism-env：host/shell/PATH 采集与规范化、allowlist ToolProbe、
+    结构化版本、runtime/SDK/包管理器/venv、需求 provider 层级 + RequirementConflict
+    保留、匹配四态 + 端口 Available 语义、findings 引擎 + 聚合状态、端口/进程
+    动态事实（observed_at）、MD/HTML 隐私报告、`prism env` 完整 CLI + GUI
+    Environment 页（GUI/CLI 同源 service））
 M10 prism-context     ContextPack 组装（无 LLM）
 M11 prism-snapshot + prism-store   快照与 SQLite 持久化
 ```

@@ -46,16 +46,23 @@ pub fn parse_junit(xml: &str) -> ParseOutcome {
     let mut rest = xml;
     while let Some(start) = rest.find("<testcase") {
         rest = &rest[start..];
-        let Some(tag_end_rel) = rest.find('>') else {
+        let Some(gt_rel) = rest.find('>') else {
             break;
         };
-        let tag_end = tag_end_rel.min(rest.find("/>").unwrap_or(tag_end_rel));
-        let open_tag = &rest[..tag_end + 1];
+        // 自闭合（`/>`）与非自闭合（`</testcase>`）分别定界。
+        let self_closing = rest[..=gt_rel].ends_with("/>");
+        let open_tag = &rest[..=gt_rel];
         let name = extract_attr(open_tag, "name").unwrap_or_default();
         let classname = extract_attr(open_tag, "classname").unwrap_or_default();
-        // failure/error 子元素是否存在（在 </testcase> 之前）。
-        let body_end = rest.find("</testcase>").unwrap_or(tag_end);
-        let body = &rest[..body_end];
+        let body = if self_closing {
+            String::new()
+        } else {
+            match rest[gt_rel..].find("</testcase>") {
+                Some(close_rel) => rest[gt_rel + 1..gt_rel + close_rel].to_string(),
+                // 未见闭合标签 ⇒ 视为自闭合（保守：不跨元素搜失败标记）。
+                None => String::new(),
+            }
+        };
         let failed = body.contains("<failure") || body.contains("<error");
         let location = (!classname.is_empty()).then(|| classname.replace("::", "/"));
         outcome.diagnostics.push(ToolDiagnostic {
@@ -70,7 +77,15 @@ pub fn parse_junit(xml: &str) -> ParseOutcome {
             // §101：失败且可定位才给 location，否则 None（不猜）。
             location: if failed { location } else { None },
         });
-        rest = &rest[body_end..];
+        if self_closing {
+            rest = &rest[gt_rel + 1..];
+        } else {
+            let close = rest[gt_rel..].find("</testcase>").map(|p| gt_rel + p);
+            match close {
+                Some(close_abs) => rest = &rest[close_abs + 11..],
+                None => break,
+            }
+        }
     }
     if outcome.diagnostics.is_empty() {
         return ParseOutcome::failed("no testcase elements parsed");

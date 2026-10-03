@@ -33,7 +33,7 @@ pub use directory::DirectoryInfo;
 pub use discovery::{ProjectDiscovery, ScanInfo, SCHEMA_VERSION};
 pub use entry_point::{EntryPoint, EntryPointKind};
 pub use evidence::Evidence;
-pub use file::{FileClassification, FileInfo, FileKind};
+pub use file::{build_file_info, FileClassification, FileClassifier, FileInfo, FileKind};
 pub use ignore::{IgnoreEngine, ScanOptions};
 pub use language::{Language, LanguageRegistry};
 pub use project::Project;

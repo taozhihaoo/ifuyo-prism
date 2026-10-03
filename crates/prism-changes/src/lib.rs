@@ -22,6 +22,7 @@ pub mod evidence;
 pub mod file_change;
 pub mod model;
 pub mod module_change;
+pub mod revision;
 pub mod symbol_change;
 
 pub use diagnostic::{ChangeDiagnostic, ChangeDiagnosticKind};
@@ -33,5 +34,9 @@ pub use model::{
     MappingStatus,
 };
 pub use module_change::{ModuleChange, ModuleChangeType};
+pub use revision::{
+    build_side_model, CurrentWorkingTreeSource, FileModel, GitRevisionSource, RevisionSource,
+    SideModel, SourceState,
+};
 pub use model::LineRange;
 pub use symbol_change::{SymbolChange, SymbolChangeType, SymbolCharacteristic};

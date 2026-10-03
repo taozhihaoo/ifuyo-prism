@@ -1,8 +1,10 @@
 pub mod collectors;
+pub mod materializer;
 pub mod model;
 pub mod selector;
 pub mod task;
 
+pub use materializer::{classify_path, materialize, MaterializeReport};
 pub use model::{
     BudgetReport, ContextBudget, ContextDiagnostic, ContextFocus, ContextGroup, ContextItem,
     ContextManifest, ContextPack, ContextRange, ContextRequest, ContextScope, ContextSource,

@@ -317,6 +317,40 @@ mod tests {
     }
 
     #[test]
+    fn health_config_merges_deterministically() {
+        let config = HealthConfig {
+            rules: [(
+                "MAINT001".to_string(),
+                HealthRuleConfig {
+                    enabled: Some(false),
+                    severity: None,
+                    threshold: None,
+                },
+            )]
+            .into_iter()
+            .collect(),
+            disabled_rules: vec!["SEC001".to_string()],
+        };
+        // §221 precedence：disabled_rules > rules.<id>.enabled > default。
+        assert_eq!(config.is_rule_enabled("SEC001", true), Some(false));
+        assert_eq!(config.is_rule_enabled("MAINT001", true), Some(false));
+        assert_eq!(config.is_rule_enabled("UNKNOWN999", true), Some(true));
+        assert_eq!(config.is_rule_enabled("OTHER", false), Some(false));
+    }
+
+    #[test]
+    fn health_rule_config_rejects_unknown_fields() {
+        // §72：threshhold 拼写错误必须报错，不得静默接受。
+        let result: Result<HealthRuleConfig, _> = serde_json::from_str(r#"{"threshhold": 200}"#);
+        assert!(result.is_err(), "unknown option must fail parsing");
+        let ok: HealthRuleConfig =
+            serde_json::from_str(r#"{"enabled": false, "severity": "warning", "threshold": 5}"#)
+                .unwrap();
+        assert_eq!(ok.enabled, Some(false));
+        assert_eq!(ok.severity, Some(crate::severity::Severity::Warning));
+    }
+
+    #[test]
     fn roundtrip_preserves_values() {
         let mut config = PrismConfig::default();
         config.logging.level = LogLevel::Debug;

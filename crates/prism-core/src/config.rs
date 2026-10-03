@@ -176,8 +176,6 @@ pub struct HealthConfig {
     pub suppressed_findings: Vec<String>,
     /// 架构规则配置（ARCH004 forbidden dependencies，§28/§133）。
     pub architecture: ArchitectureConfig,
-    /// Verify 配置（M8：自定义 checks + required 清单，§52/§72/§233）。
-    pub verify: VerifyConfig,
 }
 
 impl HealthConfig {
@@ -225,6 +223,9 @@ pub struct PrismConfig {
     /// M7 健康规则配置（规则开关/覆盖 severity/阈值；§70 复用唯一配置系统）。
     #[serde(default)]
     pub health: HealthConfig,
+    /// 验证配置（M8：自定义 checks + required 清单，§52/§72/§233）。
+    #[serde(default)]
+    pub verify: VerifyConfig,
 }
 
 impl Default for PrismConfig {
@@ -398,7 +399,6 @@ mod tests {
             disabled_rules: vec!["SEC001".to_string()],
             suppressed_findings: vec![],
             architecture: Default::default(),
-            verify: Default::default(),
         };
         // §221 precedence：disabled_rules > rules.<id>.enabled > default。
         assert_eq!(config.is_rule_enabled("SEC001", true), Some(false));

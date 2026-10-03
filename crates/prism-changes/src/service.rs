@@ -158,6 +158,12 @@ impl ChangeSetService {
             }
             diff_files.sort_by_path();
         }
+        // 合并后的最终视图截断（untracked 合并可能超限；§35 如实标注）。
+        let mut truncated = diff.truncated;
+        if diff_files.len() > options.max_files {
+            diff_files.truncate(options.max_files);
+            truncated = true;
+        }
 
         // ---- 双侧读取路径（rename 读旧路径；Added/Deleted/binary 不读缺失侧）----
         let needed = |file: &&GitDiffFile| !file.is_binary;
@@ -374,7 +380,7 @@ impl ChangeSetService {
             modules,
             summary,
             diagnostics,
-            truncated: diff.truncated,
+            truncated,
         }))
     }
 }

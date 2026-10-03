@@ -404,20 +404,57 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
     }
 
     // ---- Stage 4：剩余孤儿 ⇒ Deleted / Added（需变更行证据，§23）----
+    // 保守抑制（§42/§84）：对侧解析带 error 诊断时，符号缺失可能是恢复缺失，
+    // 不得据此断言 Deleted/Added —— 记 SymbolMappingUnavailable 诊断。
+    let after_has_errors = input
+        .after
+        .and_then(|model| model.parse.as_ref())
+        .is_some_and(|parse| parse.has_errors());
+    let before_has_errors = input
+        .before
+        .and_then(|model| model.parse.as_ref())
+        .is_some_and(|parse| parse.has_errors());
+
+    let mut suppressed_deleted = false;
     for before in &before_only {
         if !matched_before_ids.contains(before.id.as_str()) && input.changed.hits_old(&before.range)
         {
+            if after_has_errors {
+                suppressed_deleted = true;
+                continue;
+            }
             output.changes.push(orphan_change(
                 input, Side::Before, before, SymbolChangeType::Deleted,
             ));
         }
     }
+    let mut suppressed_added = false;
     for after in &after_only {
         if !matched_after_ids.contains(after.id.as_str()) && input.changed.hits_new(&after.range) {
+            if before_has_errors {
+                suppressed_added = true;
+                continue;
+            }
             output.changes.push(orphan_change(
                 input, Side::After, after, SymbolChangeType::Added,
             ));
         }
+    }
+    if suppressed_deleted {
+        output.diagnostics.push(ChangeDiagnostic {
+            kind: ChangeDiagnosticKind::SymbolMappingUnavailable,
+            path: Some(input.path.clone()),
+            detail: "after parse has error diagnostics; deletions suppressed as possibly unrecovered"
+                .to_string(),
+        });
+    }
+    if suppressed_added {
+        output.diagnostics.push(ChangeDiagnostic {
+            kind: ChangeDiagnosticKind::SymbolMappingUnavailable,
+            path: Some(input.path.clone()),
+            detail: "before parse has error diagnostics; additions suppressed as possibly unrecovered"
+                .to_string(),
+        });
     }
 }
 

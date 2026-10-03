@@ -313,12 +313,17 @@ pub fn parse_numstat(output: &str) -> BTreeMap<String, (Option<u64>, Option<u64>
             .transpose()
             .ok()
             .flatten();
-        if parts.next().is_some() {
-            // rename：orig path 在下一条 NUL 记录；以 orig path 为键（旧路径统计）。
-            if let Some(orig) = records.get(i + 1) {
-                map.insert(orig.to_string(), (additions, deletions, is_binary));
+        // rename 布局（实测 git -z）：`add	del	 src dst ` —— 路径字段为空，
+        // 其后两条 NUL 记录分别是 src（旧）与 dst（新）；统计以 src 为键
+        // （与 provider 的 lookup_path = original_path 对齐）。
+        if path.is_empty() {
+            if let (Some(src), Some(dst)) = (records.get(i + 1), records.get(i + 2)) {
+                map.insert(src.to_string(), (additions, deletions, is_binary));
+                let _ = dst;
+                i += 3;
+            } else {
+                i += 1;
             }
-            i += 2;
         } else {
             map.insert(path.to_string(), (additions, deletions, is_binary));
             i += 1;
@@ -362,15 +367,17 @@ pub fn parse_raw_diff(output: &str) -> Vec<RawDiffEntry> {
         let change = status_chars.next().unwrap_or('X');
         let similarity: Option<u64> = status_chars.as_str().parse().ok();
         let is_rename = change == 'R' || change == 'C';
-        let Some(path) = records.get(i + 1) else {
-            break;
-        };
-        let orig_path = if is_rename {
-            let orig = records.get(i + 2).cloned();
-            i += 1;
-            orig
+        // rename/copy 的 -z 路径顺序（实测）：`...R100 <src 旧> <dst 新> `。
+        let (path, orig_path) = if is_rename {
+            match (records.get(i + 2), records.get(i + 1)) {
+                (Some(new_path), Some(orig)) => (new_path, Some(orig.to_string())),
+                _ => break,
+            }
         } else {
-            None
+            let Some(path) = records.get(i + 1) else {
+                break;
+            };
+            (path, None)
         };
         entries.push(RawDiffEntry {
             old_mode,
@@ -379,11 +386,11 @@ pub fn parse_raw_diff(output: &str) -> Vec<RawDiffEntry> {
             new_blob,
             change_type: GitChangeType::from_letter(change),
             path: path.to_string(),
-            original_path: orig_path.map(str::to_string),
+            original_path: orig_path,
             is_rename,
             similarity,
         });
-        i += 2;
+        i += if is_rename { 3 } else { 2 };
     }
     entries
 }

@@ -113,8 +113,9 @@ fn log_parses_merge_and_initial() {
 
 #[test]
 fn raw_diff_parses_rename_and_modes() {
+    // 实测 git -z 布局：rename/copy 的路径顺序是 <src 旧>\0<dst 新>。
     let output = ":100644 100755 abc def M\0src/script.sh\0\
-        :100644 100644 123 456 R100\0new.ts\0old.ts\0";
+        :100644 100644 123 456 R100\0old.ts\0new.ts\0";
     let entries = parse_raw_diff(output);
     assert_eq!(entries.len(), 2);
     assert_eq!(entries[0].change_type, GitChangeType::Modified);

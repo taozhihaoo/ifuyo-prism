@@ -367,7 +367,13 @@ impl GitProvider for CliGitProvider {
         max_files: usize,
         cancel: &CancellationToken,
     ) -> GitResult<GitDiff> {
-        let mut args: Vec<String> = vec!["diff".to_string()];
+        // pin quotepath：patch 无 -z，unicode 路径默认会被八进制转义，
+        // 导致与 raw/numstat 的 UTF-8 路径不匹配（M5 special-paths 回归）。
+        let mut args: Vec<String> = vec![
+            "-c".to_string(),
+            "core.quotepath=false".to_string(),
+            "diff".to_string(),
+        ];
         if scope == GitDiffScope::Staged {
             args.push("--cached".to_string());
         }
@@ -387,17 +393,17 @@ impl GitProvider for CliGitProvider {
 
         // 三条批量查询：numstat -z（统计）+ raw -z（元数据）+ patch（hunk）。
         let mut numstat_args = args.clone();
-        numstat_args.insert(1, "--numstat".to_string());
-        numstat_args.insert(2, "-z".to_string());
+        numstat_args.insert(3, "--numstat".to_string());
+        numstat_args.insert(4, "-z".to_string());
         let numstat_output = self.run_git(repo, &to_refs(&numstat_args), cancel)?;
 
         let mut raw_args = args.clone();
-        raw_args.insert(1, "--raw".to_string());
-        raw_args.insert(2, "-z".to_string());
+        raw_args.insert(3, "--raw".to_string());
+        raw_args.insert(4, "-z".to_string());
         let raw_output = self.run_git(repo, &to_refs(&raw_args), cancel)?;
 
         let mut patch_args = args.clone();
-        patch_args.insert(1, "--patch".to_string());
+        patch_args.insert(3, "--patch".to_string());
         let patch_output = self.run_git(repo, &to_refs(&patch_args), cancel)?;
 
         let _ = args_refs;

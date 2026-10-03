@@ -15,7 +15,9 @@ pub mod host;
 pub mod model;
 pub mod paths;
 pub mod probe;
+pub mod requirement;
 pub mod runtime;
+pub mod variables;
 pub mod tools;
 pub mod version;
 
@@ -38,6 +40,8 @@ pub use probe::{run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe
 pub use tools::{
     definition, discover_tool, EnvironmentProfile, ToolDefinition, TOOL_ALLOWLIST,
 };
+pub use requirement::{base_requirements, match_requirements};
+pub use variables::{collect_variables, is_possibly_sensitive};
 pub use version::{
     compare_versions, parse_version_output, parse_version_token, satisfies, ToolVersion,
 };

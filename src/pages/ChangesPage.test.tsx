@@ -9,6 +9,10 @@ const ipc = vi.hoisted(() => ({
   getChangesetStatus: vi.fn(),
   getChangeset: vi.fn(),
   cancelChangeset: vi.fn(),
+  startImpact: vi.fn(),
+  getImpactStatus: vi.fn(),
+  getImpact: vi.fn(),
+  cancelImpact: vi.fn(),
   toPrismError: (err: unknown) => ({
     code: "internal",
     message: String(err),
@@ -171,6 +175,11 @@ describe("ChangesPage (M5 ChangeSet)", () => {
     ipc.getChangesetStatus.mockReset();
     ipc.getChangeset.mockReset();
     ipc.cancelChangeset.mockReset().mockResolvedValue(undefined);
+    // M6 默认 idle：不触发 impact 链（专项测试里再覆盖）。
+    ipc.startImpact.mockReset().mockResolvedValue("started");
+    ipc.getImpactStatus.mockReset().mockResolvedValue({ status: "idle", error: null });
+    ipc.getImpact.mockReset().mockResolvedValue(null);
+    ipc.cancelImpact.mockReset().mockResolvedValue(undefined);
   });
 
   it("renders summary, files, symbols, modules and diagnostics", async () => {
@@ -228,5 +237,130 @@ describe("ChangesPage (M5 ChangeSet)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("changes-error")).toHaveTextContent("git exploded");
     });
+  });
+});
+
+describe("ChangesPage (M6 Impact)", () => {
+  beforeEach(() => {
+    ipc.getGitFacts.mockReset().mockResolvedValue(factsFixture);
+    ipc.startChangeset.mockReset().mockResolvedValue("started");
+    ipc.getChangesetStatus.mockReset().mockResolvedValue({ status: "completed", error: null });
+    ipc.getChangeset.mockReset().mockResolvedValue(changesetFixture);
+    ipc.startImpact.mockReset().mockResolvedValue("started");
+    ipc.getImpactStatus.mockReset().mockResolvedValue({ status: "completed", error: null });
+    ipc.getImpact.mockReset().mockResolvedValue({
+      schema_version: 1,
+      id: "impact:cs#10#2000",
+      change_set_id: "changeset:demo#1",
+      scope: "working_tree",
+      analysis_completeness: "complete",
+      analysis_incomplete: false,
+      changed_items: [],
+      impacted_items: [
+        {
+          node_id: "symbol:src/checkout.ts#src/checkout.checkout#function",
+          node_kind: "symbol",
+          impact_kinds: ["direct_dependent", "caller"],
+          distance: 1,
+          confidence: "high_confidence",
+          reasons: ["calls_changed_symbol"],
+          evidence_path_count: 1,
+          additional_paths: 0,
+          path: "src/checkout.ts",
+          name: "checkout",
+        },
+        {
+          node_id: "module:file:src/checkout.test.ts",
+          node_kind: "file_module",
+          impact_kinds: ["transitive_dependent", "test_candidate"],
+          distance: 2,
+          confidence: "high_confidence",
+          reasons: ["transitive_dependency"],
+          evidence_path_count: 1,
+          additional_paths: 0,
+          path: "src/checkout.test.ts",
+          name: "checkout.test.ts",
+        },
+      ],
+      impact_paths: [
+        {
+          id: "ip:p1",
+          source_change: "symbol:src/lib.ts#lib.pay#function",
+          target: "symbol:src/checkout.ts#src/checkout.checkout#function",
+          distance: 1,
+          hops: [
+            {
+              from: "symbol:src/lib.ts#lib.pay#function",
+              relation: "calls",
+              to: "symbol:src/checkout.ts#src/checkout.checkout#function",
+              resolution: "resolved",
+              confidence: "high_confidence",
+            },
+          ],
+        },
+      ],
+      summary: {
+        changed_files: 1,
+        changed_symbols: 1,
+        changed_modules: 1,
+        direct_impacted_modules: 0,
+        direct_impacted_symbols: 1,
+        transitive_impacted_modules: 1,
+        transitive_impacted_symbols: 0,
+        potentially_affected_tests: 1,
+        documentation_candidates: 0,
+        unresolved_relationships: 0,
+        ambiguous_relationships: 0,
+        max_distance: 2,
+        diagnostics_total: 1,
+      },
+      diagnostics: [
+        {
+          kind: "no_documentation_evidence",
+          subject: null,
+          detail: "no resolvable document reference relationships",
+        },
+      ],
+      risk_signals: [
+        {
+          kind: "cross_module_impact",
+          count: 1,
+          detail: "impact extends beyond the changed files themselves",
+          evidence: [],
+        },
+      ],
+      truncated: false,
+    } as never);
+    ipc.cancelImpact.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("renders impact summary, filterable items, paths and limitations", async () => {
+    const { render, screen, waitFor } = await import("@testing-library/react");
+    render(<ChangesPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("impact-summary")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/1 modules, 1 symbols, 1 tests/)).toBeInTheDocument();
+    expect(screen.getByText("checkout")).toBeInTheDocument();
+    // §84：测试候选双分类可见；§27 措辞是 candidate 不是 will-fail。
+    expect(screen.getByText(/test candidate/)).toBeInTheDocument();
+    expect(screen.queryByText(/will fail/i)).not.toBeInTheDocument();
+    // §73：Why impacted 路径。
+    expect(screen.getByTestId("impact-paths")).toBeInTheDocument();
+    // §74/§131：局限显式。
+    expect(screen.getByTestId("impact-risk-signals")).toBeInTheDocument();
+    expect(screen.getByText(/cross_module_impact/)).toBeInTheDocument();
+    expect(screen.getByText(/based on resolvable static relationships/i)).toBeInTheDocument();
+  });
+
+  it("filters impacted items by test candidate chip", async () => {
+    const { render, screen, waitFor, fireEvent } = await import("@testing-library/react");
+    render(<ChangesPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("impact-items")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "tests" }));
+    expect(screen.getByText("checkout.test.ts")).toBeInTheDocument();
+    expect(screen.queryByText("checkout")).not.toBeInTheDocument();
   });
 });

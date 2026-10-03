@@ -54,6 +54,15 @@ pub struct ScanSession {
     pub graph_model: Option<DependencyGraphResult>,
     /// graph Failed 时的错误描述。
     pub graph_error: Option<String>,
+    /// ---- M6 Impact ----
+    /// impact 取消令牌（独立于其他任务）。
+    pub impact_token: CancellationToken,
+    /// impact 状态：None = 尚未执行。
+    pub impact_status: Option<TaskState>,
+    /// 最近一次完成的 ImpactAnalysis。
+    pub impact_model: Option<prism_impact::ImpactAnalysis>,
+    /// impact Failed 时的错误描述。
+    pub impact_error: Option<String>,
     /// ---- M5 ChangeSet ----
     /// changeset 取消令牌（独立于扫描/inspect/graph）。
     pub changeset_token: CancellationToken,
@@ -99,6 +108,9 @@ impl ScanSession {
         self.changeset_status = None;
         self.changeset_model = None;
         self.changeset_error = None;
+        self.impact_status = None;
+        self.impact_model = None;
+        self.impact_error = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;
@@ -117,6 +129,14 @@ impl ScanSession {
         self.graph_model = None;
         self.graph_error = None;
         task_id
+    }
+
+    /// 准备一次 impact 分析。
+    pub fn begin_impact(&mut self) {
+        self.impact_token = CancellationToken::new();
+        self.impact_status = Some(TaskState::Running);
+        self.impact_model = None;
+        self.impact_error = None;
     }
 
     /// 准备一次 changeset 分析。

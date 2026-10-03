@@ -2,16 +2,21 @@ import { useEffect, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
 import {
   cancelChangeset,
+  cancelImpact,
   getChangeset,
   getChangesetStatus,
   getGitFacts,
+  getImpact,
+  getImpactStatus,
   startChangeset,
+  startImpact,
   toPrismError,
 } from "../services/ipc";
 import type {
   ChangeSetDto,
   FileChangeDto,
   GitFactsDto,
+  ImpactAnalysisDto,
   SymbolChangeDto,
 } from "../types/prism";
 
@@ -51,6 +56,9 @@ export default function ChangesPage() {
   const { project } = useProjectStore();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [impact, setImpact] = useState<ImpactAnalysisDto | null>(null);
+  const [impactFilter, setImpactFilter] = useState<string>("all");
+  const [showAllImpact, setShowAllImpact] = useState(false);
 
   const projectPath = project?.root_path;
 
@@ -110,15 +118,42 @@ export default function ChangesPage() {
         }
         const facts = await getGitFacts(false).catch(() => null);
         if (!disposed) setState({ kind: "loaded", facts, changeset });
+        // ---- M6：变更集就绪后运行影响分析（§138 闭环）----
+        await pollImpact();
       } catch (err) {
         if (!disposed) setState({ kind: "error", message: toPrismError(err).message });
       }
     };
+
+    const pollImpact = async () => {
+      try {
+        const status = await getImpactStatus();
+        if (disposed) return;
+        if (status.status === "running") {
+          timer = setTimeout(pollImpact, 300);
+          return;
+        }
+        if (status.status === "idle") {
+          await startImpact("working_tree");
+          timer = setTimeout(pollImpact, 300);
+          return;
+        }
+        if (status.status === "failed") return; // 局限区不覆盖 changeset 视图
+        const analysis = await getImpact();
+        if (!disposed) setImpact(analysis);
+      } catch {
+        if (!disposed) setImpact(null);
+      }
+    };
+
     void poll();
 
     return () => {
       disposed = true;
       if (timer) clearTimeout(timer);
+      void Promise.resolve(cancelImpact()).catch(() => {
+        /* idle 取消为无操作 */
+      });
     };
   }, [projectPath]);
 
@@ -340,6 +375,155 @@ export default function ChangesPage() {
           </ul>
         )}
       </div>
+
+      {impact && (
+        <div className="card" data-testid="impact-summary">
+          <h2 className="card-title">
+            Impact · {impact.analysis_completeness}
+            {impact.analysis_incomplete ? " (truncated)" : ""}
+          </h2>
+          <dl className="fact-grid">
+            <div>
+              <dt>Potentially affected</dt>
+              <dd>
+                {impact.summary.direct_impacted_modules +
+                  impact.summary.transitive_impacted_modules}{" "}
+                modules,{" "}
+                {impact.summary.direct_impacted_symbols +
+                  impact.summary.transitive_impacted_symbols}{" "}
+                symbols, {impact.summary.potentially_affected_tests} tests
+              </dd>
+            </div>
+            <div>
+              <dt>Direct / Transitive</dt>
+              <dd>
+                {impact.summary.direct_impacted_modules}/
+                {impact.summary.transitive_impacted_modules} modules ·{" "}
+                {impact.summary.direct_impacted_symbols}/
+                {impact.summary.transitive_impacted_symbols} symbols
+              </dd>
+            </div>
+            <div>
+              <dt>Max distance</dt>
+              <dd>{impact.summary.max_distance} hop(s)</dd>
+            </div>
+            <div>
+              <dt>Unresolved / Ambiguous</dt>
+              <dd>
+                {impact.summary.unresolved_relationships} /{" "}
+                {impact.summary.ambiguous_relationships}
+              </dd>
+            </div>
+          </dl>
+          <p className="muted small">
+            Impact analysis is based on resolvable static relationships; some
+            relationships could not be resolved, so results may be incomplete
+            (spec §131).
+          </p>
+        </div>
+      )}
+
+      {impact && impact.impacted_items.length > 0 && (
+        <div className="card" data-testid="impact-items">
+          <h2 className="card-title">
+            Potentially affected ({impact.impacted_items.length})
+          </h2>
+          <div className="chip-row">
+            {["all", "modules", "symbols", "tests", "direct", "transitive"].map(
+              (filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`chip${impactFilter === filter ? " selected" : ""}`}
+                  onClick={() => {
+                    setImpactFilter(filter);
+                    setShowAllImpact(false);
+                  }}
+                >
+                  {filter}
+                </button>
+              ),
+            )}
+          </div>
+          <ul>
+            {(() => {
+              const filtered = impact.impacted_items.filter((item) => {
+                if (impactFilter === "modules")
+                  return ["file_module", "package", "namespace"].includes(item.node_kind);
+                if (impactFilter === "symbols") return item.node_kind === "symbol";
+                if (impactFilter === "tests")
+                  return item.impact_kinds.includes("test_candidate");
+                if (impactFilter === "direct") return item.distance === 1;
+                if (impactFilter === "transitive") return item.distance > 1;
+                return true;
+              });
+              const visible = showAllImpact ? filtered : filtered.slice(0, 20);
+              return (
+                <>
+                  {visible.map((item) => (
+                    <li key={item.node_id} className="small">
+                      <span className="mono">{item.name}</span>{" "}
+                      <span className="muted">
+                        ({item.node_kind}) · distance {item.distance} ·{" "}
+                        {item.confidence}
+                        {item.impact_kinds.includes("test_candidate") ? " · test candidate" : ""}
+                      </span>
+                      <span className="muted small"> — {item.reasons.join(", ")}</span>
+                    </li>
+                  ))}
+                  {filtered.length > 20 && !showAllImpact && (
+                    <li>
+                      <button
+                        type="button"
+                        className="linklike small"
+                        onClick={() => setShowAllImpact(true)}
+                      >
+                        View all {filtered.length} impacted items
+                      </button>
+                    </li>
+                  )}
+                </>
+              );
+            })()}
+          </ul>
+        </div>
+      )}
+
+      {impact && impact.impact_paths.length > 0 && (
+        <div className="card" data-testid="impact-paths">
+          <h2 className="card-title">Why impacted? (top paths)</h2>
+          <ul>
+            {impact.impact_paths.slice(0, 10).map((path) => (
+              <li key={path.id} className="small">
+                <span className="mono">{path.source_change}</span>
+                {path.hops.map((hop, index) => (
+                  <span key={index}>
+                    {" "}
+                    <span className="muted">
+                      --{hop.relation}({hop.resolution})--&gt;
+                    </span>{" "}
+                    <span className="mono">{hop.to}</span>
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {impact && impact.risk_signals.length > 0 && (
+        <div className="card" data-testid="impact-risk-signals">
+          <h2 className="card-title">Risk signals (facts, no score)</h2>
+          <ul>
+            {impact.risk_signals.map((signal) => (
+              <li key={signal.kind} className="small">
+                <span className="mono">{signal.kind}</span> × {signal.count} —{" "}
+                <span className="muted">{signal.detail}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="card" data-testid="changes-diagnostics">
         <h2 className="card-title">Diagnostics</h2>

@@ -625,3 +625,89 @@ export interface ChangesetStatusDto {
   status: "idle" | "running" | "completed" | "failed" | "cancelled";
   error: string | null;
 }
+
+// ---------- M6：Impact Analysis ----------
+
+export type ImpactCompletenessDto =
+  | "complete"
+  | "partial"
+  | "truncated"
+  | "failed";
+
+export interface ImpactableNodeDto {
+  node_id: string;
+  node_kind: string;
+  impact_kinds: string[];
+  distance: number;
+  confidence: string;
+  reasons: string[];
+  evidence_path_count: number;
+  additional_paths: number;
+  path: string;
+  name: string;
+}
+
+export interface PathHopDto {
+  from: string;
+  relation: string;
+  to: string;
+  resolution: string;
+  confidence: string;
+}
+
+export interface ImpactPathDto {
+  id: string;
+  source_change: string;
+  target: string;
+  distance: number;
+  hops: PathHopDto[];
+}
+
+export interface ImpactSummaryDto {
+  changed_files: number;
+  changed_symbols: number;
+  changed_modules: number;
+  direct_impacted_modules: number;
+  direct_impacted_symbols: number;
+  transitive_impacted_modules: number;
+  transitive_impacted_symbols: number;
+  potentially_affected_tests: number;
+  documentation_candidates: number;
+  unresolved_relationships: number;
+  ambiguous_relationships: number;
+  max_distance: number;
+  diagnostics_total: number;
+}
+
+export interface RiskSignalDto {
+  kind: string;
+  count: number;
+  detail: string;
+  evidence: string[];
+}
+
+export interface ImpactDiagnosticDto {
+  kind: string;
+  subject: string | null;
+  detail: string;
+}
+
+export interface ImpactAnalysisDto {
+  schema_version: number;
+  id: string;
+  change_set_id: string;
+  scope: string;
+  analysis_completeness: ImpactCompletenessDto;
+  analysis_incomplete: boolean;
+  changed_items: ImpactableNodeDto[];
+  impacted_items: ImpactableNodeDto[];
+  impact_paths: ImpactPathDto[];
+  summary: ImpactSummaryDto;
+  diagnostics: ImpactDiagnosticDto[];
+  risk_signals: RiskSignalDto[];
+}
+
+export interface ImpactStatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  error: string | null;
+}

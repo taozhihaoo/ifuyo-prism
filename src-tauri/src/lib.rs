@@ -62,6 +62,10 @@ pub fn run() {
             commands::get_changeset_status,
             commands::get_changeset,
             commands::cancel_changeset,
+            commands::start_impact,
+            commands::get_impact_status,
+            commands::get_impact,
+            commands::cancel_impact,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

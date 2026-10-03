@@ -10,6 +10,8 @@ import type {
   DependencyGraphResultDto,
   ChangeSetDto,
   ChangesetStatusDto,
+  ImpactAnalysisDto,
+  ImpactStatusDto,
   GitFactsDto,
   GraphStatus,
   InspectStatus,
@@ -138,4 +140,34 @@ export function getChangeset(): Promise<ChangeSetDto | null> {
 
 export function cancelChangeset(): Promise<void> {
   return invoke<void>("cancel_changeset");
+}
+
+// ---------- M6：Impact Analysis ----------
+
+export function startImpact(
+  scope: "working_tree" | "staged" | "revision_range",
+  from?: string,
+  to?: string,
+  maxDepth?: number,
+  maxNodes?: number,
+): Promise<string> {
+  return invoke<string>("start_impact", {
+    scope,
+    from: from ?? null,
+    to: to ?? null,
+    maxDepth: maxDepth ?? null,
+    maxNodes: maxNodes ?? null,
+  });
+}
+
+export function getImpactStatus(): Promise<ImpactStatusDto> {
+  return invoke<ImpactStatusDto>("get_impact_status");
+}
+
+export function getImpact(): Promise<ImpactAnalysisDto | null> {
+  return invoke<ImpactAnalysisDto | null>("get_impact");
+}
+
+export function cancelImpact(): Promise<void> {
+  return invoke<void>("cancel_impact");
 }

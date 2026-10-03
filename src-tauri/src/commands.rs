@@ -592,3 +592,151 @@ pub fn cancel_changeset(state: State<'_, AppState>) -> Result<(), PrismErrorDto>
     session.changeset_token.cancel();
     Ok(())
 }
+
+// ---------- M6：Impact Analysis ----------
+
+/// impact 会话状态 DTO（前端轮询）。
+#[derive(Debug, Clone, Serialize)]
+pub struct ImpactStatusDto {
+    /// "idle" | "running" | "completed" | "failed" | "cancelled"
+    pub status: String,
+    pub error: Option<String>,
+}
+
+fn parse_impact_scope(scope: &str) -> Result<prism_changes::ChangeScope, PrismErrorDto> {
+    match scope {
+        "working_tree" => Ok(prism_changes::ChangeScope::WorkingTree),
+        "staged" => Ok(prism_changes::ChangeScope::Staged),
+        "revision_range" => Ok(prism_changes::ChangeScope::RevisionRange),
+        other => Err(PrismErrorDto::new(
+            "invalid_input",
+            format!("unknown impact scope: {other}"),
+        )),
+    }
+}
+
+/// 启动一次影响分析（自包含：ChangeSet + discovery + 代码模型 + M3 图）。
+#[tauri::command]
+pub fn start_impact(
+    state: State<'_, AppState>,
+    scope: String,
+    from: Option<String>,
+    to: Option<String>,
+    max_depth: Option<u32>,
+    max_nodes: Option<u64>,
+) -> Result<String, PrismErrorDto> {
+    let scope = parse_impact_scope(&scope)?;
+    if scope == prism_changes::ChangeScope::RevisionRange && (from.is_none() || to.is_none()) {
+        return Err(PrismErrorDto::new(
+            "invalid_input",
+            "revision_range scope requires from and to",
+        ));
+    }
+    let (root, token, session_arc) = {
+        let mut session = lock_session(&state.session);
+        let Some(project) = session.project.as_ref() else {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            ));
+        };
+        if session.impact_status == Some(TaskState::Running) {
+            return Err(PrismErrorDto::new(
+                "invalid_input",
+                "an impact analysis is already running",
+            ));
+        }
+        let root = project.root_path.clone();
+        session.begin_impact();
+        let token = session.impact_token.clone();
+        (root, token, state.session.clone())
+    };
+
+    std::thread::spawn(move || {
+        let options = prism_impact::ImpactOptions {
+            max_depth: max_depth.unwrap_or(10),
+            max_nodes: max_nodes.unwrap_or(2000),
+            ..prism_impact::ImpactOptions::default()
+        };
+        let runner: Arc<dyn prism_core::CommandRunner> = Arc::new(StdCommandRunner::new());
+        let cancel = token.clone();
+        let outcome = (|| -> prism_core::PrismResult<prism_impact::ImpactAnalysis> {
+            let changeset = prism_changes::ChangeSetService::new(runner.clone())
+                .build(
+                    &root,
+                    scope,
+                    from.as_deref(),
+                    to.as_deref(),
+                    &prism_changes::ChangeSetOptions::default(),
+                    &cancel,
+                )?
+                .ok_or(prism_core::PrismError::InvalidInput {
+                    message: "not a git repository".to_string(),
+                })?;
+            let discovery = prism_project::DiscoveryService::new().discover(
+                &root,
+                prism_project::ScanOptions::default(),
+                &cancel,
+                |_| {},
+            )?;
+            let model = prism_analysis::CodeAnalysisService::new().analyze(
+                &discovery,
+                prism_analysis::CodeAnalysisOptions::default(),
+                &cancel,
+                |_| {},
+            )?;
+            let graph = prism_graph::DependencyService::new().analyze(&discovery, &model)?;
+            prism_impact::ImpactAnalysisService
+                .analyze(&changeset, &model, &graph, &options, &cancel)
+        })();
+
+        let mut session = lock_session(&session_arc);
+        match outcome {
+            Ok(analysis) => {
+                session.impact_status = Some(TaskState::Completed);
+                session.impact_model = Some(analysis);
+            }
+            Err(prism_core::PrismError::Cancelled) => {
+                session.impact_status = Some(TaskState::Cancelled);
+            }
+            Err(err) => {
+                session.impact_status = Some(TaskState::Failed);
+                session.impact_error = Some(err.to_string());
+            }
+        }
+    });
+
+    Ok("started".to_string())
+}
+
+/// 查询 impact 会话状态。
+#[tauri::command]
+pub fn get_impact_status(state: State<'_, AppState>) -> ImpactStatusDto {
+    let session = lock_session(&state.session);
+    let status = match session.impact_status {
+        None => "idle".to_string(),
+        Some(status) => serde_json::to_value(status)
+            .ok()
+            .and_then(|v| v.as_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+    };
+    ImpactStatusDto {
+        status,
+        error: session.impact_error.clone(),
+    }
+}
+
+/// 获取最近一次完成的 ImpactAnalysis（非 Git/未完成为 None）。
+#[tauri::command]
+pub fn get_impact(state: State<'_, AppState>) -> Option<prism_impact::ImpactAnalysis> {
+    let session = lock_session(&state.session);
+    session.impact_model.clone()
+}
+
+/// 取消当前 impact 分析（§112）。
+#[tauri::command]
+pub fn cancel_impact(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
+    let session = lock_session(&state.session);
+    session.impact_token.cancel();
+    Ok(())
+}

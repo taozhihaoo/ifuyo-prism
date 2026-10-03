@@ -516,3 +516,25 @@ body {
   color: var(--accent, #4a9eff);
   text-decoration-color: currentColor;
 }
+
+/* M6 Impact 区：过滤 chips（§71）。 */
+.chip-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.chip {
+  border: 1px solid var(--border, #ccc);
+  background: none;
+  border-radius: 999px;
+  padding: 0.1rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.chip.selected {
+  border-color: var(--accent, #4a9eff);
+  color: var(--accent, #4a9eff);
+}

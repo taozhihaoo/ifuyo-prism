@@ -65,6 +65,15 @@ impl From<FormatArg> for OutputFormat {
     }
 }
 
+/// `prism health` 输出格式（含 HTML 静态报告，§90）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum HealthFormatArg {
+    Text,
+    Json,
+    Markdown,
+    Html,
+}
+
 /// `prism health` 子命令（M7a 仅 rules；M7b 增加完整分析）。
 #[derive(Debug, Subcommand)]
 pub enum HealthCommand {
@@ -171,12 +180,33 @@ pub enum Command {
         #[command(subcommand)]
         command: crate::git_command::GitCommand,
     },
-    /// 项目健康（M7a：规则检视；完整分析在 M7b）
+    /// 项目健康体检（M7：完整分析；`rules` 子命令检视规则）
     Health {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// JSON 输出（= --format json 的快捷方式，§165）
+        #[arg(long, conflicts_with = "format")]
+        json: bool,
+        /// 输出格式（含 HTML 静态报告，§90）
+        #[arg(long, value_enum, default_value_t = HealthFormatArg::Text)]
+        format: HealthFormatArg,
+        /// 只报告当前变更（及受影响范围）内的 findings（§61）
+        #[arg(long)]
+        changed: bool,
+        /// 只输出指定规则 id 的 findings
+        #[arg(long)]
+        rule: Option<String>,
+        /// 只输出指定分类的 findings（如 security）
+        #[arg(long)]
+        category: Option<String>,
+        /// 存在 >= 指定严重级 finding 时以非零退出（默认 findings 不导致失败，§79）
+        #[arg(long, value_enum)]
+        fail_on: Option<crate::health_command::FailOn>,
+        /// 变更文件数上限（--changed 时透传 ChangeSet）
+        #[arg(long, default_value_t = 200)]
+        max_files: usize,
         #[command(subcommand)]
-        command: HealthCommand,
+        command: Option<HealthCommand>,
     },
     /// 运行构建/测试/静态检查（M8）
     Verify {

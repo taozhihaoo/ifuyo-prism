@@ -17,6 +17,7 @@ pub mod derived;
 pub mod engine;
 pub mod model;
 pub mod registry;
+pub mod render;
 pub mod rules;
 
 pub use derived::{DerivedFacts, SymbolMetrics};
@@ -27,4 +28,5 @@ pub use model::{
     HEALTH_SCHEMA_VERSION,
 };
 pub use registry::{HealthRule, HealthRuleMeta, HealthRuleRegistry};
+pub use render::{render_html, render_markdown, render_text};
 pub use rules::maintenance::MaintenanceMarkerRule;

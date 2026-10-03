@@ -174,6 +174,40 @@ impl Finding {
     }
 }
 
+impl HealthSummary {
+    /// 从 findings 重建全部计数（过滤后重算用；§10）。
+    pub fn from_findings<'a>(findings: impl Iterator<Item = &'a Finding>) -> Self {
+        let mut summary = HealthSummary::default();
+        let mut files_with = std::collections::BTreeSet::new();
+        let mut modules_with = std::collections::BTreeSet::new();
+        let mut symbols_with = std::collections::BTreeSet::new();
+        for finding in findings {
+            summary.total_findings += 1;
+            match finding.severity {
+                Severity::Critical => summary.critical_count += 1,
+                Severity::Warning => summary.warning_count += 1,
+                Severity::Info => summary.info_count += 1,
+            }
+            *summary
+                .by_category
+                .entry(format!("{:?}", finding.category).to_ascii_lowercase())
+                .or_insert(0) += 1;
+            *summary.by_rule.entry(finding.rule_id.clone()).or_insert(0) += 1;
+            files_with.insert(finding.location.relative_path.clone());
+            for module in &finding.related_modules {
+                modules_with.insert(module.clone());
+            }
+            for symbol in &finding.related_symbols {
+                symbols_with.insert(symbol.clone());
+            }
+        }
+        summary.files_with_findings = files_with.len() as u64;
+        summary.modules_with_findings = modules_with.len() as u64;
+        summary.symbols_with_findings = symbols_with.len() as u64;
+        summary
+    }
+}
+
 /// 汇总统计（§10：全部为事实计数；禁止折算成任何 0-100 健康分，§4）。
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct HealthSummary {

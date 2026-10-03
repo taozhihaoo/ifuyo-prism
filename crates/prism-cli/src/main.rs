@@ -107,10 +107,33 @@ fn run() -> i32 {
             format,
             max_files,
         }) => changes_command::run(&path, staged, from.as_deref(), to.as_deref(), format, max_files),
-        Some(cli::Command::Health { path, command }) => match command {
-            cli::HealthCommand::Rules { json } => {
+        Some(cli::Command::Health {
+            path,
+            json,
+            format,
+            changed,
+            rule,
+            category,
+            fail_on,
+            max_files,
+            command,
+        }) => match command {
+            Some(cli::HealthCommand::Rules { json }) => {
                 health_command::run_rules(&path, json)
             }
+            None => health_command::run_analyze(
+                &path,
+                if json {
+                    crate::cli::HealthFormatArg::Json
+                } else {
+                    format
+                },
+                changed,
+                rule.as_deref(),
+                category.as_deref(),
+                fail_on,
+                max_files,
+            ),
         },
         Some(command) => not_implemented_yet(command.name()),
     }

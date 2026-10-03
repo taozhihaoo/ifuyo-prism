@@ -13,7 +13,6 @@ use crate::model::{
 };
 use crate::registry::HealthRuleRegistry;
 use prism_core::config::HealthConfig;
-use prism_core::severity::Severity;
 use prism_core::task::CancellationToken;
 use prism_core::{PrismError, PrismResult};
 use std::collections::{BTreeMap, BTreeSet};
@@ -313,35 +312,7 @@ pub fn analyze(
     };
 
     // ---- §10 summary（事实计数；M4 与 score 无缘）----
-    let mut summary = crate::model::HealthSummary {
-        total_findings: findings.len() as u64,
-        ..Default::default()
-    };
-    let mut files_with: BTreeSet<String> = BTreeSet::new();
-    let mut modules_with: BTreeSet<String> = BTreeSet::new();
-    let mut symbols_with: BTreeSet<String> = BTreeSet::new();
-    for finding in &findings {
-        match finding.severity {
-            Severity::Critical => summary.critical_count += 1,
-            Severity::Warning => summary.warning_count += 1,
-            Severity::Info => summary.info_count += 1,
-        }
-        *summary
-            .by_category
-            .entry(format!("{:?}", finding.category).to_ascii_lowercase())
-            .or_insert(0) += 1;
-        *summary.by_rule.entry(finding.rule_id.clone()).or_insert(0) += 1;
-        files_with.insert(finding.location.relative_path.clone());
-        for module in &finding.related_modules {
-            modules_with.insert(module.clone());
-        }
-        for symbol in &finding.related_symbols {
-            symbols_with.insert(symbol.clone());
-        }
-    }
-    summary.files_with_findings = files_with.len() as u64;
-    summary.modules_with_findings = modules_with.len() as u64;
-    summary.symbols_with_findings = symbols_with.len() as u64;
+    let summary = crate::model::HealthSummary::from_findings(findings.iter());
 
     diagnostics.sort_by(|a, b| (&a.kind, &a.subject, &a.detail).cmp(&(&b.kind, &b.subject, &b.detail)));
 

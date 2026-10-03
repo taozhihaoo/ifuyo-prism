@@ -186,7 +186,7 @@ pub fn estimate_candidate(candidate: &ContextCandidate) -> u64 {
         .unwrap_or(match candidate.source.source_type {
             SourceType::File | SourceType::Symbol => 4 * 1024,
             SourceType::Documentation => 6 * 1024,
-            _ => 1 * 1024,
+            _ => 1024,
         })
 }
 

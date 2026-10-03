@@ -1,0 +1,20 @@
+[package]
+name = "prism-health"
+description = "Prism health layer: evidence-backed Findings from deterministic rules over M1-M6 facts (M7)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+prism-analysis.workspace = true
+prism-graph.workspace = true
+prism-git.workspace = true
+prism-changes.workspace = true
+prism-impact.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]

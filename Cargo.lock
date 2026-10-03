@@ -2520,6 +2520,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-context"
+version = "0.1.0"
+dependencies = [
+ "prism-analysis",
+ "prism-changes",
+ "prism-core",
+ "prism-env",
+ "prism-graph",
+ "prism-health",
+ "prism-impact",
+ "prism-project",
+ "prism-verify",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "prism-core"
 version = "0.1.0"
 dependencies = [

@@ -12,6 +12,7 @@ members = [
     "crates/prism-health",
     "crates/prism-verify",
     "crates/prism-env",
+    "crates/prism-context",
     "crates/prism-cli",
     "src-tauri",
     "tests/integration",
@@ -41,6 +42,7 @@ prism-impact = { path = "crates/prism-impact" }
 prism-health = { path = "crates/prism-health" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
+prism-context = { path = "crates/prism-context" }
 ignore = "0.4"
 tree-sitter = "0.25"
 tree-sitter-typescript = "0.23"

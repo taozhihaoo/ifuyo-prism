@@ -51,6 +51,12 @@ pub struct EnvironmentSnapshot {
     pub conflicts: Vec<RequirementConflict>,
     /// 需求 × 实际环境 的匹配结果（§46）。
     pub matches: Vec<RequirementMatch>,
+    /// 环境发现（§51–§53/§128–§137：事实 + 明确比较结果；无分数 §136）。
+    #[serde(default)]
+    pub findings: Vec<EnvironmentFinding>,
+    /// 聚合状态（§354/§355–§358：从具体 matches/findings 确定性聚合）。
+    #[serde(default)]
+    pub status: EnvironmentStatus,
     /// 单个采集器/探测失败隔离后的诊断（§149/§150/§392–§393）。
     pub diagnostics: Vec<EnvironmentDiagnostic>,
     /// 扫描过程结果（§337/§338：scan 状态与 requirement 状态严格分离）。
@@ -358,6 +364,119 @@ pub struct ExpectedPort {
     /// 如 "docker-compose.yml ports"。
     pub source: String,
     pub confidence: prism_core::Confidence,
+}
+
+/// 环境发现（§51：事实 + 明确比较结果；§136/§352 无分数）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EnvironmentFinding {
+    /// 确定性 id：`envf:{kind}:{subject}`。
+    pub id: String,
+    pub kind: EnvironmentFindingKind,
+    /// §53 Environment 子分类。
+    pub category: FindingCategory,
+    /// §350：复用 M7/core Severity（Info/Warning/Critical）。
+    pub severity: prism_core::Severity,
+    /// §129 finding 置信度（独立于事实 confidence）。
+    pub confidence: FindingConfidence,
+    pub subject: String,
+    pub message: String,
+    /// §130 证据链（requirement source / probe / 观测）。
+    pub evidence: Vec<String>,
+    /// §131/§320：仅建议，绝不执行。
+    pub suggestion: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnvironmentFindingKind {
+    ToolMissing,
+    VersionMismatch,
+    RequirementConflict,
+    ExecutableShadowing,
+    PathIssue,
+    MissingEnvironmentVariable,
+    UnexpectedEnvironment,
+    MissingSdk,
+    MissingPackageManager,
+    PortConflict,
+    ProcessConflict,
+}
+
+impl EnvironmentFindingKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            EnvironmentFindingKind::ToolMissing => "tool_missing",
+            EnvironmentFindingKind::VersionMismatch => "version_mismatch",
+            EnvironmentFindingKind::RequirementConflict => "requirement_conflict",
+            EnvironmentFindingKind::ExecutableShadowing => "executable_shadowing",
+            EnvironmentFindingKind::PathIssue => "path_issue",
+            EnvironmentFindingKind::MissingEnvironmentVariable => "missing_environment_variable",
+            EnvironmentFindingKind::UnexpectedEnvironment => "unexpected_environment",
+            EnvironmentFindingKind::MissingSdk => "missing_sdk",
+            EnvironmentFindingKind::MissingPackageManager => "missing_package_manager",
+            EnvironmentFindingKind::PortConflict => "port_conflict",
+            EnvironmentFindingKind::ProcessConflict => "process_conflict",
+        }
+    }
+}
+
+/// §53 Environment 子分类。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingCategory {
+    Toolchain,
+    Runtime,
+    Sdk,
+    PackageManager,
+    Path,
+    Variable,
+    Port,
+    Process,
+    Container,
+    Configuration,
+}
+
+/// §129 finding 置信度。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FindingConfidence {
+    Exact,
+    HighConfidence,
+    Probable,
+    Ambiguous,
+    Unknown,
+}
+
+/// 聚合环境状态（§354；§355–§358 确定性聚合，无权重 §359）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnvironmentStatus {
+    /// 全部 applicable requirements Satisfied 且无 Warning 级发现。
+    #[default]
+    Satisfied,
+    /// 有 Unsatisfied 的 requirement（§356）。
+    Unsatisfied,
+    /// 无 Unsatisfied 但有 Warning/Info 级发现（PATH 问题、遮蔽等）。
+    Attention,
+    /// 有 Unknown 的 requirement（§357 Partial/Unknown）。
+    Unknown,
+    /// 有 RequirementConflict（§358）。
+    Conflict,
+    /// 扫描本身不完整（取消/部分）。
+    Partial,
+}
+
+impl EnvironmentStatus {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            EnvironmentStatus::Satisfied => "satisfied",
+            EnvironmentStatus::Unsatisfied => "unsatisfied",
+            EnvironmentStatus::Attention => "attention",
+            EnvironmentStatus::Unknown => "unknown",
+            EnvironmentStatus::Conflict => "conflict",
+            EnvironmentStatus::Partial => "partial",
+        }
+    }
 }
 
 /// 平台能力模型（§146–§147）：能力不可用 ⇒ 对应事实 Unknown/缺省 +

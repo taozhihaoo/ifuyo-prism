@@ -5,8 +5,8 @@
 //! 取消返回部分快照（§394）；输出顺序确定（§395）。
 
 use crate::model::{
-    EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentSnapshot, FactScope, PathFacts,
-    ProbeOutcome, ScanOutcome, ToolFact, ENVIRONMENT_SCHEMA_VERSION,
+    EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentSnapshot, EnvironmentStatus,
+    FactScope, PathFacts, ProbeOutcome, ScanOutcome, ToolFact, ENVIRONMENT_SCHEMA_VERSION,
 };
 use crate::requirements::collect_requirements;
 use crate::requirement::match_requirements;
@@ -169,6 +169,7 @@ impl EnvironmentService {
         );
 
         // ---- 状态（§337/§338/§138）----
+
         let (scan_outcome, completeness) = if cancel.is_cancelled() {
             (ScanOutcome::Cancelled, EnvironmentCompleteness::Partial)
         } else {
@@ -189,7 +190,7 @@ impl EnvironmentService {
             (outcome, completeness)
         };
 
-        Ok(EnvironmentSnapshot {
+        let mut snapshot = EnvironmentSnapshot {
             schema_version: ENVIRONMENT_SCHEMA_VERSION,
             id: uuid::Uuid::new_v4().to_string(),
             project_id: String::new(), // 由调用方填（Project::id）
@@ -211,10 +212,18 @@ impl EnvironmentService {
             requirements,
             conflicts,
             matches,
+            findings: Vec::new(),
+            status: EnvironmentStatus::default(),
             diagnostics,
             scan_outcome,
             completeness,
-        })
+        };
+        // ---- Findings + 聚合状态（§128/§354–§358，从既有事实派生）----
+        let findings = crate::findings::derive_findings(&snapshot);
+        let status = crate::findings::aggregate_status(&snapshot, &findings);
+        snapshot.findings = findings;
+        snapshot.status = status;
+        Ok(snapshot)
     }
 
     /// §268 relevant_tools：项目相关工具名（供 M8/未来复用）。
@@ -343,6 +352,8 @@ fn cancelled_snapshot(
         requirements: vec![],
         conflicts: vec![],
         matches: vec![],
+        findings: vec![],
+        status: EnvironmentStatus::Partial,
         diagnostics,
         scan_outcome: ScanOutcome::Cancelled,
         completeness: EnvironmentCompleteness::Partial,

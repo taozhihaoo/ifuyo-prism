@@ -20,13 +20,14 @@ pub fn match_requirements(
     tools: &[ToolFact],
     package_managers: &[PackageManagerInfo],
     variables: &[crate::model::VariableFact],
+    ports: &[crate::model::PortInfo],
     project_root: &Path,
 ) -> Vec<RequirementMatch> {
     requirements
         .iter()
         .map(|requirement| {
             match_requirement(
-                requirement, conflicts, tools, package_managers, variables, project_root,
+                requirement, conflicts, tools, package_managers, variables, ports, project_root,
             )
         })
         .collect()
@@ -38,6 +39,7 @@ fn match_requirement(
     tools: &[ToolFact],
     package_managers: &[PackageManagerInfo],
     variables: &[crate::model::VariableFact],
+    ports: &[crate::model::PortInfo],
     project_root: &Path,
 ) -> RequirementMatch {
     // §45/§103/§327：冲突主体不解释为单一明确需求 ⇒ Unknown（列出各来源）。
@@ -87,6 +89,7 @@ fn match_requirement(
             match_tool(requirement, tools)
         }
         RequirementKind::EnvironmentVariable => match_variable(requirement, variables),
+        RequirementKind::Port => match_port(requirement, ports),
         RequirementKind::File => {
             let exists = project_root.join(&requirement.subject).is_file();
             RequirementMatch {
@@ -105,11 +108,10 @@ fn match_requirement(
                 evidence: file_evidence("directory", &requirement.subject, exists),
             }
         }
-        // 以下 kind 的 provider/collector 归 M9b（§51–§53/§80–§100）；
+        // 以下 kind 的 provider/collector 归后续里程碑（§51–§53/§97–§100）；
         // 引擎不伪造结果（§209）。
         RequirementKind::Os
         | RequirementKind::Architecture
-        | RequirementKind::Port
         | RequirementKind::Service
         | RequirementKind::Container => RequirementMatch {
             requirement_id: requirement.id.clone(),
@@ -262,6 +264,51 @@ fn match_tool(requirement: &EnvironmentRequirement, tools: &[ToolFact]) -> Requi
     }
 }
 
+/// §95/§96/§328：Port requirement（Available）—— 端口被占用 ⇒ Unsatisfied
+/// （附占用者证据）；占用者无法解析 ⇒ 仍 Unsatisfied 但 evidence 注明 Unknown
+/// ownership（§369：不是 "No process found"）。
+fn match_port(
+    requirement: &EnvironmentRequirement,
+    ports: &[crate::model::PortInfo],
+) -> RequirementMatch {
+    let Ok(expected) = requirement.subject.parse::<u16>() else {
+        return RequirementMatch {
+            requirement_id: requirement.id.clone(),
+            subject: requirement.subject.clone(),
+            result: MatchResult::Unknown,
+            evidence: format!("'{}' is not a valid port number", requirement.subject),
+        };
+    };
+    let occupant = ports.iter().find(|info| info.port == expected);
+    let result = match requirement.operator {
+        RequirementOperator::Available => {
+            if occupant.is_some() {
+                MatchResult::Unsatisfied
+            } else {
+                MatchResult::Satisfied
+            }
+        }
+        _ => MatchResult::Unknown,
+    };
+    let evidence = match occupant {
+        Some(info) => format!(
+            "port {expected} LISTENING on {} (pid {:?}, process {:?}, source: {}, observed: {})",
+            info.address,
+            info.pid,
+            info.process_name,
+            info.source,
+            info.observed_at
+        ),
+        None => format!("port {expected} has no listener (observed via port discovery)"),
+    };
+    RequirementMatch {
+        requirement_id: requirement.id.clone(),
+        subject: requirement.subject.clone(),
+        result,
+        evidence,
+    }
+}
+
 fn match_variable(
     requirement: &EnvironmentRequirement,
     variables: &[crate::model::VariableFact],
@@ -375,7 +422,7 @@ mod tests {
             // probe 失败场景单独测 Unknown。
             tool("broken", None, ProbeOutcome::Failed),
         ];
-        let matches = match_requirements(&requirements, &[], &tools, &[], &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &tools, &[], &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unsatisfied, "node 20 < 22");
         assert!(matches[0].evidence.contains("20"), "§258 evidence-first");
         assert_eq!(matches[1].result, MatchResult::Unsatisfied);
@@ -388,7 +435,7 @@ mod tests {
         // §158：exists 但 probe 失败 ⇒ Unknown。
         let requirements = vec![requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "22")];
         let tools = vec![tool("node", None, ProbeOutcome::Failed)];
-        let matches = match_requirements(&requirements, &[], &tools, &[], &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &tools, &[], &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unknown);
     }
 
@@ -409,7 +456,7 @@ mod tests {
             project_association: None,
             source: ToolSource::Path,
         }];
-        let matches = match_requirements(&requirements, &[], &[], &managers, &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &[], &managers, &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Satisfied);
 
         // §105：pnpm absent + npm present ⇒ Unsatisfied（不是 npm is good enough）。
@@ -429,10 +476,70 @@ mod tests {
             &tools,
             &managers_absent,
             &[],
+            &[],
             Path::new("."),
         );
         assert_eq!(matches[0].result, MatchResult::Unsatisfied);
         assert!(matches[0].evidence.contains("lookup confirmed absence"));
+    }
+
+    #[test]
+    fn port_available_requirement_matches_occurrence() {
+        // §95/§96/§328：期望端口被占用 ⇒ Unsatisfied + 占用者证据。
+        use crate::model::{PortInfo, PortProtocol, PortState};
+        let requirements = vec![requirement(
+            RequirementKind::Port,
+            "5173",
+            RequirementOperator::Available,
+            "",
+        )];
+        let occupied = vec![PortInfo {
+            port: 5173,
+            protocol: PortProtocol::Tcp,
+            address: "0.0.0.0:5173".to_string(),
+            state: PortState::Listening,
+            pid: Some(1234),
+            process_name: Some("node.exe".to_string()),
+            source: "netstat".to_string(),
+            observed_at: "2026-10-03T00:00:00Z".to_string(),
+        }];
+        let matches = match_requirements(
+            &requirements,
+            &[],
+            &[],
+            &[],
+            &[],
+            &occupied,
+            Path::new("."),
+        );
+        assert_eq!(matches[0].result, MatchResult::Unsatisfied);
+        assert!(matches[0].evidence.contains("1234"));
+        assert!(matches[0].evidence.contains("LISTENING"));
+
+        // 空闲 ⇒ Satisfied。
+        let matches = match_requirements(&requirements, &[], &[], &[], &[], &[], Path::new("."));
+        assert_eq!(matches[0].result, MatchResult::Satisfied);
+
+        // §369：占用者未知 ≠ "No process found"——evidence 注明来源事实。
+        let mut unknown_owner = occupied.clone();
+        unknown_owner[0].pid = None;
+        unknown_owner[0].process_name = None;
+        let matches = match_requirements(
+            &requirements,
+            &[],
+            &[],
+            &[],
+            &[],
+            &unknown_owner,
+            Path::new("."),
+        );
+        assert_eq!(matches[0].result, MatchResult::Unsatisfied);
+        assert!(matches[0].evidence.contains("pid None"));
+
+        // 非法端口 ⇒ Unknown（不猜）。
+        let bad = vec![requirement(RequirementKind::Port, "vite", RequirementOperator::Available, "")];
+        let matches = match_requirements(&bad, &[], &[], &[], &[], &[], Path::new("."));
+        assert_eq!(matches[0].result, MatchResult::Unknown);
     }
 
     #[test]
@@ -448,7 +555,7 @@ mod tests {
             requirement(RequirementKind::EnvironmentVariable, "CI", RequirementOperator::Equals, "true"),
             requirement(RequirementKind::EnvironmentVariable, "MISSING_VAR", RequirementOperator::Exists, ""),
         ];
-        let matches = match_requirements(&requirements, &[], &[], &[], &variables, Path::new("."));
+        let matches = match_requirements(&requirements, &[], &[], &[], &variables, &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Satisfied);
         assert_eq!(matches[1].result, MatchResult::Unknown, "§54: values never captured");
         assert_eq!(matches[2].result, MatchResult::Unsatisfied);

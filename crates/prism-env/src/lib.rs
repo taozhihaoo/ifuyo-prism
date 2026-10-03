@@ -14,6 +14,7 @@
 pub mod host;
 pub mod model;
 pub mod paths;
+pub mod ports;
 pub mod probe;
 pub mod requirement;
 pub mod requirements;
@@ -29,8 +30,9 @@ pub use model::{
     Architecture, ConflictEntry, EnvironmentCapability, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
     EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
     PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
-    RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
-    SourceKind, ToolFact, ToolSource, VariableFact, VariableSource, VirtualEnvInfo,
+    PortInfo, PortProtocol, PortState, ProcessInfo, ProcessKind, RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
+    ExpectedPort, SourceKind, ToolFact, ToolSource, VariableFact, VariableSource,
+    VirtualEnvInfo,
     ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP, VARIABLE_CAP,
 };
 pub use runtime::{
@@ -38,6 +40,7 @@ pub use runtime::{
     package_manager_field, parse_dotnet_sdks, parse_rustup_toolchains, resolve_project_local,
     runtimes_from_tools, LOCKFILES,
 };
+pub use ports::{classify, collect_ports, collect_processes, expected_ports, parse_netstat, parse_ps, parse_ss, parse_tasklist};
 pub use paths::{collect_path_facts, normalize_path, path_facts_from_raw, path_identity};
 pub use probe::{run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe, DEFAULT_PROBE_TIMEOUT_MS};
 pub use tools::{

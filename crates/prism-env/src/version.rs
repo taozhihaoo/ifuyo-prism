@@ -134,7 +134,9 @@ pub fn satisfies(actual: Option<&ToolVersion>, operator: RequirementOperator, ex
                 MatchResult::Unsatisfied
             }
         }
-        RequirementOperator::Exists | RequirementOperator::InRange => MatchResult::Unknown,
+        RequirementOperator::Exists
+        | RequirementOperator::InRange
+        | RequirementOperator::Available => MatchResult::Unknown,
     }
 }
 

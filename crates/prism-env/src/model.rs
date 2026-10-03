@@ -34,6 +34,15 @@ pub struct EnvironmentSnapshot {
     pub package_managers: Vec<PackageManagerInfo>,
     /// 环境变量名 + 分类（§54：绝不采集值）。
     pub variables: Vec<VariableFact>,
+    /// 监听端口事实（§81–§85；动态事实，每次 refresh 重采 §211/§217）。
+    #[serde(default)]
+    pub ports: Vec<PortInfo>,
+    /// 相关进程事实（§86–§93；动态事实）。
+    #[serde(default)]
+    pub processes: Vec<ProcessInfo>,
+    /// 期望端口候选（§94：来源 + 置信度）。
+    #[serde(default)]
+    pub expected_ports: Vec<ExpectedPort>,
     pub resources: ResourceFacts,
     /// 项目环境需求（§42–§45/§71–§77 provider 层产出）。
     pub requirements: Vec<EnvironmentRequirement>,
@@ -259,6 +268,97 @@ pub enum VariableSource {
 
 /// 环境变量名上限（§315：不读取无界 env 数据）。
 pub const VARIABLE_CAP: usize = 500;
+
+/// 端口条目上限（§313）。
+pub const PORT_CAP: usize = 100;
+
+/// 进程条目上限（§312）。
+pub const PROCESS_CAP: usize = 200;
+
+/// 监听端口事实（§81/§83 listening-only；§211 observed_at 必带）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PortInfo {
+    pub port: u16,
+    /// v1 只有 TCP listening（§83）。
+    pub protocol: PortProtocol,
+    /// 绑定地址（"0.0.0.0:5173" / "[::]:5173"）。
+    pub address: String,
+    pub state: PortState,
+    /// 归属 PID；平台不允许/解析失败 ⇒ None（§85 不能猜）。
+    pub pid: Option<u32>,
+    pub process_name: Option<String>,
+    /// 采集来源（"netstat"/"ss"）。
+    pub source: String,
+    pub observed_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PortProtocol {
+    Tcp,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PortState {
+    Listening,
+}
+
+/// 相关进程事实（§86–§89；§87 v1 不采集 command line）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProcessInfo {
+    /// §212：PID 会变，不作稳定身份。
+    pub pid: u32,
+    pub name: String,
+    /// 可执行路径；平台不提供 ⇒ None（§92/§213）。
+    pub executable: Option<String>,
+    /// 该进程监听的端口（与 ports 关联，§86）。
+    pub ports: Vec<u16>,
+    /// 证据式分类（§89：基于 name/executable evidence）。
+    pub classification: ProcessKind,
+    /// 项目关联证据（§91/§330）；v1 无 cwd/cmdline API ⇒ None（不猜）。
+    pub project_association: Option<String>,
+    pub observed_at: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProcessKind {
+    Node,
+    Python,
+    Dotnet,
+    Java,
+    Rust,
+    Docker,
+    Database,
+    Browser,
+    Unknown,
+}
+
+impl ProcessKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ProcessKind::Node => "node",
+            ProcessKind::Python => "python",
+            ProcessKind::Dotnet => "dotnet",
+            ProcessKind::Java => "java",
+            ProcessKind::Rust => "rust",
+            ProcessKind::Docker => "docker",
+            ProcessKind::Database => "database",
+            ProcessKind::Browser => "browser",
+            ProcessKind::Unknown => "unknown",
+        }
+    }
+}
+
+/// 期望端口候选（§94：provenance + confidence 必须明确）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExpectedPort {
+    pub port: u16,
+    /// 如 "docker-compose.yml ports"。
+    pub source: String,
+    pub confidence: prism_core::Confidence,
+}
 
 /// 平台能力模型（§146–§147）：能力不可用 ⇒ 对应事实 Unknown/缺省 +
 /// 诊断，而不是引擎失败（§307 Unsupported）。M9a 实际覆盖前四项。
@@ -509,6 +609,8 @@ pub enum RequirementOperator {
     AtLeast,
     AtMost,
     InRange,
+    /// 端口可用（§95：Port requirement 专用）。
+    Available,
 }
 
 impl RequirementOperator {
@@ -520,6 +622,7 @@ impl RequirementOperator {
             RequirementOperator::AtLeast => "at_least",
             RequirementOperator::AtMost => "at_most",
             RequirementOperator::InRange => "in_range",
+            RequirementOperator::Available => "available",
         }
     }
 }

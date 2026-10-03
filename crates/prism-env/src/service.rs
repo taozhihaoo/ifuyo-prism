@@ -25,6 +25,9 @@ pub struct EnvironmentScanOptions {
     pub include_variables: bool,
     pub include_path: bool,
     pub include_resources: bool,
+    /// §86/§81 动态事实（默认采集；§217 每次刷新）。
+    pub include_processes: bool,
+    pub include_ports: bool,
     /// §310 max_parallel_probes。
     pub max_parallel_probes: usize,
     /// §309 总预算；超时后剩余工具记 NotProbed + 诊断（不失败）。
@@ -38,6 +41,8 @@ impl Default for EnvironmentScanOptions {
             include_variables: true,
             include_path: true,
             include_resources: true,
+            include_processes: true,
+            include_ports: true,
             max_parallel_probes: 4,
             total_budget: Duration::from_secs(30),
         }
@@ -111,6 +116,25 @@ impl EnvironmentService {
                 truncated: false,
             }
         };
+        // ---- Ports / Processes（§81–§94 动态事实，§211 observed_at）----
+        let (ports, processes, expected_ports) = if cancel.is_cancelled() {
+            (Vec::new(), Vec::new(), Vec::new())
+        } else {
+            let observed_at = prism_core::Timestamp::now_utc().to_string();
+            let collected = if options.include_ports {
+                crate::ports::collect_ports(&runner, cancel, &observed_at)
+            } else {
+                Vec::new()
+            };
+            let processes = if options.include_processes {
+                crate::ports::collect_processes(&collected, &runner, cancel, &observed_at)
+            } else {
+                Vec::new()
+            };
+            let expected = crate::ports::expected_ports(project_root);
+            (collected, processes, expected)
+        };
+
         let variables = if options.include_variables {
             crate::variables::collect_variables(cancel)
         } else {
@@ -140,6 +164,7 @@ impl EnvironmentService {
             &tools,
             &package_managers,
             &variables,
+            &ports,
             project_root,
         );
 
@@ -179,6 +204,9 @@ impl EnvironmentService {
             sdks,
             package_managers,
             variables,
+            ports,
+            processes,
+            expected_ports,
             resources,
             requirements,
             conflicts,
@@ -308,6 +336,9 @@ fn cancelled_snapshot(
         sdks,
         package_managers: vec![],
         variables: vec![],
+        ports: vec![],
+        processes: vec![],
+        expected_ports: vec![],
         resources: Default::default(),
         requirements: vec![],
         conflicts: vec![],

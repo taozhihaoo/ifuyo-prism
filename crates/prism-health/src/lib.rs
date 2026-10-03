@@ -13,9 +13,15 @@
 //! - Severity 复用 M0 三级（Info/Warning/Critical），与 Confidence 独立（§11/§12）
 //! - FindingId 确定性派生（§6/§198：M11 Snapshot 依赖稳定身份）
 
+pub mod engine;
 pub mod model;
+pub mod registry;
+pub mod rules;
 
+pub use engine::{analyze, HealthAnalysis, HealthContext, HealthEngineStats, HealthOptions, HealthScope};
 pub use model::{
     Evidence, EvidenceKind, Finding, FindingCategory, FindingExplanation, FindingId,
     FindingLocation, FindingStatus, HealthDiagnostic, RuleResult, HEALTH_SCHEMA_VERSION,
 };
+pub use registry::{HealthRule, HealthRuleMeta, HealthRuleRegistry};
+pub use rules::maintenance::MaintenanceMarkerRule;

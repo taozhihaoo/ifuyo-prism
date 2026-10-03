@@ -10,6 +10,7 @@ publish = false
 prism-core.workspace = true
 prism-project.workspace = true
 prism-analysis.workspace = true
+prism-parser.workspace = true
 prism-graph.workspace = true
 prism-git.workspace = true
 prism-changes.workspace = true

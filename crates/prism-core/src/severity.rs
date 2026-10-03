@@ -68,3 +68,17 @@ mod tests {
         takes_severity(Severity::Critical);
     }
 }
+
+/// 分析完整度（§100；M6 ImpactCompleteness 同义，M7 起统一从 core 引用）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PrismCompleteness {
+    /// 全部请求的分析完成。
+    Complete,
+    /// 部分源/映射不可用，但结果有效。
+    Partial,
+    /// 达到上限被截断。
+    Truncated,
+    /// 无法产生有效结果。
+    Failed,
+}

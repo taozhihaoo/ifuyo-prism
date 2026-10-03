@@ -32,5 +32,5 @@ pub mod timestamp;
 
 pub use error::{PrismError, PrismErrorCode, PrismErrorDto, PrismResult};
 pub use runtime::command::{CommandOutput, CommandRunner, CommandSpec};
-pub use severity::{Confidence, Severity};
+pub use severity::{Confidence, PrismCompleteness, Severity};
 pub use timestamp::Timestamp;

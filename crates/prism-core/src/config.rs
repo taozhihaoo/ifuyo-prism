@@ -118,6 +118,9 @@ pub struct HealthConfig {
     pub rules: std::collections::BTreeMap<String, HealthRuleConfig>,
     /// 整规则禁用列表（§65 快捷方式；与 rules.<id>.enabled=false 等效）。
     pub disabled_rules: Vec<String>,
+    /// Finding 级抑制（§69：精确 FindingId 字符串；命中 ⇒ 检出但标记
+    /// Suppressed——suppressed ≠ not detected，§67/§164）。
+    pub suppressed_findings: Vec<String>,
 }
 
 impl HealthConfig {
@@ -330,6 +333,7 @@ mod tests {
             .into_iter()
             .collect(),
             disabled_rules: vec!["SEC001".to_string()],
+            suppressed_findings: vec![],
         };
         // §221 precedence：disabled_rules > rules.<id>.enabled > default。
         assert_eq!(config.is_rule_enabled("SEC001", true), Some(false));

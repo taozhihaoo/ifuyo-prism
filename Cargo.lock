@@ -2555,6 +2555,7 @@ dependencies = [
  "prism-git",
  "prism-graph",
  "prism-impact",
+ "prism-parser",
  "prism-project",
  "serde",
  "serde_json",

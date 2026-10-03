@@ -398,6 +398,7 @@ mod tests {
             disabled_rules: vec!["SEC001".to_string()],
             suppressed_findings: vec![],
             architecture: Default::default(),
+            verify: Default::default(),
         };
         // §221 precedence：disabled_rules > rules.<id>.enabled > default。
         assert_eq!(config.is_rule_enabled("SEC001", true), Some(false));

@@ -262,10 +262,19 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<VerifyCommand>,
     },
-    /// 检查开发环境（M9）
+    /// 检查开发环境（M9a：host/工具链/需求匹配基础输出）
     Env {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 机器可读输出（stdout 仅数据，§295）
+        #[arg(long)]
+        json: bool,
+        /// Unknown 也视为失败（§241；默认 Unknown ≠ Unsatisfied，§242）
+        #[arg(long)]
+        strict: bool,
+        /// 探测全部 allowlist 工具（§270 heavy，默认项目相关）
+        #[arg(long)]
+        all_tools: bool,
     },
     /// 生成 AI 上下文包（M10）
     Context {

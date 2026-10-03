@@ -16,6 +16,8 @@ pub mod model;
 pub mod paths;
 pub mod probe;
 pub mod requirement;
+pub mod render;
+pub mod service;
 pub mod runtime;
 pub mod variables;
 pub mod tools;
@@ -42,6 +44,8 @@ pub use tools::{
 };
 pub use requirement::{base_requirements, match_requirements};
 pub use variables::{collect_variables, is_possibly_sensitive};
+pub use render::render_text;
+pub use service::{EnvironmentScanOptions, EnvironmentService};
 pub use version::{
     compare_versions, parse_version_output, parse_version_token, satisfies, ToolVersion,
 };

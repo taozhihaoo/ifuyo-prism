@@ -71,11 +71,7 @@ fn info_json_output_is_valid_json() {
 
 #[test]
 fn future_commands_clearly_report_not_implemented() {
-    for args in [
-        vec!["env", "."],
-        vec!["context", "."],
-        vec!["report", "."],
-    ] {
+    for args in [vec!["context", "."], vec!["report", "."]] {
         let output = prism(&args);
         assert!(!output.status.success(), "{args:?} must not fake success");
         assert!(

@@ -14,6 +14,7 @@
 
 mod changes_command;
 mod cli;
+mod env_command;
 mod health_command;
 mod verify_command;
 mod verify_subcommands;
@@ -169,6 +170,12 @@ fn run() -> i32 {
                 fail_on_unavailable,
             ),
         },
+        Some(cli::Command::Env {
+            path,
+            json,
+            strict,
+            all_tools,
+        }) => env_command::run(&path, json, strict, all_tools),
         Some(command) => not_implemented_yet(command.name()),
     }
 }

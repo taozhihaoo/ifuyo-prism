@@ -2507,6 +2507,7 @@ dependencies = [
  "prism-analysis",
  "prism-changes",
  "prism-core",
+ "prism-env",
  "prism-git",
  "prism-graph",
  "prism-health",

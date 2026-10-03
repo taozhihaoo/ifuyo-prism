@@ -61,7 +61,19 @@ pub fn run_probe(
     working_directory: &std::path::Path,
     cancel: &CancellationToken,
 ) -> ProbeResult {
-    let mut command_spec = CommandSpec::new(probe.program.clone(), probe.args.iter().cloned())
+    // Windows `.cmd`/`.bat` shim（npm/pnpm/corepack…）经 cmd.exe /C
+    // 显式 argv 运行（§112 安全边界不变：program 仍来自 allowlist）。
+    let (program, args) =
+        if prism_core::runtime::lookup::needs_windows_script_wrap(&probe.program, working_directory)
+        {
+            let mut wrapped = vec!["/C".to_string(), probe.program.clone()];
+            wrapped.extend(probe.args.iter().cloned());
+            ("cmd.exe".to_string(), wrapped)
+        } else {
+            (probe.program.clone(), probe.args.clone())
+        };
+
+    let mut command_spec = CommandSpec::new(program, args)
         .with_working_directory(working_directory.to_path_buf())
         .with_timeout_ms(probe.timeout_ms);
     // probe 输出有界（§311 max_output）：64 KiB 足够版本行/SDK 列表。

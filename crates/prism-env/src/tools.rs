@@ -190,7 +190,7 @@ pub fn discover_tool(
 /// 用户 shell 的解析顺序），同名候选记录（§65 shadowing 事实，不判对错）。
 fn resolve_on_path(program: &str, working_directory: &Path) -> (Option<PathBuf>, Vec<String>) {
     let active = resolve_executable(program, working_directory);
-    let mut additional = Vec::new();
+    let mut additional: Vec<String> = Vec::new();
     if let Some(path_var) = std::env::var_os("PATH") {
         for dir in std::env::split_paths(&path_var) {
             let mut candidates: Vec<PathBuf> = vec![dir.join(program)];
@@ -204,21 +204,35 @@ fn resolve_on_path(program: &str, working_directory: &Path) -> (Option<PathBuf>,
                 }
             }
             for candidate in candidates {
-                if candidate.is_file() {
-                    match &active {
-                        Some(active_path) if candidate != *active_path => {
-                            if additional.len() < 5 {
-                                additional.push(candidate.to_string_lossy().to_string());
-                            }
-                        }
-                        Some(_) => {}
-                        None => {}
-                    }
+                if !candidate.is_file() {
+                    continue;
+                }
+                let candidate_text = candidate.to_string_lossy().to_string();
+                let is_active = active
+                    .as_ref()
+                    .is_some_and(|active_path| {
+                        paths_equal(&candidate, active_path)
+                    });
+                if is_active {
+                    continue;
+                }
+                // §65 候选去重（PATHEXT 可能含重复扩展名）。
+                if !additional.contains(&candidate_text) && additional.len() < 5 {
+                    additional.push(candidate_text);
                 }
             }
         }
     }
     (active, additional)
+}
+
+/// 路径相等（§192：Windows 大小写不敏感）。
+fn paths_equal(a: &Path, b: &Path) -> bool {
+    if cfg!(windows) {
+        a.to_string_lossy().to_ascii_lowercase() == b.to_string_lossy().to_ascii_lowercase()
+    } else {
+        a == b
+    }
 }
 
 #[cfg(test)]

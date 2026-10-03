@@ -217,7 +217,7 @@ fn emit_side_symbols(
                     Side::Before => "absent after",
                     Side::After => "absent before",
                 },
-                source_label(&model)
+                source_label(model)
             ),
         )
         .with_file(input.file_change_id.clone());

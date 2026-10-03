@@ -5,8 +5,8 @@
 //! - 大写整词匹配：提取连续大写 run 并要求精确等于 marker
 //!   （`todo` 不算、`TODOS`/`TODOs` 不算）
 //! - 前导字符不是 `/`（排除 URL `http://x/TODO` 与路径）
-//! - 行首必须是该语言已知的注释引导符（按扩展名映射）；
-//!   未知扩展名整行跳过（保守：宁漏报不误报）
+//! - marker 之前的行内任意位置必须出现该语言注释引导符
+//!   （按扩展名映射；未知扩展名整行跳过——保守：宁漏报不误报）
 //!
 //! Generated/过大文件不在管线内（M2 策略性跳过），天然不扫描；
 //! §111 噪音控制由引擎 per-rule cap + GUI 过滤承担。
@@ -51,12 +51,16 @@ fn is_word_char(character: char) -> bool {
     character.is_alphanumeric() || character == '_'
 }
 
-/// 一行中第一个合格 marker 出现位置（整词 + 非路径 + 行首注释引导符）。
+/// 一行中第一个合格 marker 出现位置。
+/// 注释语境（§43）：marker 之前的行内任意位置出现该语言注释引导符
+/// （行首或行尾注释都算；`return 1; // FIXME` 这类尾注释必须命中）。
 /// 返回 (marker, 1-based column)。
 fn marker_occurrence<'a>(line: &'a str, introducers: &[&str]) -> Option<(&'a str, u32)> {
-    let trimmed = line.trim_start();
-    let introducer = introducers.iter().find(|intro| trimmed.starts_with(**intro))?;
-    let mut cursor = line.len() - trimmed.len() + introducer.len();
+    // 注释语境门槛：marker 之前行内任意位置出现引导符（行首/行尾注释皆可）。
+    if !introducers.iter().any(|intro| line.contains(intro)) {
+        return None;
+    }
+    let mut cursor = 0;
 
     while cursor < line.len() {
         let Some(relative) = MARKERS
@@ -205,6 +209,11 @@ mod tests {
         // 正例：注释行整词 TODO。
         assert_eq!(marker_occurrence("// TODO: extract helper", ts), Some(("TODO", 4)));
         assert_eq!(marker_occurrence("/* FIXME later */", ts), Some(("FIXME", 4)));
+        // 尾注释（行中引导符）同样命中：
+        assert_eq!(
+            marker_occurrence("return 1; // FIXME later", ts),
+            Some(("FIXME", 14))
+        );
         // 负例（§43/§154）：
         assert_eq!(
             marker_occurrence("// see http://example.com/TODO here", ts),

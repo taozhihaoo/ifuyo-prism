@@ -145,7 +145,7 @@ describe("VerifyPage (M8 GUI)", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /run verification/i }));
-    expect(ipc.startVerify).toHaveBeenCalledWith(undefined);
+    expect(ipc.startVerify).toHaveBeenCalledWith(undefined, false);
 
     await waitFor(
       () => {
@@ -227,6 +227,32 @@ describe("VerifyPage (M8 GUI)", () => {
         /without results/,
       );
     });
+  });
+
+  it("shows impacted test candidates as potential, not verified (§34)", async () => {
+    const withCandidates: VerificationReportDto = {
+      ...reportFixture,
+      impacted_test_candidates: ["src/a.test.ts"],
+    };
+    ipc.getVerifyStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getVerifyResults.mockResolvedValue({
+      plan: planFixture,
+      report: withCandidates,
+    });
+
+    render(<VerifyPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("verify-candidates")).toBeInTheDocument();
+    });
+    expect(screen.getByText(/not a verified selection/)).toBeInTheDocument();
+    expect(screen.getByText("src/a.test.ts")).toBeInTheDocument();
+
+    // §307：Run (current changes scope) 走 --changed 语义。
+    ipc.startVerify.mockResolvedValue("started");
+    fireEvent.click(
+      screen.getByRole("button", { name: /current changes scope/i }),
+    );
+    expect(ipc.startVerify).toHaveBeenCalledWith(undefined, true);
   });
 
   it("cancels a running verification on unmount (§93)", async () => {

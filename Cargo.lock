@@ -2620,8 +2620,12 @@ dependencies = [
 name = "prism-verify"
 version = "0.1.0"
 dependencies = [
+ "prism-analysis",
+ "prism-changes",
  "prism-core",
  "prism-git",
+ "prism-graph",
+ "prism-impact",
  "prism-project",
  "serde",
  "serde_json",

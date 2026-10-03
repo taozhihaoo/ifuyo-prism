@@ -92,6 +92,18 @@ pub fn render_text(report: &VerificationReport) -> String {
         }
         None => {}
     }
+    // §307/§34：候选只标注 Potential，不冒充完整 selective verification。
+    if !report.impacted_test_candidates.is_empty() {
+        let _ = writeln!(out, "\nScope: current changes (working tree)");
+        let _ = writeln!(
+            out,
+            "Impacted test candidates (potential — not a verified selection):"
+        );
+        for candidate in &report.impacted_test_candidates {
+            let _ = writeln!(out, "  - {candidate}");
+        }
+        out.push('\n');
+    }
 
     for run in &report.runs {
         let _ = writeln!(

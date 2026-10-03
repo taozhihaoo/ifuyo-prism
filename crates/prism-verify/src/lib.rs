@@ -13,6 +13,7 @@
 //! WritePolicy 默认拒绝源码变更类命令（§85-§87）；Git 只读（§83）。
 
 pub mod ci;
+pub mod changed;
 pub mod discovery;
 pub mod engine;
 pub mod executor;
@@ -35,6 +36,7 @@ pub use model::{
     VerifyCounts, VerifyDiagnostic, VerifyOptions, VerifyPlan, VerificationReport, WritePolicy,
     VERIFY_SCHEMA_VERSION,
 };
+pub use changed::impacted_test_candidates;
 pub use ci::{compare_with_local, inspect_github_actions, CICheck, CIInspection, VerificationCoverage};
 pub use parsers::{
     format_tool_diagnostic, parse_dotnet_line, parse_failure_output, parse_junit,

@@ -7,8 +7,12 @@ rust-version.workspace = true
 publish = false
 
 [dependencies]
+prism-analysis.workspace = true
+prism-changes.workspace = true
 prism-core.workspace = true
 prism-git.workspace = true
+prism-graph.workspace = true
+prism-impact.workspace = true
 prism-project.workspace = true
 serde.workspace = true
 serde_json.workspace = true

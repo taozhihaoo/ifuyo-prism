@@ -201,8 +201,11 @@ export function getVerifyPlan(): Promise<VerifyPlanDto> {
   return invoke<VerifyPlanDto>("verify_plan");
 }
 
-export function startVerify(checks?: string[]): Promise<string> {
-  return invoke<string>("start_verify", { checks: checks ?? null });
+export function startVerify(checks?: string[], changed?: boolean): Promise<string> {
+  return invoke<string>("start_verify", {
+    checks: checks ?? null,
+    changed: changed ?? null,
+  });
 }
 
 export function getVerifyStatus(): Promise<VerifyStatusDto> {

@@ -99,8 +99,8 @@ export default function VerifyPage() {
     };
   }, [project?.root_path, pollTick]);
 
-  const runVerification = (ids: string[] | null) => {
-    void startVerify(ids ?? undefined)
+  const runVerification = (ids: string[] | null, changed = false) => {
+    void startVerify(ids ?? undefined, changed)
       .then(() => {
         setPhase({ kind: "running" });
         setPollTick((tick) => tick + 1);
@@ -299,7 +299,31 @@ export default function VerifyPage() {
         <button type="button" className="linklike" onClick={() => runVerification(null)}>
           Run again
         </button>
+        <button
+          type="button"
+          className="linklike"
+          onClick={() => runVerification(null, true)}
+        >
+          Run (current changes scope)
+        </button>
       </div>
+
+      {report.impacted_test_candidates.length > 0 && (
+        <div className="card" data-testid="verify-candidates">
+          <h2 className="card-title">Impacted test candidates</h2>
+          <p className="muted small">
+            Potential — derived from ChangeSet + impact analysis; not a verified
+            selection (§34).
+          </p>
+          <ul>
+            {report.impacted_test_candidates.map((candidate) => (
+              <li key={candidate} className="mono small">
+                {candidate}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   );
 }

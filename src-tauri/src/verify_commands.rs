@@ -55,16 +55,19 @@ pub fn verify_plan(state: State<'_, AppState>) -> Result<VerifyPlanDto, PrismErr
 }
 
 /// 显式执行验证（§118 Run all / Run selected；§297 用户可见执行意图）。
+/// `changed=true` 时附带受影响测试候选（§247 Potential，不冒充 selective）。
 #[tauri::command]
 pub fn start_verify(
     state: State<'_, AppState>,
     checks: Option<Vec<String>>,
+    changed: Option<bool>,
 ) -> Result<String, PrismErrorDto> {
     let root = verify_root(&state)?;
     let config_path = root.join(PrismConfig::config_file_name());
     let (config, _loaded) = PrismConfig::load(&config_path).map_err(|err| {
         PrismErrorDto::new("config", format!("config invalid: {err}"))
     })?;
+    let changed = changed.unwrap_or(false);
     let (root, token, session_arc) = {
         let mut session = lock_session(&state.session);
         if session.verify_status == Some(TaskState::Running) {
@@ -87,6 +90,12 @@ pub fn start_verify(
             };
             let runner: Arc<dyn prism_core::CommandRunner> = Arc::new(StdCommandRunner::new());
             let git = prism_git::GitService::new(runner.clone());
+            // §247/§307：M5 ChangeSet → M6 Impact → TestCandidate（Potential）。
+            let candidates = if changed {
+                prism_verify::impacted_test_candidates(&root, runner.clone(), &token)
+            } else {
+                Vec::new()
+            };
             prism_verify::run_verification(
                 &specs,
                 &root,
@@ -99,7 +108,7 @@ pub fn start_verify(
                 2,
                 true,
                 Some(&git),
-                &[],
+                &candidates,
                 &token,
             )
         };

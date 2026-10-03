@@ -56,21 +56,11 @@ pub fn run(
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "project".to_string());
 
-    // §32-§36：--changed 时展示受影响测试候选（Candidate impacted tests，
-    // 绝不冒充 "Verified affected tests"）。npm 等工具不在本地 PATH 时仍可列出。
+    // §32-§36/§247/§307：--changed 时展示受影响测试候选
+    // （M5 ChangeSet → M6 Impact → TestCandidate，Potential 标注，
+    // 绝不冒充 "Verified affected tests"）。
     let impacted_test_candidates: Vec<String> = if changed {
-        let cancel_probe = CancellationToken::new();
-        prism_project::DiscoveryService::new()
-            .discover(path, prism_project::ScanOptions::default(), &cancel_probe, |_| {})
-            .map(|discovery| {
-                discovery
-                    .files
-                    .iter()
-                    .filter(|file| file.classification.kind == prism_project::FileKind::Test)
-                    .map(|file| file.relative_path.clone())
-                    .collect()
-            })
-            .unwrap_or_default()
+        prism_verify::impacted_test_candidates(path, runner.clone(), &cancel)
     } else {
         Vec::new()
     };

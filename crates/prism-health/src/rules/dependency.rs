@@ -66,6 +66,7 @@ fn dependency_finding(
         ))],
         suggested_action: Some("Verify the dependency specifier and the availability of the target.".to_string()),
         status: FindingStatus::Active,
+            change_relation: None,
         metadata: [("raw_target".to_string(), raw_target.to_string())]
             .into_iter()
             .collect(),

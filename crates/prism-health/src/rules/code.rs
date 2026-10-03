@@ -136,6 +136,7 @@ fn evaluate_code_rule(
                     "Review the symbol against the configured threshold.".to_string(),
                 ),
                 status: FindingStatus::Active,
+            change_relation: None,
                 metadata: [
                     ("value".to_string(), value.to_string()),
                     ("threshold".to_string(), threshold.to_string()),

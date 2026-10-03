@@ -13,15 +13,24 @@ use crate::model::{
 };
 use crate::registry::HealthRuleRegistry;
 use prism_core::config::HealthConfig;
+use prism_core::severity::Severity;
 use prism_core::task::CancellationToken;
 use prism_core::{PrismError, PrismResult};
 use std::collections::{BTreeMap, BTreeSet};
 
-/// 分析范围（§63）。M7a 实现 FullProject；其余范围在 M7b 消费 M5/M6 时启用。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+/// 分析范围（§63/§61/§62/§190/§191）：
+/// - FullProject：全项目（默认）
+/// - ChangedFiles：只报告 ChangeSet 变更文件内的 findings（§61/§247）
+/// - ImpactedItems：变更文件 ∪ M6 受影响范围（§64/§242）
+///
+/// 范围由 ChangeSet/ImpactAnalysis 决定，不因单个 finding 扩大到全仓（§191）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HealthScope {
     #[default]
     FullProject,
+    ChangedFiles,
+    ImpactedItems,
 }
 
 /// 分析选项（§222：保持小）。
@@ -74,6 +83,9 @@ pub struct HealthAnalysis {
     /// 稳定项目名（M1 ProjectId 目前为运行期 UUID——稳定项目身份属 M11，
     /// 以项目名作为本篇的确定性占位，规格 §205 的稳定 id 由 M11 落地）。
     pub project_name: String,
+    pub scope: HealthScope,
+    /// 与当前变更相关的 finding 数（scope 非 FullProject 时 = findings 总数）。
+    pub change_related_findings: u64,
     pub findings: Vec<Finding>,
     pub diagnostics: Vec<HealthDiagnostic>,
     pub analysis_completeness: prism_core::PrismCompleteness,
@@ -81,6 +93,7 @@ pub struct HealthAnalysis {
     pub disabled_rules: Vec<String>,
     pub failed_rules: Vec<String>,
     pub stats: HealthEngineStats,
+    pub summary: crate::model::HealthSummary,
 }
 
 /// 执行健康分析（§8：analyze(project_context, health_options)）。
@@ -126,6 +139,7 @@ pub fn analyze(
     let mut failed: Vec<String> = Vec::new();
     let mut collected: Vec<Finding> = Vec::new();
     let mut truncated_total: u64 = 0;
+    let mut change_related_holder: u64 = 0;
 
     for rule in registry.rules() {
         if cancel.is_cancelled() {
@@ -217,6 +231,56 @@ pub fn analyze(
         }
     }
 
+    // ---- §62/§64/§191：scope 过滤 + change relation（只保留位置事实）----
+    let changed_paths: BTreeSet<String> = context
+        .change_set
+        .iter()
+        .flat_map(|change_set| {
+            change_set.files.iter().map(|file| {
+                file.new_path.clone().unwrap_or_else(|| file.old_path.clone().unwrap_or_default())
+            })
+        })
+        .collect();
+    let impacted_paths: BTreeSet<String> = context
+        .impact
+        .iter()
+        .flat_map(|impact| impact.impacted_items.iter().map(|item| item.path.clone()))
+        .collect();
+    match options.scope {
+        HealthScope::FullProject => {
+            for finding in &mut findings {
+                if changed_paths.contains(&finding.location.relative_path) {
+                    finding.change_relation = Some(crate::model::ChangeRelation::DirectlyChanged);
+                } else if impacted_paths.contains(&finding.location.relative_path) {
+                    finding.change_relation = Some(crate::model::ChangeRelation::Impacted);
+                } else {
+                    finding.change_relation = Some(crate::model::ChangeRelation::Unrelated);
+                }
+            }
+        }
+        HealthScope::ChangedFiles | HealthScope::ImpactedItems => {
+            findings.retain(|finding| {
+                let path = &finding.location.relative_path;
+                match options.scope {
+                    HealthScope::ChangedFiles => changed_paths.contains(path),
+                    HealthScope::ImpactedItems => {
+                        changed_paths.contains(path) || impacted_paths.contains(path)
+                    }
+                    HealthScope::FullProject => true,
+                }
+            });
+            for finding in &mut findings {
+                let in_changed = changed_paths.contains(&finding.location.relative_path);
+                finding.change_relation = Some(if in_changed {
+                    crate::model::ChangeRelation::DirectlyChanged
+                } else {
+                    crate::model::ChangeRelation::Impacted
+                });
+            }
+            change_related_holder = findings.len() as u64;
+        }
+    }
+
     // ---- suppression（§67/§164：仍检出，仅标记）----
     let mut stats = HealthEngineStats {
         findings_detected: findings.len() as u64,
@@ -248,11 +312,54 @@ pub fn analyze(
         prism_core::PrismCompleteness::Complete
     };
 
+    // ---- §10 summary（事实计数；M4 与 score 无缘）----
+    let mut summary = crate::model::HealthSummary {
+        total_findings: findings.len() as u64,
+        ..Default::default()
+    };
+    let mut files_with: BTreeSet<String> = BTreeSet::new();
+    let mut modules_with: BTreeSet<String> = BTreeSet::new();
+    let mut symbols_with: BTreeSet<String> = BTreeSet::new();
+    for finding in &findings {
+        match finding.severity {
+            Severity::Critical => summary.critical_count += 1,
+            Severity::Warning => summary.warning_count += 1,
+            Severity::Info => summary.info_count += 1,
+        }
+        *summary
+            .by_category
+            .entry(format!("{:?}", finding.category).to_ascii_lowercase())
+            .or_insert(0) += 1;
+        *summary.by_rule.entry(finding.rule_id.clone()).or_insert(0) += 1;
+        files_with.insert(finding.location.relative_path.clone());
+        for module in &finding.related_modules {
+            modules_with.insert(module.clone());
+        }
+        for symbol in &finding.related_symbols {
+            symbols_with.insert(symbol.clone());
+        }
+    }
+    summary.files_with_findings = files_with.len() as u64;
+    summary.modules_with_findings = modules_with.len() as u64;
+    summary.symbols_with_findings = symbols_with.len() as u64;
+
     diagnostics.sort_by(|a, b| (&a.kind, &a.subject, &a.detail).cmp(&(&b.kind, &b.subject, &b.detail)));
 
     Ok(HealthAnalysis {
         schema_version: HEALTH_SCHEMA_VERSION,
         project_name: context.project.name.clone(),
+        scope: options.scope,
+        change_related_findings: if options.scope == HealthScope::FullProject {
+            findings
+                .iter()
+                .filter(|finding| {
+                    finding.change_relation == Some(crate::model::ChangeRelation::DirectlyChanged)
+                        || finding.change_relation == Some(crate::model::ChangeRelation::Impacted)
+                })
+                .count() as u64
+        } else {
+            change_related_holder
+        },
         findings,
         diagnostics,
         analysis_completeness,
@@ -260,6 +367,7 @@ pub fn analyze(
         disabled_rules: disabled,
         failed_rules: failed,
         stats,
+        summary,
     })
 }
 
@@ -331,6 +439,7 @@ mod tests {
             )],
             suggested_action: None,
             status: FindingStatus::Active,
+            change_relation: None,
             metadata: Default::default(),
         }
     }

@@ -8,6 +8,7 @@
 
 use prism_core::severity::{Confidence, Severity};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// 对外 JSON 契约版本。
 pub const HEALTH_SCHEMA_VERSION: u32 = 1;
@@ -151,6 +152,10 @@ pub struct Finding {
     pub status: FindingStatus,
     /// 规则私有附加事实（确定性、小体量）。
     pub metadata: BTreeMap<String, String>,
+    /// 与当前变更的关系（§58/§137；FullProject 全量时也有值，M10 可消费；
+    /// 序列化时 None 省略，保持 M7a 契约向后兼容）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub change_relation: Option<ChangeRelation>,
 }
 
 /// What / Evidence / Why it matters 三段解释（§139）。
@@ -162,13 +167,40 @@ pub struct FindingExplanation {
     pub why_it_matters: Option<String>,
 }
 
-use std::collections::BTreeMap;
-
 impl Finding {
     /// 确定性 id（§6）。
     pub fn derive_id(rule_id: &str, stable_key: &str) -> FindingId {
         FindingId::derive(rule_id, stable_key)
     }
+}
+
+/// 汇总统计（§10：全部为事实计数；禁止折算成任何 0-100 健康分，§4）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct HealthSummary {
+    pub total_findings: u64,
+    /// 三级 severity 计数（M0 词表；对外契约稳定）。
+    pub critical_count: u64,
+    pub warning_count: u64,
+    pub info_count: u64,
+    /// 分类 → 计数（按分类名排序，§79 确定性）。
+    pub by_category: BTreeMap<String, u64>,
+    /// 规则 → 计数。
+    pub by_rule: BTreeMap<String, u64>,
+    pub files_with_findings: u64,
+    pub modules_with_findings: u64,
+    pub symbols_with_findings: u64,
+}
+
+/// Finding 与当前变更的关系（§58/§137；只读事实，不改变 finding 本体）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChangeRelation {
+    /// finding 位置在当前 ChangeSet 的变更文件内。
+    DirectlyChanged,
+    /// finding 位置在 M6 ImpactAnalysis 的受影响范围内（未直接变更）。
+    Impacted,
+    /// 与当前变更无关（scope=FullProject 时的默认）。
+    Unrelated,
 }
 
 /// 单条规则的执行结果（§201：不直接改全局 HealthAnalysis）。
@@ -222,6 +254,7 @@ mod tests {
             .with_location(FindingLocation::new("src/a.ts", 3, 5))],
             suggested_action: Some("Resolve or schedule the marked work.".to_string()),
             status: FindingStatus::Active,
+            change_relation: None,
             metadata: BTreeMap::new(),
         }
     }

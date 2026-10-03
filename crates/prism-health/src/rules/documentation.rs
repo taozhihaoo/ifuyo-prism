@@ -145,6 +145,7 @@ fn doc_finding(
             .with_location(FindingLocation::new("README.md", line_number as u32, 1))],
         suggested_action: Some("Verify the documentation reference against current project facts.".to_string()),
         status: FindingStatus::Active,
+            change_relation: None,
         metadata: BTreeMap::new(),
     }
 }

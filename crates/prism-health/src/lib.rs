@@ -22,8 +22,9 @@ pub mod rules;
 pub use derived::{DerivedFacts, SymbolMetrics};
 pub use engine::{analyze, HealthAnalysis, HealthContext, HealthEngineStats, HealthOptions, HealthScope};
 pub use model::{
-    Evidence, EvidenceKind, Finding, FindingCategory, FindingExplanation, FindingId,
-    FindingLocation, FindingStatus, HealthDiagnostic, RuleResult, HEALTH_SCHEMA_VERSION,
+    ChangeRelation, Evidence, EvidenceKind, Finding, FindingCategory, FindingExplanation,
+    FindingId, FindingLocation, FindingStatus, HealthDiagnostic, HealthSummary, RuleResult,
+    HEALTH_SCHEMA_VERSION,
 };
 pub use registry::{HealthRule, HealthRuleMeta, HealthRuleRegistry};
 pub use rules::maintenance::MaintenanceMarkerRule;

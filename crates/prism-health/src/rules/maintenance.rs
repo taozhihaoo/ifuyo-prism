@@ -196,6 +196,7 @@ impl HealthRule for MaintenanceMarkerRule {
                     .with_location(FindingLocation::new(path.clone(), line_number, column))],
                     suggested_action: Some("Resolve or schedule the marked work.".to_string()),
                     status: FindingStatus::Active,
+            change_relation: None,
                     metadata: [("marker".to_string(), marker.to_string())]
                         .into_iter()
                         .collect(),

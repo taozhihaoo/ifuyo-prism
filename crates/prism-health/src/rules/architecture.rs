@@ -82,6 +82,7 @@ fn fan_finding(
         )],
         suggested_action: Some("Review the module's responsibilities if the connectivity is unexpected.".to_string()),
         status: FindingStatus::Active,
+            change_relation: None,
         metadata: [
             ("count".to_string(), count.to_string()),
             ("threshold".to_string(), threshold.to_string()),
@@ -180,6 +181,7 @@ impl HealthRule for CircularDependencyRule {
                 evidence,
                 suggested_action: Some("Review the dependency direction between these modules.".to_string()),
                 status: FindingStatus::Active,
+            change_relation: None,
                 metadata: [
                     ("cycle_id".to_string(), cycle.id.clone()),
                     ("member_count".to_string(), cycle.nodes.len().to_string()),

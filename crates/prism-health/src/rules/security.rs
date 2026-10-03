@@ -112,6 +112,7 @@ fn secret_finding(
         ))],
         suggested_action: Some("Verify the value and move real credentials out of tracked files.".to_string()),
         status: FindingStatus::Active,
+            change_relation: None,
         metadata: [("pattern".to_string(), pattern_kind.to_string())]
             .into_iter()
             .collect(),

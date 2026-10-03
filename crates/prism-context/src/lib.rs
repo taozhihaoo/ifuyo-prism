@@ -1,3 +1,4 @@
+pub mod collectors;
 pub mod model;
 pub mod task;
 

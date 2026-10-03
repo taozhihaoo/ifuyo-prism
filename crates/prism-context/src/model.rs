@@ -451,6 +451,26 @@ pub struct ContextItem {
     pub content_hash: Option<String>,
 }
 
+/// 候选（§87–§89：collector 产物，未排序/未物化）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ContextCandidate {
+    pub source: ContextSource,
+    pub group: ContextGroup,
+    pub title: String,
+    pub reasons: Vec<SelectionReason>,
+    pub evidence: Vec<String>,
+    pub impact_distance: Option<u32>,
+    pub change_state: Option<String>,
+    pub language: Option<String>,
+    /// M2 符号行范围（materializer 切片用）。
+    pub symbol_range: Option<(u64, u64)>,
+    pub symbol_id: Option<String>,
+    pub symbol_name: Option<String>,
+    pub severity: Option<String>,
+    pub change_type: Option<String>,
+    pub line_count_estimate: Option<u64>,
+}
+
 /// 排除记录（§141/§147）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExcludedCandidate {

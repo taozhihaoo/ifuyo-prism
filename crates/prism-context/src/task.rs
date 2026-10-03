@@ -187,7 +187,7 @@ pub fn resolve_target(
     }
 
     let mut paths: Vec<String> = path_hits.clone();
-    for (symbol_id, file) in &symbol_hits {
+    for (_symbol_id, file) in &symbol_hits {
         if !paths.contains(file) {
             paths.push(file.clone());
         }
@@ -328,7 +328,7 @@ mod tests {
             TargetResolution::Resolved { paths, symbols } => {
                 assert_eq!(paths, vec!["src/UniqueResolver.ts".to_string()]);
                 assert!(
-                    symbols.len() >= 1,
+                    !symbols.is_empty(),
                     "file-module + class symbols both count: {symbols:?}"
                 );
             }

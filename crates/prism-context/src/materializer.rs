@@ -212,6 +212,20 @@ fn truncate_at_line_boundary(content: &str, max_bytes: u64) -> String {
         taken += line_len;
         lines.push(line);
     }
+    // §36/§176：markdown 沿 heading 边界回退——半截 section 比少一个
+    // section 更误导。保留到最后一行 heading 为止（丢弃悬空 heading）。
+    if content.trim_start().starts_with('#') {
+        while lines.len() > 1 {
+            if lines
+                .last()
+                .is_some_and(|line| line.trim_start().starts_with('#'))
+            {
+                lines.pop();
+                break;
+            }
+            lines.pop();
+        }
+    }
     lines.join("\n")
 }
 

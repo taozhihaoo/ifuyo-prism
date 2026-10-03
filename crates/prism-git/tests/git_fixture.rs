@@ -467,3 +467,83 @@ fn log_on_unborn_repo_returns_empty() {
     assert!(commits.is_empty());
     let _ = PathBuf::from(&fixture.root);
 }
+
+// ---- M5 历史源：read_blob / resolve_revision（只读 cat-file/rev-parse）----
+
+#[test]
+fn resolve_revision_and_read_blob_at_head() {
+    let fixture = Fixture::new("read-blob");
+    fixture.write("src/app.ts", "export const answer = 42;\n");
+    fixture.commit_all("c1");
+    let (service, cancel) = fixture.provider();
+
+    let sha = service
+        .resolve_revision(&fixture.root, "HEAD", &cancel)
+        .unwrap()
+        .expect("HEAD must resolve after first commit");
+    assert_eq!(sha.len(), 40, "full sha expected");
+    assert!(sha.chars().all(|c| c.is_ascii_hexdigit()));
+
+    assert_eq!(
+        service
+            .resolve_revision(&fixture.root, "no-such-rev", &cancel)
+            .unwrap(),
+        None,
+        "invalid revision resolves to None, not error"
+    );
+
+    let blob = service
+        .read_blob(&fixture.root, "HEAD", "src/app.ts", 1024, &cancel)
+        .unwrap();
+    assert_eq!(
+        blob,
+        prism_git::RevisionBlob::Text {
+            content: "export const answer = 42;\n".to_string()
+        }
+    );
+
+    // 缺失路径：显式 Missing，而不是错误。
+    let missing = service
+        .read_blob(&fixture.root, "HEAD", "src/gone.ts", 1024, &cancel)
+        .unwrap();
+    assert_eq!(missing, prism_git::RevisionBlob::Missing);
+
+    // 超限：返回 TooLarge 且不读取内容。
+    let too_large = service
+        .read_blob(&fixture.root, "HEAD", "src/app.ts", 4, &cancel)
+        .unwrap();
+    assert_eq!(
+        too_large,
+        prism_git::RevisionBlob::TooLarge { size_bytes: 26 }
+    );
+}
+
+#[test]
+fn read_blob_detects_non_utf8_as_encoding_unsupported() {
+    let fixture = Fixture::new("read-blob-latin1");
+    // 非 UTF-8 字节：read_to_string 整体失败 → 空串；长度核对必须拦住。
+    std::fs::write(fixture.root.join("data.bin"), [0x43, 0xE9, 0x6C, 0x69]).unwrap();
+    fixture.commit_all("latin1");
+    let (service, cancel) = fixture.provider();
+    let blob = service
+        .read_blob(&fixture.root, "HEAD", "data.bin", 1024, &cancel)
+        .unwrap();
+    assert_eq!(blob, prism_git::RevisionBlob::EncodingUnsupported);
+}
+
+#[test]
+fn read_blob_empty_file_is_text() {
+    let fixture = Fixture::new("read-blob-empty");
+    fixture.write("empty.ts", "");
+    fixture.commit_all("empty");
+    let (service, cancel) = fixture.provider();
+    let blob = service
+        .read_blob(&fixture.root, "HEAD", "empty.ts", 1024, &cancel)
+        .unwrap();
+    assert_eq!(
+        blob,
+        prism_git::RevisionBlob::Text {
+            content: String::new()
+        }
+    );
+}

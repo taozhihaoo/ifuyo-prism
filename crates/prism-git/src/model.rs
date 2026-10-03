@@ -283,3 +283,24 @@ pub struct GitDiff {
     /// 结果被截断（超出文件数/字节上限）时为 true，如实标注（规格 §35）。
     pub truncated: bool,
 }
+
+/// 一次历史 revision blob 读取的结果（M5 历史源；只读，规格 M5 §39）。
+///
+/// 编码契约：`CommandRunner` 以 UTF-8 读取子进程 stdout；blob 字节长度
+/// 与 `cat-file -s` 大小不一致时不得假装解析（会伪造"全部符号删除"）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum RevisionBlob {
+    /// UTF-8 文本，字节长度已与 blob 大小核对一致。
+    Text {
+        content: String,
+    },
+    /// 超过调用方字节上限（未读取内容）。
+    TooLarge {
+        size_bytes: u64,
+    },
+    /// 非 UTF-8（或读取失真）：内容不可靠，显式不可用而非空内容。
+    EncodingUnsupported,
+    /// 该 revision 中不存在此路径。
+    Missing,
+}

@@ -106,6 +106,36 @@ impl GitService {
         };
         self.provider.refs(&repository, cancel)
     }
+
+    /// 将 revision 表达式解析为完整 SHA；非 Git 项目返回 None。
+    pub fn resolve_revision(
+        &self,
+        path: &Path,
+        revision: &str,
+        cancel: &CancellationToken,
+    ) -> GitResult<Option<String>> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(None);
+        };
+        self.provider.resolve_revision(&repository, revision, cancel)
+    }
+
+    /// 读取历史 revision 中某路径的 blob；非 Git 项目返回 Missing。
+    /// 调用方应先用 [`GitService::discover`] 确认仓库存在。
+    pub fn read_blob(
+        &self,
+        path: &Path,
+        revision: &str,
+        relative_path: &str,
+        max_bytes: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<crate::model::RevisionBlob> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(crate::model::RevisionBlob::Missing);
+        };
+        self.provider
+            .read_blob(&repository, revision, relative_path, max_bytes, cancel)
+    }
 }
 
 fn empty_status() -> GitStatus {

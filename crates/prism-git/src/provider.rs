@@ -7,7 +7,7 @@
 use crate::error::{GitError, GitResult};
 use crate::model::{
     GitBranch, GitCommit, GitDiff, GitDiffScope, GitHead, GitHeadKind, GitRef, GitRepository,
-    GitStatus,
+    GitStatus, RevisionBlob,
 };
 use crate::{model::GitDiffFile, parse};
 use prism_core::task::CancellationToken;
@@ -58,6 +58,27 @@ pub trait GitProvider: Send + Sync {
         max_files: usize,
         cancel: &CancellationToken,
     ) -> GitResult<GitDiff>;
+
+    /// 将 revision 表达式解析为完整 commit SHA；无法解析返回 None（不猜测）。
+    /// 只读（`git rev-parse --verify`）。
+    fn resolve_revision(
+        &self,
+        repo: &GitRepository,
+        revision: &str,
+        cancel: &CancellationToken,
+    ) -> GitResult<Option<String>>;
+
+    /// 读取历史 revision 中某路径的 blob 内容（M5 历史源；只读 `cat-file`）。
+    /// 只返回上限内、且字节长度核对一致的 UTF-8 文本；其余情况显式建模，
+    /// 不返回失真内容（规格 M5 §39/§42）。
+    fn read_blob(
+        &self,
+        repo: &GitRepository,
+        revision: &str,
+        path: &str,
+        max_bytes: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<RevisionBlob>;
 }
 
 /// 基于系统 git CLI 的实现（经 CommandRunner，规格 §28）。
@@ -442,10 +463,93 @@ impl GitProvider for CliGitProvider {
             truncated,
         })
     }
+
+    fn resolve_revision(
+        &self,
+        repo: &GitRepository,
+        revision: &str,
+        cancel: &CancellationToken,
+    ) -> GitResult<Option<String>> {
+        let object = format!("{revision}^{{commit}}");
+        let output = self.runner.run(
+            &self.spec(
+                Path::new(&repo.root_path),
+                &["rev-parse", "--verify", "--quiet", &object],
+            ),
+            Some(cancel),
+        )?;
+        Ok(if output.exit_code == Some(0) {
+            Some(output.stdout.trim().to_string())
+        } else {
+            None
+        })
+    }
+
+    fn read_blob(
+        &self,
+        repo: &GitRepository,
+        revision: &str,
+        path: &str,
+        max_bytes: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<RevisionBlob> {
+        let root = Path::new(&repo.root_path);
+        let object = format!("{revision}:{path}");
+
+        // 先取 blob 大小：缺失路径在此暴露，超大内容不读取（bounded，§78）。
+        let size_output = self
+            .runner
+            .run(&self.spec(root, &["cat-file", "-s", &object]), Some(cancel))?;
+        if size_output.exit_code != Some(0) {
+            return blob_failure("cat-file -s", &size_output);
+        }
+        let size: u64 = size_output.stdout.trim().parse().map_err(|_| {
+            GitError::MalformedGitOutput {
+                command: "git cat-file -s".to_string(),
+                detail: format!("non-numeric size output: {:?}", size_output.stdout),
+            }
+        })?;
+        if size > max_bytes {
+            return Ok(RevisionBlob::TooLarge { size_bytes: size });
+        }
+
+        let blob_output = self
+            .runner
+            .run(&self.spec(root, &["cat-file", "blob", &object]), Some(cancel))?;
+        if blob_output.exit_code != Some(0) {
+            return blob_failure("cat-file blob", &blob_output);
+        }
+        // read_to_string 遇非 UTF-8 整体失败 → 空串；长度核对防止把失真内容当文本。
+        if blob_output.stdout.len() as u64 != size {
+            return Ok(RevisionBlob::EncodingUnsupported);
+        }
+        Ok(RevisionBlob::Text {
+            content: blob_output.stdout,
+        })
+    }
 }
 
 fn to_refs(args: &[String]) -> Vec<&str> {
     args.iter().map(String::as_str).collect()
+}
+
+/// cat-file 失败：路径缺失是正常事实（Missing），其余按命令失败上抛。
+fn blob_failure(command: &str, output: &prism_core::runtime::command::CommandOutput) ->
+    GitResult<RevisionBlob> {
+    let stderr = output.stderr.to_lowercase();
+    let exit_code = output.exit_code;
+    if stderr.contains("not a valid object name")
+        || stderr.contains("does not exist")
+        || stderr.contains("exists on disk, but not in")
+    {
+        Ok(RevisionBlob::Missing)
+    } else {
+        Err(GitError::CommandFailed {
+            command: command.to_string(),
+            exit_code: exit_code.unwrap_or(-1),
+            stderr: output.stderr.clone(),
+        })
+    }
 }
 
 // PathBuf 用于 discover 的 working directory 类型推导。

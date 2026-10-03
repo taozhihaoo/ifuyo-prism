@@ -110,6 +110,24 @@ pub struct HealthRuleConfig {
     pub threshold: Option<u64>,
 }
 
+/// 一条禁止依赖（§28/§133）：from 路径/模块名 → to 路径/模块名。
+/// `from`/`to` 为项目相对路径前缀或路径片段（如 "ui" 匹配 src/ui/**，
+/// "database" 匹配路径中含 database 的目标）；匹配子串不臆测架构语义（§134）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ForbiddenDependencyConfig {
+    pub from: String,
+    pub to: String,
+}
+
+/// 架构规则配置（§29/§133 第一版：仅 forbidden_dependencies；layers 推迟）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ArchitectureConfig {
+    /// 禁止依赖对。ARCH004 仅在本列表非空时运行（§113：未配置=不运行，
+    /// 不制造"默认架构真理"）。
+    pub forbidden_dependencies: Vec<ForbiddenDependencyConfig>,
+}
+
 /// health 配置节（M7）。复用唯一配置系统 prism.config.json（§70 只选一种）。
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -121,6 +139,8 @@ pub struct HealthConfig {
     /// Finding 级抑制（§69：精确 FindingId 字符串；命中 ⇒ 检出但标记
     /// Suppressed——suppressed ≠ not detected，§67/§164）。
     pub suppressed_findings: Vec<String>,
+    /// 架构规则配置（ARCH004 forbidden dependencies，§28/§133）。
+    pub architecture: ArchitectureConfig,
 }
 
 impl HealthConfig {
@@ -345,6 +365,32 @@ mod tests {
         assert_eq!(config.is_rule_enabled("MAINT001", true), Some(false));
         assert_eq!(config.is_rule_enabled("UNKNOWN999", true), Some(true));
         assert_eq!(config.is_rule_enabled("OTHER", false), Some(false));
+    }
+
+    #[test]
+    fn health_architecture_config_parses_and_rejects_unknown() {
+        // §28/§133：forbidden_dependencies 解析。
+        let text = r#"{
+            "architecture": {
+                "forbidden_dependencies": [
+                    { "from": "ui", "to": "database" },
+                    { "from": "presentation", "to": "infrastructure" }
+                ]
+            }
+        }"#;
+        let config: HealthConfig = serde_json::from_str(text).unwrap();
+        assert_eq!(config.architecture.forbidden_dependencies.len(), 2);
+        assert_eq!(config.architecture.forbidden_dependencies[0].from, "ui");
+        assert_eq!(config.architecture.forbidden_dependencies[1].to, "infrastructure");
+        // deny_unknown_fields：拼错的键报错（§72）。
+        let bad: Result<HealthConfig, _> = serde_json::from_str(
+            r#"{ "architecture": { "forbidden": [] } }"#,
+        );
+        assert!(bad.is_err());
+        let bad_dep: Result<HealthConfig, _> = serde_json::from_str(
+            r#"{ "architecture": { "forbidden_dependencies": [ { "from": "ui" } ] } }"#,
+        );
+        assert!(bad_dep.is_err(), "missing `to` must fail");
     }
 
     #[test]

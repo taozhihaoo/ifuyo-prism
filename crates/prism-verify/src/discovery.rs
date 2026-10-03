@@ -109,6 +109,8 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
     }
 
     // ---- 显式配置（§235 第一优先）：同 id 覆盖 detected（§59）----
+    // verify.required 中的 id ⇒ 标记 required（§72）。
+    let required_list: Vec<String> = verify_config.required.clone();
     for (id, check) in &verify_config.checks {
         let kind = CheckKind::parse(&check.kind).unwrap_or(CheckKind::Custom);
         let spec = CheckSpec {
@@ -136,6 +138,11 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
         specs.push(spec);
     }
 
+    for spec in &mut specs {
+        if required_list.iter().any(|id| id == &spec.id) {
+            spec.required = true;
+        }
+    }
     specs.sort_by(|a, b| a.id.cmp(&b.id));
     specs
 }

@@ -113,6 +113,13 @@ src/
     Ambiguous）；对侧解析带 error 时抑制 Added/Deleted 孤儿（§42）。
     历史源只读：`git cat-file`（含 `:0` index 侧），blob 字节长度核对防
     非 UTF-8 假空文件；绝不改写用户工作区。
+15. **M7 Health 边界**：Findings first, score second—or never——无 0-100 健康分；
+    Severity 复用 M0 三级（Info/Warning/Critical，总纲领 §11），与 Confidence 独立；
+    FindingId = `finding:{rule_id}:{stable_key}` 确定性派生（M11 Snapshot 依赖）；
+    规则 = Rust trait + 注册表（无宏/插件/远程更新）；配置只走 prism.config.json
+    `health` 节（deny_unknown_fields，precedence built-in→config→CLI）；
+    suppressed ≠ not detected；MAINT001 词法规则以"注释引导符 + 大写整词 + 非URL"
+    防误报，未知扩展名整文件跳过。
 14. **M6 影响语义**：只输出 Potential Impact；Changed 与 Impacted 集合严格分离；
     反向索引一次构建不复制 M3 模型；只遍历 Resolved 边，未解析/歧义保持不确定；
     deleted 符号经名字索引（精确限定名 HighConfidence / 同名 Probable）；
@@ -155,7 +162,8 @@ M5  ✓ 已实现（prism-changes：ChangeSet 集成层 —— GitDiff × 代码
     M3 模块事实 → FileChange/SymbolChange/ModuleChange + 证据/诊断/汇总）
 M6  ✓ 已实现（prism-impact：反向索引 + 有界 BFS + 证据路径 + 事实风险信号；
     ChangeSet × 代码模型 × M3 图 → ImpactAnalysis，candidate 语义）
-M7  prism-health      Finding 体系 + 规则引擎
+M7  ◐ M7a 已实现（prism-health：Finding 模型/确定性 FindingId/规则注册表/
+    collect-sort-dedup 引擎/health 配置节/MAINT001；M7b 交付完整规则目录与报告）
 M8  prism-verify      Check 发现/计划/调度/执行/结果归一
 M9  prism-environment 环境采集/匹配/解释
 M10 prism-context     ContextPack 组装（无 LLM）

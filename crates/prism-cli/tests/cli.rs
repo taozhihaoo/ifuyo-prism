@@ -72,7 +72,6 @@ fn info_json_output_is_valid_json() {
 #[test]
 fn future_commands_clearly_report_not_implemented() {
     for args in [
-        vec!["health", "."],
         vec!["verify", "."],
         vec!["env", "."],
         vec!["context", "."],

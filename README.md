@@ -15,7 +15,7 @@
 - **Understand** — 结构/符号/依赖图（M1-M3）+ Git 事实（M4）+ ChangeSet（M5 已交付）
 - **Changes** — Git 变化 → ChangeSet（M5）→ 影响分析（M6）→ 健康发现（M7 已交付：13 条确定性规则 + 证据化 Findings）
 - **Health** — 基于 Evidence 的 Finding 体系（不做“项目评分”）
-- **Verify** — 构建/测试/lint 的统一编排（Orchestrator，不重造工具）
+- **Verify** — 构建/测试/lint 的统一编排（Orchestrator，不重造工具；M8 已交付：Node/Python/C#/Rust 适配 + 结构化解析 + CI 静态抽取 + Release 检查 + `--changed` 候选链）
 - **Environment** — 项目要求 vs 机器事实
 - **Context** — 风险加权、任务感知的 AI 上下文包（Deterministic First）
 

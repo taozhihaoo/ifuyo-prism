@@ -152,7 +152,11 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 
 - `prism --version` / `prism --help`：真实数据
 - `prism info [--format json|text]`：真实应用/运行时信息
-- `scan|inspect|changes|health|verify|env|context|report`：占位，明确输出
+- `scan`：完整扫描（M1）
+- `changes`：ChangeSet 与影响分析（M5/M6）
+- `health`：健康分析 + rules 子命令（M7）
+- `verify`：执行验证 + checks/ci/release 子命令（M8）
+- `inspect|env|context|report`：占位，明确输出
   `Not implemented in current milestone.` 并以退出码 1 结束（不伪造数据）
 - 退出码：`0` 成功 / `1` 错误或未实现 / `2` 用法错误
 
@@ -170,7 +174,10 @@ M6  ✓ 已实现（prism-impact：反向索引 + 有界 BFS + 证据路径 + �
 M7  ✓ 已实现（prism-health：Finding 模型/确定性 FindingId/规则注册表/
     collect-sort-dedup 引擎/health 配置节/13 条规则/HealthSummary/
     change-aware scope/text+md+html 渲染）
-M8  prism-verify      Check 发现/计划/调度/执行/结果归一
+M8  ✓ 已实现（prism-verify：Check 发现（Node/Python/C#/Rust/CI/自定义）/
+    计划/拓扑调度/有界并发执行/WritePolicy 默认拒绝/超时取消/副作用观察/
+    保守结构化解析（pytest/dotnet/junit）/verified_state/CI 静态抽取/
+    Release 检查/--changed 候选链；CLI verify checks/ci/release + GUI Verify 页）
 M9  prism-environment 环境采集/匹配/解释
 M10 prism-context     ContextPack 组装（无 LLM）
 M11 prism-snapshot + prism-store   快照与 SQLite 持久化

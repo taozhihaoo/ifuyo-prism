@@ -18,7 +18,7 @@ Final Audit → 本地 commit（不 push）。
 | M5 | ChangeSet | GitDiff → FileChange → SymbolChange → ModuleChange → ChangeSet（prism-changes；`prism changes` + GUI） | ✅ |
 | M6 | Change Impact Analysis | 反向图遍历、distance/confidence、blast radius（prism-impact；`prism impact` + GUI） | ✅ |
 | M7 | Health Engine | 统一 Finding 体系 + 13 条确定性规则 + HealthReport（JSON/MD/HTML）+ GUI Health 页（`prism health` 完整命令面） | ✅ |
-| M8 | Verify Engine | build/test/lint 编排与结果归一 | |
+| M8 | Verify Engine | Check 发现/计划/执行（Node/Python/C#/Rust/CI/自定义）+ 结构化解析 + verified_state + CI 抽取 + Release 检查 + `--changed` 候选链（`prism verify` checks/ci/release + GUI Verify 页） | ✅ |
 | M9 | Environment Engine | 环境要求 vs 机器事实的采集/匹配/解释 | |
 | M10 | Context Engine | ContextPack：任务分类→收集→优先级→预算→脱敏 | |
 | M11 | Snapshot / Timeline | SQLite 持久化、快照指纹、演化时间线 | |

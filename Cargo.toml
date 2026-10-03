@@ -7,6 +7,7 @@ members = [
     "crates/prism-analysis",
     "crates/prism-graph",
     "crates/prism-git",
+    "crates/prism-changes",
     "crates/prism-cli",
     "src-tauri",
     "tests/integration",
@@ -31,6 +32,7 @@ prism-parser = { path = "crates/prism-parser" }
 prism-analysis = { path = "crates/prism-analysis" }
 prism-graph = { path = "crates/prism-graph" }
 prism-git = { path = "crates/prism-git" }
+prism-changes = { path = "crates/prism-changes" }
 ignore = "0.4"
 tree-sitter = "0.25"
 tree-sitter-typescript = "0.23"

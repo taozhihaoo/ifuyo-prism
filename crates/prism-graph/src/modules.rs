@@ -16,6 +16,17 @@ use prism_parser::{ParseStatus, SymbolKind};
 use prism_project::{Evidence, Language, ProjectDiscovery};
 use std::collections::BTreeMap;
 
+/// FileModule 的稳定 ID 派生（`module:file:{relative_path}`）。
+/// M5 ChangeSet 复用同一规则，禁止各处自行拼字符串。
+pub fn file_module_id(relative_path: &str) -> ModuleId {
+    ModuleId::from_string(format!("module:file:{relative_path}"))
+}
+
+/// Namespace 模块的稳定 ID 派生（`module:namespace:{qualified}`）。
+pub fn namespace_module_id(qualified_namespace: &str) -> ModuleId {
+    ModuleId::from_string(format!("module:namespace:{qualified_namespace}"))
+}
+
 /// 从 discovery + code model 构建模块层级（输出按 id 排序，确定性）。
 pub fn build_modules(discovery: &ProjectDiscovery, model: &ProjectCodeModel) -> Vec<Module> {
     let mut modules: BTreeMap<String, Module> = BTreeMap::new();
@@ -89,7 +100,7 @@ pub fn build_modules(discovery: &ProjectDiscovery, model: &ProjectCodeModel) -> 
             if ns_name.is_empty() {
                 continue;
             }
-            let id = ModuleId::from_string(format!("module:namespace:{ns_name}"));
+            let id = namespace_module_id(ns_name);
             if namespace_modules.contains_key(ns_name) {
                 continue;
             }
@@ -123,7 +134,7 @@ pub fn build_modules(discovery: &ProjectDiscovery, model: &ProjectCodeModel) -> 
             continue;
         }
         let path = result.relative_path.clone();
-        let id = ModuleId::from_string(format!("module:file:{path}"));
+        let id = file_module_id(&path);
 
         // 父级判定：Python → 最近包目录；其他语言 → 文件声明的命名空间（最长匹配）。
         let mut parent = Some(project_id.clone());

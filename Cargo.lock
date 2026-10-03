@@ -2481,6 +2481,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-changes"
+version = "0.1.0"
+dependencies = [
+ "prism-analysis",
+ "prism-core",
+ "prism-git",
+ "prism-graph",
+ "prism-parser",
+ "prism-project",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-cli"
 version = "0.1.0"
 dependencies = [

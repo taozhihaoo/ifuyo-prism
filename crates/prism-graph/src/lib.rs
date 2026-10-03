@@ -25,7 +25,7 @@ pub use model::{
     GraphMetrics, GraphNode, GraphNodeKind, Module, ModuleKind, ResolutionDiagnostic,
     ResolutionStatus, GRAPH_SCHEMA_VERSION,
 };
-pub use modules::build_modules;
+pub use modules::{build_modules, file_module_id, namespace_module_id};
 pub use prism_core::ids::ModuleId;
 pub use resolve::{resolve_import, ResolutionContext};
 pub use service::DependencyService;

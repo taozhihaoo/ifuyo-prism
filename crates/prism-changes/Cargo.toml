@@ -1,0 +1,19 @@
+[package]
+name = "prism-changes"
+description = "Prism ChangeSet layer: Git diff + code models to normalized file/symbol/module change facts (M5)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+prism-parser.workspace = true
+prism-analysis.workspace = true
+prism-graph.workspace = true
+prism-git.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]

@@ -145,7 +145,7 @@ fn main_scenario_body_change_propagates_to_callers_and_tests() {
     let test_module = analysis
         .impacted_items
         .iter()
-        .find(|item| item.path == "checkout.test.ts")
+        .find(|item| item.node_kind == NodeKind::FileModule && item.path == "checkout.test.ts")
         .expect("test module expected");
     assert_eq!(test_module.distance, 2);
     assert!(test_module.impact_kinds.contains(&ImpactKind::TestCandidate));

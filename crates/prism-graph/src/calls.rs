@@ -25,6 +25,9 @@ pub fn resolve_calls(
 ) -> Vec<CallEdge> {
     // ---- 名字索引：name → [(文件路径, 符号 ID, 限定名)]（仅可调用种类）----
     let mut name_index: BTreeMap<String, Vec<(String, SymbolId, String)>> = BTreeMap::new();
+    // ---- 限定名 → 完整 SymbolId（caller_id 必须与 M2 身份一致，含 #kind 段；
+    // 否则 M6 反向调用遍历在第 2 跳断链）----
+    let mut qualified_ids: BTreeMap<(String, String), SymbolId> = BTreeMap::new();
     for result in &model.parse_results {
         for symbol in &result.symbols {
             if matches!(
@@ -37,6 +40,9 @@ pub fn resolve_calls(
                     symbol.qualified_name.clone(),
                 ));
             }
+            qualified_ids
+                .entry((result.relative_path.clone(), symbol.qualified_name.clone()))
+                .or_insert_with(|| symbol.id.clone());
         }
     }
 
@@ -67,6 +73,7 @@ pub fn resolve_calls(
                 &result.relative_path,
                 call,
                 &name_index,
+                &qualified_ids,
                 import_targets.get(&result.relative_path),
             ));
         }
@@ -90,6 +97,7 @@ impl CallEdge {
         source_path: &str,
         call: &CallInfo,
         name_index: &BTreeMap<String, Vec<(String, SymbolId, String)>>,
+        qualified_ids: &BTreeMap<(String, String), SymbolId>,
         import_targets: Option<&Vec<String>>,
     ) -> CallEdge {
         let base = call
@@ -145,10 +153,17 @@ impl CallEdge {
                     .map(|l| format!("{}:{}", l.line, l.column))
                     .unwrap_or_else(|| "0:0".to_string())
             ),
-            caller_id: SymbolId::from_string(format!(
-                "symbol:{}#{}",
-                source_path, call.caller_qualified
-            )),
+            caller_id: qualified_ids
+                .get(&(source_path.to_string(), call.caller_qualified.clone()))
+                .cloned()
+                .unwrap_or_else(|| {
+                    // 回退：宿主符号不在模型中（理论不可达——calls 只在
+                    // 符号体内捕获）；派生保持旧行为，不 panic。
+                    SymbolId::from_string(format!(
+                        "symbol:{}#{}",
+                        source_path, call.caller_qualified
+                    ))
+                }),
             caller_qualified: call.caller_qualified.clone(),
             callee_text: call.callee_text.clone(),
             callee_name: base,

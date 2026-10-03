@@ -16,6 +16,7 @@ mod changes_command;
 mod cli;
 mod health_command;
 mod verify_command;
+mod verify_subcommands;
 mod impact_command;
 mod git_command;
 
@@ -144,18 +145,30 @@ fn run() -> i32 {
             changed,
             dry_run,
             fail_on_unavailable,
-        }) => verify_command::run(
-            &path,
-            if json {
-                crate::cli::HealthFormatArg::Json
-            } else {
-                format
-            },
-            checks.as_slice(),
-            dry_run,
-            changed,
-            fail_on_unavailable,
-        ),
+            command,
+        }) => match command {
+            Some(cli::VerifyCommand::Checks { path: sub_path, .. }) => {
+                verify_subcommands::run_checks(&sub_path)
+            }
+            Some(cli::VerifyCommand::Ci { path: sub_path, json: _ }) => {
+                verify_subcommands::run_ci(&sub_path)
+            }
+            Some(cli::VerifyCommand::Release { path: sub_path, json: _ }) => {
+                verify_subcommands::run_release(&sub_path)
+            }
+            None => verify_command::run(
+                &path,
+                if json {
+                    crate::cli::HealthFormatArg::Json
+                } else {
+                    format
+                },
+                checks.as_slice(),
+                dry_run,
+                changed,
+                fail_on_unavailable,
+            ),
+        },
         Some(command) => not_implemented_yet(command.name()),
     }
 }

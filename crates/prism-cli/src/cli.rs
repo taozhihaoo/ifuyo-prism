@@ -65,6 +65,35 @@ impl From<FormatArg> for OutputFormat {
     }
 }
 
+/// `prism verify` 子命令（§55/§64/§62）。None = 完整分析。
+#[derive(Debug, Subcommand)]
+pub enum VerifyCommand {
+    /// 列出发现的验证入口 + source/provenance（§55）
+    Checks {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
+    /// CI 配置静态检视 + 本地对照（零执行，§64-§69）
+    Ci {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
+    /// Release 检查（§62/§136-§139：零部署）
+    Release {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
+}
+
 /// `prism health` 输出格式（含 HTML 静态报告，§90）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum HealthFormatArg {
@@ -208,7 +237,7 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<HealthCommand>,
     },
-    /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a）
+    /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a/M8b）
     Verify {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
@@ -230,6 +259,8 @@ pub enum Command {
         /// 有 Unavailable/Blocked 时也非零退出（§79 变体；默认仅 required failed 才非零）
         #[arg(long)]
         fail_on_unavailable: bool,
+        #[command(subcommand)]
+        command: Option<VerifyCommand>,
     },
     /// 检查开发环境（M9）
     Env {

@@ -128,6 +128,16 @@ impl ImpactConfidence {
             other
         }
     }
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ImpactConfidence::Exact => "exact",
+            ImpactConfidence::HighConfidence => "high_confidence",
+            ImpactConfidence::Probable => "probable",
+            ImpactConfidence::Ambiguous => "ambiguous",
+            ImpactConfidence::Unknown => "unknown",
+        }
+    }
 }
 
 /// 影响理由（§33：一节点可有多条 reasons）。

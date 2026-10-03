@@ -12,6 +12,7 @@ prism-project.workspace = true
 prism-analysis.workspace = true
 prism-graph.workspace = true
 prism-changes.workspace = true
+prism-parser.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

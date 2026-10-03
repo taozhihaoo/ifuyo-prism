@@ -133,8 +133,8 @@ pub fn parse_dotnet_line(line: &str) -> Option<ToolDiagnostic> {
     })
 }
 
-/// 解析 pytest `-rA`/失败摘要行（保守）：`FAILED path::test` / `ERROR path::test`。
-/// location 只在可解析时给出 file（§101 不猜 line）。
+/// 解析 pytest `-rA`/失败摘要行（保守）：`FAILED path::test` / `ERROR path::test`，
+/// 保留 ` - <断言消息>` 尾部。location 只在可解析时给出 file（§101 不猜 line）。
 pub fn parse_pytest_line(line: &str) -> Option<ToolDiagnostic> {
     let trimmed = line.trim();
     // FAILED 与 ERROR 摘要行均为失败（§100）。
@@ -144,13 +144,78 @@ pub fn parse_pytest_line(line: &str) -> Option<ToolDiagnostic> {
         .or_else(|| trimmed.strip_prefix("ERROR "))?;
     let node_id = rest.split_whitespace().next()?;
     let (path, _name) = node_id.split_once("::")?;
+    // 摘要行形如 "FAILED tests/x.py::test_y - assert 5 == 6"；
+    // "- " 之后的断言消息保留（§281 pytest 规范化）。
+    let tail = rest
+        .split_once(" - ")
+        .map(|(_, message)| message.trim())
+        .unwrap_or("");
+    // severity 单独携带（error）；message 以 node id 开头，便于展示去重。
+    let message = if tail.is_empty() {
+        node_id.to_string()
+    } else {
+        format!("{node_id} - {tail}")
+    };
     Some(ToolDiagnostic {
         source: "pytest".to_string(),
         code: String::new(),
         severity: severity.to_string(),
-        message: format!("{severity}: {node_id}"),
+        message,
         location: Some(path.to_string()),
     })
+}
+
+/// 解析诊断条数上限（有界采集，§201 思路）。
+pub const MAX_PARSED_DIAGNOSTICS: usize = 50;
+
+/// §278/§279 失败输出 → 结构化诊断（保守，§288-§291）：
+/// 只解析**已经打印**的 stdout/stderr；不认识的行直接跳过；
+/// 解析失败/零匹配 ⇒ 空表——绝不改变执行状态或退出码。
+/// 按触发 check 的 program 选择解析器（python 家族 ⇒ pytest 摘要行，
+/// dotnet ⇒ MSBuild/VSTest 诊断行）。
+pub fn parse_failure_output(program: &str, stdout: &str, stderr: &str) -> Vec<ToolDiagnostic> {
+    let mut diagnostics = Vec::new();
+    match program {
+        "dotnet" => {
+            for line in stdout.lines().chain(stderr.lines()) {
+                if let Some(diagnostic) = parse_dotnet_line(line) {
+                    diagnostics.push(diagnostic);
+                }
+            }
+        }
+        "python" | "python3" | "pytest" | "py" => {
+            for line in stdout.lines() {
+                if let Some(diagnostic) = parse_pytest_line(line) {
+                    diagnostics.push(diagnostic);
+                }
+            }
+        }
+        _ => {}
+    }
+    diagnostics.truncate(MAX_PARSED_DIAGNOSTICS);
+    diagnostics
+}
+
+/// ToolDiagnostic → CheckRun diagnostic detail（用户可见，§282）。
+/// location 已包含在 message 开头时不重复（pytest 摘要行自带 node id）。
+pub fn format_tool_diagnostic(diagnostic: &ToolDiagnostic) -> String {
+    let code = if diagnostic.code.is_empty() {
+        String::new()
+    } else {
+        format!("{}: ", diagnostic.code)
+    };
+    let prefix = match &diagnostic.location {
+        Some(location)
+            if !location.is_empty() && !diagnostic.message.starts_with(location.as_str()) =>
+        {
+            format!("{location}: ")
+        }
+        _ => String::new(),
+    };
+    format!(
+        "[{}] {}{}{}",
+        diagnostic.source, prefix, code, diagnostic.message
+    )
 }
 
 #[cfg(test)]

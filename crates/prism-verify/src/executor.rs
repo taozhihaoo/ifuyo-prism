@@ -135,6 +135,20 @@ pub fn execute_check_with_prereqs(
                     "stdout/stderr exceeded capture limit; head retained".to_string(),
                 ));
             }
+            // §278/§279：失败时保守解析已打印输出为结构化诊断；
+            // 只增补 diagnostics，绝不改变 state/exit code（§288-§291）。
+            if run.state == CheckState::Failed {
+                for parsed in crate::parsers::parse_failure_output(
+                    &spec.program,
+                    &run.stdout,
+                    &run.stderr,
+                ) {
+                    run.diagnostics.push(verify_diagnostic(
+                        "parsed_failure",
+                        crate::parsers::format_tool_diagnostic(&parsed),
+                    ));
+                }
+            }
             Ok(run)
         }
         Err(PrismError::Cancelled) => {

@@ -129,6 +129,44 @@ pub fn discover_checks(root: &Path, verify_config: &VerifyConfig) -> Vec<CheckSp
                     detected_from: "pyproject.toml [tool.pytest]".to_string(),
                 });
             }
+            // §262：ruff/mypy 仅在 pyproject 真实配置了对应 tool 节时发现
+            // （只配置真正安装/配置的工具，§23/§207）。
+            if content.contains("[tool.ruff") {
+                specs.push(CheckSpec {
+                    id: "ruff".to_string(),
+                    kind: CheckKind::Lint,
+                    name: "ruff".to_string(),
+                    program: "ruff".to_string(),
+                    args: vec!["check".to_string(), ".".to_string()],
+                    working_directory: None,
+                    timeout_ms: DEFAULT_TIMEOUT_MS,
+                    max_output_bytes: None,
+                    required: false,
+                    write_policy: WritePolicy::ReadOnly,
+                    depends_on: Vec::new(),
+                    source: CheckSource::Pyproject,
+                    confidence: CheckConfidence::HighConfidence,
+                    detected_from: "pyproject.toml [tool.ruff]".to_string(),
+                });
+            }
+            if content.contains("[tool.mypy") {
+                specs.push(CheckSpec {
+                    id: "mypy".to_string(),
+                    kind: CheckKind::Typecheck,
+                    name: "mypy".to_string(),
+                    program: "mypy".to_string(),
+                    args: vec![".".to_string()],
+                    working_directory: None,
+                    timeout_ms: DEFAULT_TIMEOUT_MS,
+                    max_output_bytes: None,
+                    required: false,
+                    write_policy: WritePolicy::ReadOnly,
+                    depends_on: Vec::new(),
+                    source: CheckSource::Pyproject,
+                    confidence: CheckConfidence::HighConfidence,
+                    detected_from: "pyproject.toml [tool.mypy]".to_string(),
+                });
+            }
         }
     }
 

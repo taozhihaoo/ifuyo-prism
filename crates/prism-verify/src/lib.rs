@@ -36,7 +36,10 @@ pub use model::{
     VERIFY_SCHEMA_VERSION,
 };
 pub use ci::{compare_with_local, inspect_github_actions, CICheck, CIInspection, VerificationCoverage};
-pub use parsers::{parse_dotnet_line, parse_junit, parse_pytest_line, ParseOutcome, ToolDiagnostic};
+pub use parsers::{
+    format_tool_diagnostic, parse_dotnet_line, parse_failure_output, parse_junit,
+    parse_pytest_line, ParseOutcome, ToolDiagnostic, MAX_PARSED_DIAGNOSTICS,
+};
 pub use planner::plan_checks;
 pub use release::{build_test_conclusions, evaluate_release, ReleaseCheck, ReleaseReport};
 pub use redact::{command_display, redact_args, redact_text};

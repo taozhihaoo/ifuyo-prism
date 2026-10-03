@@ -81,6 +81,9 @@ M0 已引入的全部运行时依赖：`serde`、`serde_json`、`uuid`、`time`�
 
 已知版本坑（2026-10 记录）：
 
+- `prism-git` 经系统 git CLI（CommandRunner）获取 facts；porcelain v2 -z、
+  for-each-ref 0x1f 分隔、log %x01/%x1e 分隔。Windows 下 git 状态命令需
+  `-c status.showUntrackedFiles=all` 显式固定（用户全局配置可能设为 no）
 - `tree-sitter` 0.25 + 官方 grammar 0.23（typescript/javascript/python/c-sharp）
   经 `tree-sitter-language` 0.1 统一 ABI，可安全共存；grammar 导出
   `LANGUAGE_*: LanguageFn` 常量（`.into()` 成 Language），不是函数

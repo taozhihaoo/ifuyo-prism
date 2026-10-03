@@ -34,6 +34,9 @@ pub struct EnvironmentSnapshot {
     pub package_managers: Vec<PackageManagerInfo>,
     /// 环境变量名 + 分类（§54：绝不采集值）。
     pub variables: Vec<VariableFact>,
+    /// .env 系文件元数据（§58–§60：只记 key 名与分类，绝不读值）。
+    #[serde(default)]
+    pub env_files: Vec<EnvFileInfo>,
     /// 监听端口事实（§81–§85；动态事实，每次 refresh 重采 §211/§217）。
     #[serde(default)]
     pub ports: Vec<PortInfo>,
@@ -275,6 +278,51 @@ pub enum VariableSource {
 /// 环境变量名上限（§315：不读取无界 env 数据）。
 pub const VARIABLE_CAP: usize = 500;
 
+/// .env 系文件 key 名上限（§60：只解析安全必要的 key names，有界）。
+pub const ENV_FILE_KEY_CAP: usize = 200;
+
+/// .env 文件读取上限（§58：不把完整内容加载进报告）。
+pub const ENV_FILE_READ_CAP_BYTES: u64 = 64 * 1024;
+
+/// .env 系文件元数据（§58：file exists + contains likely secrets + tracked）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EnvFileInfo {
+    /// 项目相对路径（如 ".env"）。
+    pub path: String,
+    /// §201：secret candidate（真实环境文件）≠ template/example（占位模板）。
+    pub kind: EnvFileKind,
+    /// §60：key 名 + 敏感分类；值绝不入库。
+    pub keys: Vec<EnvKeyInfo>,
+    /// §59：M4 tracked 事实；非 git 仓库/无法判定 ⇒ None（§209 不猜）。
+    pub tracked: Option<bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EnvFileKind {
+    /// 真实环境文件（.env/.env.local/…）：敏感 key 存在即 "likely secrets"。
+    SecretCandidate,
+    /// 模板（.env.example/.env.template）：占位值属预期，不当 secret 候选。
+    Template,
+    Unknown,
+}
+
+impl EnvFileKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            EnvFileKind::SecretCandidate => "secret_candidate",
+            EnvFileKind::Template => "template",
+            EnvFileKind::Unknown => "unknown",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct EnvKeyInfo {
+    pub name: String,
+    pub possibly_sensitive: bool,
+}
+
 /// 端口条目上限（§313）。
 pub const PORT_CAP: usize = 100;
 
@@ -400,6 +448,8 @@ pub enum EnvironmentFindingKind {
     MissingPackageManager,
     PortConflict,
     ProcessConflict,
+    /// §59：敏感环境文件被 git 跟踪（事实；供 M7 产生 Health finding）。
+    SensitiveFileTracked,
 }
 
 impl EnvironmentFindingKind {
@@ -416,6 +466,7 @@ impl EnvironmentFindingKind {
             EnvironmentFindingKind::MissingPackageManager => "missing_package_manager",
             EnvironmentFindingKind::PortConflict => "port_conflict",
             EnvironmentFindingKind::ProcessConflict => "process_conflict",
+            EnvironmentFindingKind::SensitiveFileTracked => "sensitive_file_tracked",
         }
     }
 }

@@ -237,6 +237,29 @@ pub fn render_markdown(snapshot: &EnvironmentSnapshot) -> String {
             .filter(|fact| fact.possibly_sensitive)
             .count()
     ));
+    if !snapshot.env_files.is_empty() {
+        out.push_str("## Environment files\n\n");
+        for file in &snapshot.env_files {
+            let sensitive = file
+                .keys
+                .iter()
+                .filter(|key| key.possibly_sensitive)
+                .count();
+            out.push_str(&format!(
+                "- {} [{}] {} keys ({} sensitive names){}\n",
+                privacy(&file.path),
+                file.kind.as_str(),
+                file.keys.len(),
+                sensitive,
+                match file.tracked {
+                    Some(true) => " · tracked",
+                    Some(false) => " · untracked",
+                    None => "",
+                }
+            ));
+        }
+        out.push('\n');
+    }
     out.push_str(&format!(
         "## PATH\n\n{} entries ({} duplicates, {} missing{}).\n",
         snapshot.paths.entries.len(),
@@ -362,6 +385,7 @@ mod tests {
             sdks: vec![],
             package_managers: vec![],
             variables: vec![],
+            env_files: vec![],
             ports: vec![],
             processes: vec![],
             expected_ports: vec![],

@@ -76,6 +76,20 @@ const snapshot: EnvironmentSnapshotDto = {
     { name: "NODE_ENV", present: true, possibly_sensitive: false, source: "process_environment" },
     { name: "API_KEY", present: true, possibly_sensitive: true, source: "process_environment" },
   ],
+  env_files: [
+    {
+      path: ".env",
+      kind: "secret_candidate",
+      keys: [{ name: "API_TOKEN", possibly_sensitive: true }],
+      tracked: true,
+    },
+    {
+      path: ".env.example",
+      kind: "template",
+      keys: [{ name: "API_KEY", possibly_sensitive: true }],
+      tracked: false,
+    },
+  ],
   ports: [
     {
       port: 5173,
@@ -180,6 +194,10 @@ describe("EnvironmentPage (M9 GUI)", () => {
     expect(screen.getByTestId("env-variables")).toHaveTextContent("1 possibly sensitive");
     // §276 观测时间。
     expect(screen.getByText("Observed")).toBeInTheDocument();
+    // §58/§201：secret candidate vs template 区分 + §59 tracked 事实。
+    expect(screen.getByTestId("env-files")).toHaveTextContent("[secret_candidate]");
+    expect(screen.getByTestId("env-files")).toHaveTextContent("[template]");
+    expect(screen.getByTestId("env-files")).toHaveTextContent("· tracked");
   });
 
   it("refresh re-scans and supports all-tools (§274/§270)", async () => {

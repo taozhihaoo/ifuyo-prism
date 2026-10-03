@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 prism-core.workspace = true
+prism-git.workspace = true
 prism-project.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -950,6 +950,13 @@ export interface VariableFactDto {
   source: string;
 }
 
+export interface EnvFileInfoDto {
+  path: string;
+  kind: "secret_candidate" | "template" | "unknown";
+  keys: { name: string; possibly_sensitive: boolean }[];
+  tracked: boolean | null;
+}
+
 export interface PortInfoDto {
   port: number;
   protocol: string;
@@ -1037,6 +1044,7 @@ export interface EnvironmentSnapshotDto {
   sdks: SdkInfoDto[];
   package_managers: PackageManagerInfoDto[];
   variables: VariableFactDto[];
+  env_files: EnvFileInfoDto[];
   ports: PortInfoDto[];
   processes: ProcessInfoDto[];
   expected_ports: ExpectedPortDto[];

@@ -11,6 +11,7 @@
 //! 敏感变量只记录 name + classification（§54）；Unknown ≠ Missing ≠ Broken
 //! （§49/§157–§158/§209）；无网络 / 无遥测 / 无数据库（§253–§255/§384–§386）。
 
+pub mod envfiles;
 pub mod findings;
 pub mod host;
 pub mod model;
@@ -27,6 +28,7 @@ pub mod variables;
 pub mod tools;
 pub mod version;
 
+pub use envfiles::{collect_env_files, env_file_kind, parse_env_keys};
 pub use findings::{aggregate_status, derive_findings};
 pub use host::{collect_host, collect_resources, collect_shell};
 pub use model::{
@@ -34,7 +36,8 @@ pub use model::{
     EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
     PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
     PortInfo, PortProtocol, PortState, ProcessInfo, ProcessKind, RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
-    EnvironmentFinding, EnvironmentFindingKind, EnvironmentStatus, ExpectedPort,
+    EnvFileKind, EnvFileInfo, EnvKeyInfo, EnvironmentFinding, EnvironmentFindingKind,
+    EnvironmentStatus, ExpectedPort,
     FindingCategory, FindingConfidence, SourceKind, ToolFact, ToolSource, VariableFact, VariableSource,
     VirtualEnvInfo,
     ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP, VARIABLE_CAP,

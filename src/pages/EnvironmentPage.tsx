@@ -303,6 +303,33 @@ export default function EnvironmentPage() {
         </p>
       </div>
 
+      {snapshot.env_files.length > 0 && (
+        <div className="card" data-testid="env-files">
+          <h2 className="card-title">Environment files</h2>
+          <p className="muted small">Key names only — values are never read.</p>
+          <ul>
+            {snapshot.env_files.map((file) => (
+              <li key={file.path} className="small">
+                <span className="mono">{file.path}</span>{" "}
+                <span
+                  className={`sev ${
+                    file.kind === "secret_candidate" ? "sev-warning" : "sev-info"
+                  }`}
+                >
+                  [{file.kind}]
+                </span>{" "}
+                {file.keys.filter((key) => key.possibly_sensitive).length} sensitive
+                of {file.keys.length} keys
+                {file.tracked === true && (
+                  <span className="status-error"> · tracked</span>
+                )}
+                {file.tracked === false && <span className="muted"> · untracked</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="card" data-testid="env-ports">
         <h2 className="card-title">Ports</h2>
         <p className="muted small">Dynamic state — observed at scan time, not live.</p>

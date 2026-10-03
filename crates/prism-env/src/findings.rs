@@ -264,6 +264,37 @@ pub fn derive_findings(snapshot: &EnvironmentSnapshot) -> Vec<EnvironmentFinding
         }
     }
 
+    // ---- §59 Git + env 集成：敏感环境文件被跟踪（事实；M7 可据此产生 Health finding）----
+    for file in &snapshot.env_files {
+        if file.kind == crate::model::EnvFileKind::SecretCandidate
+            && file.tracked == Some(true)
+        {
+            let sensitive = file.keys.iter().filter(|key| key.possibly_sensitive).count();
+            findings.push(EnvironmentFinding {
+                id: format!("envf:sensitive_file_tracked:{}", file.path),
+                kind: EnvironmentFindingKind::SensitiveFileTracked,
+                category: FindingCategory::Configuration,
+                severity: Severity::Warning,
+                confidence: FindingConfidence::Exact,
+                subject: file.path.clone(),
+                message: "Sensitive environment file appears tracked.".to_string(),
+                evidence: vec![
+                    format!(
+                        "{} is a secret candidate ({} keys, {} possibly sensitive; values never read)",
+                        file.path,
+                        file.keys.len(),
+                        sensitive
+                    ),
+                    "git status: file is tracked (M4 fact)".to_string(),
+                ],
+                suggestion: Some(
+                    "Consider untracking it and adding it to .gitignore (no action taken by Prism)."
+                        .to_string(),
+                ),
+            });
+        }
+    }
+
     findings.sort_by(|a, b| {
         a.category
             .cmp(&b.category)
@@ -388,6 +419,7 @@ mod tests {
             sdks: vec![],
             package_managers: vec![],
             variables: vec![],
+            env_files: vec![],
             ports: vec![],
             processes: vec![],
             expected_ports: vec![],

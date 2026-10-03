@@ -135,6 +135,14 @@ impl EnvironmentService {
             (collected, processes, expected)
         };
 
+        // ---- .env 元数据（§58–§60/§59：M4 tracked 事实，只读）----
+        let env_files = if options.include_variables {
+            let git = prism_git::GitService::new(runner.clone());
+            crate::envfiles::collect_env_files(project_root, Some(&git), cancel)
+        } else {
+            Vec::new()
+        };
+
         let variables = if options.include_variables {
             crate::variables::collect_variables(cancel)
         } else {
@@ -205,6 +213,7 @@ impl EnvironmentService {
             sdks,
             package_managers,
             variables,
+            env_files,
             ports,
             processes,
             expected_ports,
@@ -345,6 +354,7 @@ fn cancelled_snapshot(
         sdks,
         package_managers: vec![],
         variables: vec![],
+        env_files: vec![],
         ports: vec![],
         processes: vec![],
         expected_ports: vec![],

@@ -8,7 +8,8 @@ use crate::model::{
     EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentSnapshot, FactScope, PathFacts,
     ProbeOutcome, ScanOutcome, ToolFact, ENVIRONMENT_SCHEMA_VERSION,
 };
-use crate::requirement::{base_requirements, match_requirements};
+use crate::requirements::collect_requirements;
+use crate::requirement::match_requirements;
 use crate::tools::{discover_tool, definition, EnvironmentProfile};
 use prism_core::runtime::command::CommandRunner;
 use prism_core::task::CancellationToken;
@@ -121,10 +122,21 @@ impl EnvironmentService {
             Default::default()
         };
 
-        // ---- Requirements + Matching（§46/§127/§258）----
-        let requirements = base_requirements(project_root);
+        // ---- Requirements + Matching（§42–§45/§46/§124–§127/§258）----
+        let discovery_files: Option<Vec<String>> = discovery.map(|d| {
+            d.files
+                .iter()
+                .map(|file| file.relative_path.clone())
+                .collect()
+        });
+        let facts = crate::requirements::ProjectFacts {
+            root: project_root,
+            files: discovery_files.as_deref(),
+        };
+        let (requirements, conflicts) = collect_requirements(&facts);
         let matches = match_requirements(
             &requirements,
+            &conflicts,
             &tools,
             &package_managers,
             &variables,
@@ -169,6 +181,7 @@ impl EnvironmentService {
             variables,
             resources,
             requirements,
+            conflicts,
             matches,
             diagnostics,
             scan_outcome,
@@ -297,6 +310,7 @@ fn cancelled_snapshot(
         variables: vec![],
         resources: Default::default(),
         requirements: vec![],
+        conflicts: vec![],
         matches: vec![],
         diagnostics,
         scan_outcome: ScanOutcome::Cancelled,

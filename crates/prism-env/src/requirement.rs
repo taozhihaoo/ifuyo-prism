@@ -1,45 +1,22 @@
-//! 需求模型 provider + 匹配引擎（规格 M9a §38–§41/§46–§50/§105–§106/§127/§258）。
+//! 匹配引擎（规格 M9a §46–§50/§127/§258；M9b §45/§103/§327 冲突语义）。
 //!
-//! M9a 只内置最小 provider（packageManager 字段，§106）；完整 source 层级、
-//! 冲突与 per-生态识别归 M9b（§42–§45/§71–§77）。匹配引擎独立于采集器（§127）。
+//! 需求**生成**在 `requirements.rs`（provider 层，§124–§125）；
+//! 本模块只做匹配，独立于采集器（§127）。
 
 use crate::model::{
-    MatchResult, PackageManagerInfo, RequirementKind, RequirementMatch, RequirementOperator,
-    EnvironmentRequirement, ToolFact,
+    MatchResult, PackageManagerInfo, RequirementConflict, RequirementKind, RequirementMatch,
+    RequirementOperator, EnvironmentRequirement, ToolFact,
 };
 use crate::version::satisfies;
-use prism_core::Confidence;
-
-/// 生成需求（v1 provider）：package.json `packageManager` 字段（§106）。
-/// 字段语义是**精确 pin**：用 Equals（数值比较、忽略 extra 尾巴）。
-pub fn base_requirements(project_root: &Path) -> Vec<EnvironmentRequirement> {
-    let mut requirements = Vec::new();
-    if let Some((manager, version)) = crate::runtime::package_manager_field(project_root) {
-        let (operator, expected) = match version {
-            Some(version) => (RequirementOperator::Equals, version),
-            None => (RequirementOperator::Exists, String::new()),
-        };
-        requirements.push(EnvironmentRequirement {
-            id: format!("req:package_manager:{manager}#package.json packageManager field"),
-            kind: RequirementKind::PackageManager,
-            subject: manager,
-            operator,
-            expected,
-            source: "package.json packageManager field".to_string(),
-            evidence: "package.json packageManager field".to_string(),
-            confidence: Confidence::High,
-            applicable: true,
-        });
-    }
-    requirements
-}
 
 use std::path::Path;
 
 /// 匹配引擎（§46–§50/§127/§258）：requirements × snapshot → matches，
 /// 每条带 evidence；Unknown ≠ Unsatisfied（§49/§158/§209）。
+/// 冲突主体（§45/§327）⇒ Unknown，不偷偷选择某个来源。
 pub fn match_requirements(
     requirements: &[EnvironmentRequirement],
+    conflicts: &[RequirementConflict],
     tools: &[ToolFact],
     package_managers: &[PackageManagerInfo],
     variables: &[crate::model::VariableFact],
@@ -47,17 +24,50 @@ pub fn match_requirements(
 ) -> Vec<RequirementMatch> {
     requirements
         .iter()
-        .map(|requirement| match_requirement(requirement, tools, package_managers, variables, project_root))
+        .map(|requirement| {
+            match_requirement(
+                requirement, conflicts, tools, package_managers, variables, project_root,
+            )
+        })
         .collect()
 }
 
 fn match_requirement(
     requirement: &EnvironmentRequirement,
+    conflicts: &[RequirementConflict],
     tools: &[ToolFact],
     package_managers: &[PackageManagerInfo],
     variables: &[crate::model::VariableFact],
     project_root: &Path,
 ) -> RequirementMatch {
+    // §45/§103/§327：冲突主体不解释为单一明确需求 ⇒ Unknown（列出各来源）。
+    if conflicts
+        .iter()
+        .any(|conflict| conflict.kind == requirement.kind && conflict.subject == requirement.subject)
+    {
+        let sources: Vec<&str> = conflicts
+            .iter()
+            .find(|conflict| {
+                conflict.kind == requirement.kind && conflict.subject == requirement.subject
+            })
+            .map(|conflict| {
+                conflict
+                    .entries
+                    .iter()
+                    .map(|entry| entry.source.as_str())
+                    .collect()
+            })
+            .unwrap_or_default();
+        return RequirementMatch {
+            requirement_id: requirement.id.clone(),
+            subject: requirement.subject.clone(),
+            result: MatchResult::Unknown,
+            evidence: format!(
+                "requirement conflict — cannot be interpreted as a single unambiguous                  requirement (sources: {})",
+                sources.join(", ")
+            ),
+        };
+    }
     if !requirement.applicable {
         return RequirementMatch {
             requirement_id: requirement.id.clone(),
@@ -325,8 +335,9 @@ mod tests {
             operator,
             expected: expected.to_string(),
             source: "test".to_string(),
+            source_kind: crate::model::SourceKind::ProjectConfig,
             evidence: "test evidence".to_string(),
-            confidence: Confidence::High,
+            confidence: prism_core::Confidence::High,
             applicable: true,
         }
     }
@@ -364,7 +375,7 @@ mod tests {
             // probe 失败场景单独测 Unknown。
             tool("broken", None, ProbeOutcome::Failed),
         ];
-        let matches = match_requirements(&requirements, &tools, &[], &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &tools, &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unsatisfied, "node 20 < 22");
         assert!(matches[0].evidence.contains("20"), "§258 evidence-first");
         assert_eq!(matches[1].result, MatchResult::Unsatisfied);
@@ -377,7 +388,7 @@ mod tests {
         // §158：exists 但 probe 失败 ⇒ Unknown。
         let requirements = vec![requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "22")];
         let tools = vec![tool("node", None, ProbeOutcome::Failed)];
-        let matches = match_requirements(&requirements, &tools, &[], &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &tools, &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unknown);
     }
 
@@ -398,7 +409,7 @@ mod tests {
             project_association: None,
             source: ToolSource::Path,
         }];
-        let matches = match_requirements(&requirements, &[], &managers, &[], Path::new("."));
+        let matches = match_requirements(&requirements, &[], &[], &managers, &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Satisfied);
 
         // §105：pnpm absent + npm present ⇒ Unsatisfied（不是 npm is good enough）。
@@ -412,8 +423,14 @@ mod tests {
         }];
         // pnpm 被 probe 过且确认不存在（node profile 会 probe pnpm）。
         let tools = vec![tool("pnpm", None, ProbeOutcome::NotFound)];
-        let matches =
-            match_requirements(&requirements, &tools, &managers_absent, &[], Path::new("."));
+        let matches = match_requirements(
+            &requirements,
+            &[],
+            &tools,
+            &managers_absent,
+            &[],
+            Path::new("."),
+        );
         assert_eq!(matches[0].result, MatchResult::Unsatisfied);
         assert!(matches[0].evidence.contains("lookup confirmed absence"));
     }
@@ -431,7 +448,7 @@ mod tests {
             requirement(RequirementKind::EnvironmentVariable, "CI", RequirementOperator::Equals, "true"),
             requirement(RequirementKind::EnvironmentVariable, "MISSING_VAR", RequirementOperator::Exists, ""),
         ];
-        let matches = match_requirements(&requirements, &[], &[], &variables, Path::new("."));
+        let matches = match_requirements(&requirements, &[], &[], &[], &variables, Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Satisfied);
         assert_eq!(matches[1].result, MatchResult::Unknown, "§54: values never captured");
         assert_eq!(matches[2].result, MatchResult::Unsatisfied);

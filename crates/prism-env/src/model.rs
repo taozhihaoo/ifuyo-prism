@@ -35,8 +35,11 @@ pub struct EnvironmentSnapshot {
     /// 环境变量名 + 分类（§54：绝不采集值）。
     pub variables: Vec<VariableFact>,
     pub resources: ResourceFacts,
-    /// v1 基础需求（packageManager 字段等，§104–§107）；完整 provider 归 M9b。
+    /// 项目环境需求（§42–§45/§71–§77 provider 层产出）。
     pub requirements: Vec<EnvironmentRequirement>,
+    /// 同主体多来源且期望不一致的冲突（§45/§103：不静默择一）。
+    #[serde(default)]
+    pub conflicts: Vec<RequirementConflict>,
     /// 需求 × 实际环境 的匹配结果（§46）。
     pub matches: Vec<RequirementMatch>,
     /// 单个采集器/探测失败隔离后的诊断（§149/§150/§392–§393）。
@@ -390,8 +393,8 @@ pub struct PackageManagerAssociation {
     pub required_version: Option<String>,
 }
 
-/// 环境需求（§38–§41 模型；v1 provider 只覆盖 packageManager 字段；
-/// 完整 source 层级与 per-生态识别归 M9b §42–§45/§71–§77）。
+/// 环境需求（§38–§41 模型；provider 层级见 `requirements.rs`，
+/// §42–§45/§71–§77/§102/§124–§125）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct EnvironmentRequirement {
     /// 确定性 id：`req:{kind}:{subject}#{source}`。
@@ -402,13 +405,63 @@ pub struct EnvironmentRequirement {
     pub operator: RequirementOperator,
     /// 期望值（版本串 / 名字 / 存在性为空串）。
     pub expected: String,
-    /// 来源描述（如 "package.json packageManager field"）。
+    /// 来源描述（如 "package.json engines.node"）。
     pub source: String,
+    /// 来源层级（§44/§102：显式配置 > 生态元数据 > CI > 版本文件 > 文档 > 启发式）。
+    #[serde(default)]
+    pub source_kind: SourceKind,
     /// 证据（§151：具体文件/字段）。
     pub evidence: String,
     pub confidence: prism_core::Confidence,
     /// 该需求是否适用于当前项目（§50 NotApplicable 的判定输入）。
     pub applicable: bool,
+}
+
+/// 需求来源层级（§44/§102）。数值越小优先级越高；
+/// 冲突时不静默择一（§45），全部保留并报告。
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SourceKind {
+    #[default]
+    ProjectConfig,
+    EcosystemMetadata,
+    CiConfig,
+    VersionFile,
+    ContainerConfig,
+    Documentation,
+    Heuristic,
+}
+
+impl SourceKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            SourceKind::ProjectConfig => "project_config",
+            SourceKind::EcosystemMetadata => "ecosystem_metadata",
+            SourceKind::CiConfig => "ci_config",
+            SourceKind::VersionFile => "version_file",
+            SourceKind::ContainerConfig => "container_config",
+            SourceKind::Documentation => "documentation",
+            SourceKind::Heuristic => "heuristic",
+        }
+    }
+}
+
+/// 同一主体来自多个来源且期望不一致（§45/§103/§327）：
+/// 不自动选择，全部保留。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RequirementConflict {
+    pub kind: RequirementKind,
+    pub subject: String,
+    /// 各来源条目（按 SourceKind 升序）。
+    pub entries: Vec<ConflictEntry>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ConflictEntry {
+    pub source: String,
+    pub source_kind: SourceKind,
+    pub expected: String,
+    pub operator: RequirementOperator,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -447,7 +500,7 @@ impl RequirementKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RequirementOperator {
     Exists,

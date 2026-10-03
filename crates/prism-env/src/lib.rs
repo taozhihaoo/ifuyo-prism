@@ -16,6 +16,7 @@ pub mod model;
 pub mod paths;
 pub mod probe;
 pub mod requirement;
+pub mod requirements;
 pub mod render;
 pub mod service;
 pub mod runtime;
@@ -25,11 +26,11 @@ pub mod version;
 
 pub use host::{collect_host, collect_resources, collect_shell};
 pub use model::{
-    Architecture, EnvironmentCapability, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
+    Architecture, ConflictEntry, EnvironmentCapability, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
     EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
     PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
     RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
-    ToolFact, ToolSource, VariableFact, VariableSource, VirtualEnvInfo,
+    SourceKind, ToolFact, ToolSource, VariableFact, VariableSource, VirtualEnvInfo,
     ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP, VARIABLE_CAP,
 };
 pub use runtime::{
@@ -42,7 +43,8 @@ pub use probe::{run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe
 pub use tools::{
     definition, discover_tool, EnvironmentProfile, ToolDefinition, TOOL_ALLOWLIST,
 };
-pub use requirement::{base_requirements, match_requirements};
+pub use requirement::match_requirements;
+pub use requirements::{collect_requirements, package_manager_requirement, parse_version_spec, ProjectFacts, RequirementProvider};
 pub use variables::{collect_variables, is_possibly_sensitive};
 pub use render::{render_text, sanitize};
 pub use service::{EnvironmentScanOptions, EnvironmentService};

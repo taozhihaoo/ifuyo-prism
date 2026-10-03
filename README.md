@@ -17,7 +17,7 @@
 - **Health** — 基于 Evidence 的 Finding 体系（不做“项目评分”）
 - **Verify** — 构建/测试/lint 的统一编排（Orchestrator，不重造工具；M8 已交付：Node/Python/C#/Rust 适配 + 结构化解析 + CI 静态抽取 + Release 检查 + `--changed` 候选链）
 - **Environment** — 项目要求 vs 机器事实（M9 已交付：requirement 层级与冲突保留、findings 引擎、端口/进程动态事实、`prism env` 完整 CLI + GUI Environment 页）
-- **Context** — 风险加权、任务感知的 AI 上下文包（Deterministic First）
+- **Context** — 风险加权、任务感知的 AI 上下文包（M10a 已交付：确定性选择引擎 + `prism context`，无 LLM 也能工作）
 
 ## What Prism is not
 

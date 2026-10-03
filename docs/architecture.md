@@ -179,6 +179,10 @@ M8  ✓ 已实现（prism-verify：Check 发现（Node/Python/C#/Rust/CI/自定�
     计划/拓扑调度/有界并发执行/WritePolicy 默认拒绝/超时取消/副作用观察/
     保守结构化解析（pytest/dotnet/junit/SARIF）/verified_state/CI 静态抽取/
     Release 检查/--changed 候选链；CLI verify checks/ci/release + GUI Verify 页）
+M10 ◐ M10a 已实现（prism-context：确定性任务分类/目标解析（Resolved/Ambiguous
+    不猜）、11 collectors 消费 M1–M9 既有事实、归一化去重、优先级带、
+    预算 + Critical 预留、懒物化 + 四级内容策略、边界截断、SelectionTrace、
+    `prism context` 基础 CLI；M10b：health/privacy/renderer/GUI/golden selection）
 M9  ✓ 已实现（prism-env：host/shell/PATH 采集与规范化、allowlist ToolProbe、
     结构化版本、runtime/SDK/包管理器/venv、需求 provider 层级 + RequirementConflict
     保留、匹配四态 + 端口 Available 语义、findings 引擎 + 聚合状态、端口/进程

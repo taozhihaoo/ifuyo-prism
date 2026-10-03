@@ -167,7 +167,7 @@ describe("EnvironmentPage (M9 GUI)", () => {
     // §222 工具链 + §65 遮蔽候选（版本出现在工具行与 evidence 行，用 getAllByText）。
     expect(screen.getAllByText(/v22\.16\.0/).length).toBeGreaterThan(0);
     expect(screen.getByText(/also found: C:\/elsewhere\/node.exe/)).toBeInTheDocument();
-    expect(screen.getByText(/not found/)).toBeInTheDocument();
+    expect(screen.getAllByText(/not found/).length).toBeGreaterThan(0);
     // §223 需求 + §258 evidence。
     expect(screen.getByTestId("env-requirements")).toHaveTextContent("Satisfied");
     expect(screen.getByText(/actual: node v22.16.0/)).toBeInTheDocument();

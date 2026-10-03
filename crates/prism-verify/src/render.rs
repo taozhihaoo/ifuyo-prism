@@ -76,6 +76,22 @@ pub fn render_text(report: &VerificationReport) -> String {
         "Completeness: {:?}\n",
         report.completeness
     );
+    match &report.verified_state {
+        Some(crate::model::VerifiedState::DirtyWorkspace { changed_files }) => {
+            // §277 的用户可见文案。
+            let _ = writeln!(
+                out,
+                "{changed_files} working-tree changes present at verification time."
+            );
+        }
+        Some(crate::model::VerifiedState::CleanAtCommit { commit: Some(commit) }) => {
+            let _ = writeln!(out, "Working tree clean at commit {commit}.");
+        }
+        Some(crate::model::VerifiedState::CleanAtCommit { commit: None }) => {
+            let _ = writeln!(out, "Working tree clean (no commits yet).");
+        }
+        None => {}
+    }
 
     for run in &report.runs {
         let _ = writeln!(

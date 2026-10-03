@@ -97,3 +97,77 @@ fn side_effects_recorded_from_git_status_diff() {
         runs[0].side_effects
     );
 }
+
+// ---------- §276/§277：verified_state（CleanAtCommit/DirtyWorkspace） ----------
+
+fn run_with_git(root: &std::path::Path) -> prism_verify::VerificationReport {
+    let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
+    let git = GitService::new(runner.clone());
+    let config = VerifyConfig::default();
+    let specs = discover_checks(root, &config);
+    prism_verify::run_verification(
+        &specs,
+        root,
+        "demo",
+        &prism_verify::VerifyOptions::default(),
+        runner,
+        2,
+        true,
+        Some(&git),
+        &[],
+        &CancellationToken::new(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn clean_worktree_reports_clean_at_commit() {
+    let fixture = Fixture::new("clean");
+    let report = run_with_git(&fixture.root);
+    match report.verified_state {
+        Some(prism_verify::VerifiedState::CleanAtCommit { commit }) => {
+            let head = Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(&fixture.root)
+                .output()
+                .unwrap();
+            let expected = String::from_utf8_lossy(&head.stdout).trim().to_string();
+            assert_eq!(commit.as_deref(), Some(expected.as_str()));
+        }
+        other => panic!("expected CleanAtCommit, got {other:?}"),
+    }
+}
+
+#[test]
+fn dirty_worktree_reports_dirty_with_count() {
+    let fixture = Fixture::new("dirty");
+    // §277：验证时有未提交变更（含 untracked）⇒ DirtyWorkspace + 数量。
+    std::fs::write(fixture.root.join("draft.txt"), "wip\n").unwrap();
+    let report = run_with_git(&fixture.root);
+    match report.verified_state {
+        Some(prism_verify::VerifiedState::DirtyWorkspace { changed_files }) => {
+            assert_eq!(changed_files, 1);
+        }
+        other => panic!("expected DirtyWorkspace, got {other:?}"),
+    }
+}
+
+#[test]
+fn non_git_directory_reports_unknown_verified_state() {
+    let root = std::env::temp_dir().join(format!(
+        "prism-verify-nogit-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.subsec_nanos())
+            .unwrap_or(0)
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    let report = run_with_git(&root);
+    assert!(
+        report.verified_state.is_none(),
+        "non-git dir must not fake a verified_state: {:?}",
+        report.verified_state
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}

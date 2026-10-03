@@ -31,8 +31,8 @@ pub use executor::{execute_check, execute_plan, execute_plan_observed, execute_p
 pub use fake::{FakeCommandRunner, FakeResponse};
 pub use model::{
     CheckConfidence, CheckKind, CheckPolicy, CheckRun, CheckSource, CheckSpec, CheckState,
-    OverallConclusion, PlannedCheck, Prerequisite, PrerequisiteOutcome, VerifyCounts,
-    VerifyDiagnostic, VerifyOptions, VerifyPlan, VerificationReport, WritePolicy,
+    OverallConclusion, PlannedCheck, Prerequisite, PrerequisiteOutcome, VerifiedState,
+    VerifyCounts, VerifyDiagnostic, VerifyOptions, VerifyPlan, VerificationReport, WritePolicy,
     VERIFY_SCHEMA_VERSION,
 };
 pub use ci::{compare_with_local, inspect_github_actions, CICheck, CIInspection, VerificationCoverage};

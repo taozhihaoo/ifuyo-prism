@@ -207,6 +207,21 @@ export default function VerifyPage() {
         <p className="muted small">
           Real execution results only — no health score (§3/§211).
         </p>
+        {report.verified_state?.kind === "dirty_workspace" && (
+          <p className="muted small" data-testid="verify-dirty-note">
+            {report.verified_state.changed_files} working-tree changes present at
+            verification time.
+          </p>
+        )}
+        {report.verified_state?.kind === "clean_at_commit" && (
+          <p className="muted small" data-testid="verify-clean-note">
+            Working tree clean
+            {report.verified_state.commit
+              ? ` at commit ${report.verified_state.commit.slice(0, 12)}`
+              : " (no commits yet)"}
+            .
+          </p>
+        )}
       </div>
 
       <div className="card" data-testid="verify-runs">

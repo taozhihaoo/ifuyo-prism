@@ -838,6 +838,10 @@ export interface CheckRunDto {
   side_effects: string[];
 }
 
+export type VerifiedStateDto =
+  | { kind: "clean_at_commit"; commit: string | null }
+  | { kind: "dirty_workspace"; changed_files: number };
+
 export interface VerificationReportDto {
   schema_version: number;
   project_name: string;
@@ -848,6 +852,7 @@ export interface VerificationReportDto {
   counts: VerifyCountsDto;
   side_effects: string[];
   impacted_test_candidates: string[];
+  verified_state?: VerifiedStateDto | null;
 }
 
 export interface VerifyStatusDto {

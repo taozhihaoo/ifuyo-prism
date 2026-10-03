@@ -1,17 +1,83 @@
+import { useEffect, useState } from "react";
 import { formatBytesLabel } from "../services/format";
 import { useProjectStore } from "../app/ProjectStore";
 import ScanProgressCard from "../components/ScanProgressCard";
 import ProjectTypesCard from "../components/ProjectTypesCard";
+import { getGitFacts, getVerifyResults } from "../services/ipc";
+import type { CheckRunDto, VerificationReportDto } from "../types/prism";
 import type { AppInfo } from "../types/prism";
 
 interface OverviewPageProps {
   appInfo: AppInfo | null;
 }
 
+/** 本 session 的验证摘要（§212/§213/§275/§276/§277）。 */
+interface VerifyOverview {
+  report: VerificationReportDto;
+  runs: CheckRunDto[];
+  stale: boolean;
+  staleReason: string | null;
+}
+
+function staleReasonFor(
+  report: VerificationReportDto,
+  headCommit: string | null,
+  dirtyNow: number,
+): { stale: boolean; reason: string | null } {
+  const state = report.verified_state;
+  if (!state) return { stale: false, reason: null };
+  if (state.kind === "clean_at_commit") {
+    if (headCommit !== null && state.commit !== null && headCommit !== state.commit) {
+      return { stale: true, reason: "HEAD moved since the last verification." };
+    }
+    if (dirtyNow > 0) {
+      return { stale: true, reason: "Working tree changed since the last verification." };
+    }
+  }
+  return { stale: false, reason: null };
+}
+
 /** Overview：打开项目 → 扫描 → 真实 Discovery 摘要（纲领 §38/§42/§74/§75）。 */
 export default function OverviewPage({ appInfo }: OverviewPageProps) {
   const { project, phase, scanStatus, discovery, pickAndOpenProject, lastError } =
     useProjectStore();
+  const [verifyOverview, setVerifyOverview] = useState<VerifyOverview | null>(null);
+  const [verifyChecked, setVerifyChecked] = useState(false);
+
+  useEffect(() => {
+    if (!project?.root_path) return;
+    let disposed = false;
+    // §212/§275：只报告本 session 事实；无结果就直说，不假扮历史。
+    void (async () => {
+      try {
+        const [results, facts] = await Promise.all([
+          getVerifyResults(),
+          getGitFacts(false),
+        ]);
+        if (disposed) return;
+        if (results?.report) {
+          const headCommit = facts.head?.commit_id ?? null;
+          const dirtyNow = facts.status.entries.length;
+          const { stale, reason } = staleReasonFor(results.report, headCommit, dirtyNow);
+          setVerifyOverview({
+            report: results.report,
+            runs: results.report.runs,
+            stale,
+            staleReason: reason,
+          });
+        } else {
+          setVerifyOverview(null);
+        }
+      } catch {
+        if (!disposed) setVerifyOverview(null);
+      } finally {
+        if (!disposed) setVerifyChecked(true);
+      }
+    })();
+    return () => {
+      disposed = true;
+    };
+  }, [project?.root_path]);
 
   return (
     <section className="stack">
@@ -90,6 +156,40 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
           </div>
 
           <ProjectTypesCard candidates={discovery.project_types} />
+
+          <div className="card" data-testid="overview-verify">
+            <h2 className="card-title">Verification</h2>
+            {!verifyChecked || verifyOverview === null ? (
+              <p className="muted small" data-testid="verify-no-run">
+                No verification run in this session.
+              </p>
+            ) : (
+              <>
+                <ul className="row-list">
+                  {verifyOverview.runs.map((run) => (
+                    <li key={run.run_id} className="row-static">
+                      <span>{run.kind}</span>
+                      <span className="pill">{run.state}</span>
+                    </li>
+                  ))}
+                </ul>
+                {verifyOverview.stale && (
+                  <p className="warning-box small" data-testid="verify-stale">
+                    Verification is stale — {verifyOverview.staleReason}
+                  </p>
+                )}
+                {verifyOverview.report.verified_state?.kind === "dirty_workspace" && (
+                  <p className="muted small">
+                    {verifyOverview.report.verified_state.changed_files} working-tree
+                    changes present at verification time.
+                  </p>
+                )}
+                <p className="muted small">
+                  Session facts only — nothing is claimed about past sessions.
+                </p>
+              </>
+            )}
+          </div>
 
           <div className="card">
             <h2 className="card-title">Languages</h2>

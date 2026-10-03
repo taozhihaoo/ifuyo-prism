@@ -291,6 +291,26 @@ pub struct VerificationReport {
     /// 受影响的测试候选路径（§34/§247：Candidate impacted tests——
     /// 绝不冒充 "Verified affected tests"）。
     pub impacted_test_candidates: Vec<String>,
+    /// 验证时的工作区有效性（§276/§277）；None = 无法判定
+    /// （非 git 仓库、未提供 GitService 或 dry-run）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verified_state: Option<VerifiedState>,
+}
+
+/// 工作区有效性标记（§276）：这组结果适用于什么样的代码状态。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum VerifiedState {
+    /// 工作区干净：结果适用于记录的 commit（§214 轻量 verified_commit）。
+    CleanAtCommit {
+        /// 验证时的 HEAD commit（unborn 分支时为 None）。
+        commit: Option<String>,
+    },
+    /// 验证时工作区有未提交变更（§277：显示 N 个 working-tree changes）。
+    DirtyWorkspace {
+        /// 验证时的变更文件数（含 untracked）。
+        changed_files: u32,
+    },
 }
 
 /// 引擎选项。

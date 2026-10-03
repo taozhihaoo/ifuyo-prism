@@ -4,8 +4,8 @@
 use crate::discovery::discover_checks;
 use crate::executor::{execute_plan_with, execute_plan_without_prereqs};
 use crate::model::{
-    CheckSpec, OverallConclusion, VerificationReport, VerifyCounts, VerifyOptions, VerifyPlan,
-    VERIFY_SCHEMA_VERSION,
+    CheckSpec, OverallConclusion, VerificationReport, VerifiedState, VerifyCounts, VerifyOptions,
+    VerifyPlan, VERIFY_SCHEMA_VERSION,
 };
 use prism_core::task::CancellationToken;
 use prism_core::{PrismError, PrismResult};
@@ -75,6 +75,7 @@ pub fn run_verification(
             counts: VerifyCounts::default(),
             side_effects: Vec::new(),
             impacted_test_candidates: impacted_test_candidates.to_vec(),
+            verified_state: None,
         });
     }
     if cancel.is_cancelled() {
@@ -152,6 +153,9 @@ pub fn run_verification(
     report_side_effects.sort();
     report_side_effects.dedup();
 
+    // §276/§277：执行开始时的工作区有效性（只在提供 GitService 时判定）。
+    let verified_state = git.and_then(|git| verified_state_snapshot(git, root, cancel));
+
     Ok(VerificationReport {
         schema_version: VERIFY_SCHEMA_VERSION,
         project_name: project_name.to_string(),
@@ -162,5 +166,26 @@ pub fn run_verification(
         counts,
         side_effects: report_side_effects,
         impacted_test_candidates: impacted_test_candidates.to_vec(),
+        verified_state,
     })
+}
+
+/// §276：一次 GitStatus 快照 → CleanAtCommit/DirtyWorkspace；
+/// 非 git 仓库或 status 失败 ⇒ None（不猜）。
+fn verified_state_snapshot(
+    git: &prism_git::GitService,
+    root: &Path,
+    cancel: &CancellationToken,
+) -> Option<VerifiedState> {
+    let status = git.status(root, false, cancel).ok()?;
+    status.repository.as_ref()?;
+    if status.entries.is_empty() {
+        Some(VerifiedState::CleanAtCommit {
+            commit: status.head.as_ref().and_then(|head| head.commit_id.clone()),
+        })
+    } else {
+        Some(VerifiedState::DirtyWorkspace {
+            changed_files: status.entries.len() as u32,
+        })
+    }
 }

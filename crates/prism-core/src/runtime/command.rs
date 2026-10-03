@@ -31,6 +31,10 @@ pub struct CommandSpec {
     /// 超时毫秒数；到时终止子进程并返回 Command 错误。
     #[serde(default = "default_timeout_ms")]
     pub timeout_ms: u64,
+    /// 每个输出流（stdout/stderr）的采集字节上限（M8 §201/§202 有界采集）；
+    /// None = 沿用默认上限（1 MiB/流）。超限截断并标记 CommandOutput::output_truncated。
+    #[serde(default)]
+    pub max_output_bytes: Option<usize>,
 }
 
 fn default_timeout_ms() -> u64 {
@@ -48,6 +52,7 @@ impl CommandSpec {
             working_directory: None,
             environment: BTreeMap::new(),
             timeout_ms: default_timeout_ms(),
+            max_output_bytes: None,
         }
     }
 
@@ -70,6 +75,9 @@ pub struct CommandOutput {
     pub stdout: String,
     pub stderr: String,
     pub duration_ms: u64,
+    /// stdout 或 stderr 因超过采集上限而被截断（§201/§202：绝不静默截断）。
+    #[serde(default)]
+    pub output_truncated: bool,
 }
 
 /// 命令执行器抽象。实现必须线程安全。
@@ -111,23 +119,51 @@ impl StdCommandRunner {
         })
     }
 
+    /// 有界采集上限（默认 1 MiB/流；§201/§202）。
+    const DEFAULT_MAX_OUTPUT_BYTES: usize = 1024 * 1024;
+
     /// 在独立线程读取一个管道，避免子进程因缓冲区塞满而阻塞。
-    fn drain(pipe: impl Read + Send + 'static) -> mpsc::Receiver<String> {
-        let (sender, receiver) = mpsc::channel();
+    /// 超过 `max_bytes` 只保留前 `max_bytes` 字节（head 保留策略），
+    /// 由 `output_truncated` 标记（§201/§202：绝不静默截断）。
+    fn drain(pipe: impl Read + Send + 'static, max_bytes: usize) -> (mpsc::Receiver<String>, mpsc::Receiver<bool>) {
+        let (text_sender, text_receiver) = mpsc::channel();
+        let (flag_sender, flag_receiver) = mpsc::channel();
         std::thread::spawn(move || {
             let mut text = String::new();
+            let mut truncated = false;
             let mut pipe = pipe;
+            let mut buffer = [0u8; 8192];
+            let mut taken: usize = 0;
             // 读取失败按空输出处理；诊断信息通过退出码与 stderr 呈现。
-            let _ = pipe.read_to_string(&mut text);
-            let _ = sender.send(text);
+            loop {
+                match pipe.read(&mut buffer) {
+                    Ok(0) => break,
+                    Ok(read) => {
+                        if taken < max_bytes {
+                            let keep = read.min(max_bytes - taken);
+                            // 截断边界按字节切分，多字节字符尾部以 lossy 处理。
+                            text.push_str(&String::from_utf8_lossy(&buffer[..keep]));
+                        }
+                        taken += read;
+                        if taken > max_bytes {
+                            truncated = true;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+            let _ = text_sender.send(text);
+            let _ = flag_sender.send(truncated);
         });
-        receiver
+        (text_receiver, flag_receiver)
     }
 
     fn finish(
         child: &mut Child,
         stdout_rx: mpsc::Receiver<String>,
         stderr_rx: mpsc::Receiver<String>,
+        stdout_truncated: mpsc::Receiver<bool>,
+        stderr_truncated: mpsc::Receiver<bool>,
         started: Instant,
     ) -> PrismResult<CommandOutput> {
         let status = child.wait()?;
@@ -138,11 +174,18 @@ impl StdCommandRunner {
         let stderr = stderr_rx
             .recv_timeout(Duration::from_secs(10))
             .unwrap_or_default();
+        let output_truncated = stdout_truncated
+            .recv_timeout(Duration::from_secs(1))
+            .unwrap_or(false)
+            || stderr_truncated
+                .recv_timeout(Duration::from_secs(1))
+                .unwrap_or(false);
         Ok(CommandOutput {
             exit_code: status.code(),
             stdout,
             stderr,
             duration_ms: started.elapsed().as_millis() as u64,
+            output_truncated,
         })
     }
 
@@ -162,10 +205,11 @@ impl CommandRunner for StdCommandRunner {
         let started = Instant::now();
         let deadline = started + Duration::from_millis(spec.timeout_ms);
         let mut child = Self::spawn(spec)?;
+        let max_bytes = spec.max_output_bytes.unwrap_or(Self::DEFAULT_MAX_OUTPUT_BYTES);
 
         // 静态保证已设置为 piped，expect 属于“明确不可达分支”。
-        let stdout_rx = Self::drain(child.stdout.take().expect("stdout was piped"));
-        let stderr_rx = Self::drain(child.stderr.take().expect("stderr was piped"));
+        let (stdout_rx, stdout_truncated) = Self::drain(child.stdout.take().expect("stdout was piped"), max_bytes);
+        let (stderr_rx, stderr_truncated) = Self::drain(child.stderr.take().expect("stderr was piped"), max_bytes);
 
         loop {
             if cancel.is_some_and(|token| token.is_cancelled()) {
@@ -174,7 +218,7 @@ impl CommandRunner for StdCommandRunner {
             }
             match child.try_wait()? {
                 Some(_status) => {
-                    return Self::finish(&mut child, stdout_rx, stderr_rx, started);
+                    return Self::finish(&mut child, stdout_rx, stderr_rx, stdout_truncated, stderr_truncated, started);
                 }
                 None if Instant::now() >= deadline => {
                     Self::terminate(&mut child);

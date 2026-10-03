@@ -23,7 +23,7 @@
 
 ## E. Architecture Rules
 
-- **FACT**：ARCH001 环（M3 SCC，canonical，A↔B 一条不重复、无环不报——e2e §149）；ARCH002/003 fan-out/in 阈值边界精确（16>15 报、fan-in 16≤20 不报——e2e §150）。ARCH004/005（需用户配置）**未实现，推迟**（§113/§134 不臆测架构）。
+- **FACT**：ARCH001 环（M3 SCC，canonical，A↔B 一条不重复、无环不报——e2e §149）；ARCH002/003 fan-out/in 阈值边界精确（16>15 报、fan-in 16≤20 不报——e2e §150）；**ARCH004 forbidden dependency 已实现**：`health.architecture.forbidden_dependencies [{from,to}]` 配置（deny_unknown_fields），未配置=安静跳过（§113），evidence 含 observed relationship + configured restriction 双证据（§246 场景 e2e：配置出现→finding、删除配置→消失）。ARCH005 layers 推迟（§29 简单配置原则）。
 
 ## F. Dependency Rules
 
@@ -71,7 +71,7 @@
 
 ## Q. Tests
 
-- **FACT**：全工作区 **347 Rust 测试**（33 套件，含 prism-health 25 单测 + 3 health_e2e + 8 rules_e2e + 5 health_e2e-cli… 具体为 engine 17 + model/derived/render/config/registry 单测 + health_e2e 3 + rules_e2e 8 + CLI health 契约 14）**0 失败**；clippy 0；前端 **14 vitest** 通过；tsc/vite 构建通过。
+- **FACT**：全工作区 **353 Rust 测试**（33 套件，含 prism-health 25 单测 + 3 health_e2e + 8 rules_e2e + 5 health_e2e-cli… 具体为 engine 17 + model/derived/render/config/registry 单测 + health_e2e 3 + rules_e2e 8 + CLI health 契约 14）**0 失败**；clippy 0；前端 **14 vitest** 通过；tsc/vite 构建通过。
 - **FACT**：real projects（§167）：Prism 自身 + TS/Py/C# fixture 全部验证。
 
 ## R. Performance（§185/§186 实测，Windows debug 构建）
@@ -89,13 +89,12 @@
 ## U. Risks（仅 P0/P1）
 
 - **P1**：SEC001 词法限制——camelCase 键名（AuthToken）不匹配；复杂度计入字符串字面量关键词（文档化近似）。均为保守方向（漏报优于误报），后续可加键名词表。
-- **P1**：ARCH002/003 阈值语义需在 config 文档中更醒目（代码已文档化）。
 - **无 P0**。无阻塞 M8 的 P1。
 
 ## V. Deferred（不偷偷实现）
 
 - M8 Verify（build/test 执行）、M9 Environment（完整环境快照；ENV001 留 M9）、M10 Context（findings→ContextPack 选择）、M11 Snapshot（FindingId 跨运行对比 + first/last_seen）、M12 UI polish、M13 hardening。
-- M7 内部推迟：ARCH004/005（需用户配置 schema）、DEP004/005、CODE005、CONF001-003、GIT001-003、rule 并行执行、SEC entropy 检测。
+- M7 内部推迟：ARCH005 layers（DEP004/005、CODE005、CONF001-003、GIT001-003）、rule 并行执行、SEC entropy 检测。
 
 ---
 

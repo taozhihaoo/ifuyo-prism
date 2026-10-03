@@ -34,6 +34,18 @@
 ## ARCH003 — Excessive Module Fan-in
 - 同 ARCH002，方向为 incoming（默认阈值 20）。fan-in 高 ≠ 设计错误（§27）。
 
+## ARCH004 — Forbidden Dependency
+- Category: Architecture · Default severity: Warning · Confidence: High
+- Inputs: M3 resolved 依赖 + 用户配置 `health.architecture.forbidden_dependencies`
+  （`[{from, to}]`；§28/§133）。
+- Detection: resolved 依赖的 source/target 路径片段（大小写不敏感）同时命中某对
+  from/to ⇒ finding（§246）。
+- False positives: 来自项目自身配置而非 Prism 臆测（§134/§246——删除配置即消失）。
+  未配置 ⇒ 规则安静跳过（§113）。
+- Configuration: `enabled`；from/to 对在 `health.architecture` 节定义。
+- Evidence: observed relationship（source → target）+ configured restriction
+  （"from must not depend on to"）双证据。
+
 ## DEP001 — Unresolved Dependency
 - Category: Dependency · Default severity: Warning · Confidence: High
 - Inputs: M3 依赖解析事实（§34 不重写 resolver）。

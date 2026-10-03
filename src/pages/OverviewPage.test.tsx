@@ -57,6 +57,7 @@ const appInfo = {
   version: "0.1.0",
   os: "windows",
   arch: "x64",
+  family: "desktop",
   build_profile: "debug",
   generated_at: "2026-10-04T00:00:00Z",
 };

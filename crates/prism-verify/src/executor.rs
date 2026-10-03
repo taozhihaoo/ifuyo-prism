@@ -94,9 +94,24 @@ pub fn execute_check_with_prereqs(
     }
 
     // ---- 真实执行（M0 CommandRunner，§2）----
-    let mut command_spec = CommandSpec::new(spec.program.clone(), spec.args.iter().cloned())
+    // Windows `.cmd`/`.bat` shim（npm 等）经 cmd.exe /C 显式 argv 运行；
+    // command_display 跟随实际 spawn 的进程（§206 命令与进程一致）。
+    let (spawn_program, spawn_args, command_display) =
+        if crate::tool::needs_windows_script_wrap(&spec.program, &workdir) {
+            let wrapped_args: Vec<String> = std::iter::once("/C".to_string())
+                .chain(std::iter::once(spec.program.clone()))
+                .chain(spec.args.iter().cloned())
+                .collect();
+            let display = crate::redact::command_display("cmd.exe", &wrapped_args);
+            ("cmd.exe".to_string(), wrapped_args, display)
+        } else {
+            (spec.program.clone(), spec.args.clone(), command_display)
+        };
+
+    let mut command_spec = CommandSpec::new(spawn_program, spawn_args)
         .with_working_directory(workdir)
         .with_timeout_ms(spec.timeout_ms);
+    run.command_display = command_display;
     if let Some(max_bytes) = spec.max_output_bytes {
         command_spec.max_output_bytes = Some(max_bytes);
     }

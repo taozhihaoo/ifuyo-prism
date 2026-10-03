@@ -434,3 +434,89 @@ export interface CallEdgeDto {
   confidence: Confidence;
   location: SourceLocationDto | null;
 }
+
+// ---------- M4：Git facts 契约 ----------
+
+export interface GitRepositoryDto {
+  root_path: string;
+  git_dir: string;
+  common_git_dir: string;
+  is_bare: boolean;
+  is_worktree: boolean;
+}
+
+export type GitHeadKindDto = "branch" | "detached" | "unborn" | "unknown";
+
+export interface GitHeadDto {
+  kind: GitHeadKindDto;
+  commit_id: string | null;
+  branch_name: string | null;
+  symbolic_ref: string | null;
+}
+
+export type GitFileStateDto =
+  | "unmodified"
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "copied"
+  | "type_changed"
+  | "unmerged"
+  | "untracked"
+  | "ignored"
+  | "unknown";
+
+export interface GitFileStatusDto {
+  path: string;
+  original_path: string | null;
+  index_state: GitFileStateDto;
+  working_tree_state: GitFileStateDto;
+  is_untracked: boolean;
+  is_ignored: boolean;
+  is_renamed: boolean;
+  is_copied: boolean;
+  is_conflicted: boolean;
+}
+
+export interface GitStatusDto {
+  repository: GitRepositoryDto | null;
+  head: GitHeadDto | null;
+  entries: GitFileStatusDto[];
+  ignored: string[];
+}
+
+export interface GitPersonDto {
+  name: string;
+  email: string;
+}
+
+export interface GitCommitDto {
+  id: string;
+  short_id: string | null;
+  parents: string[];
+  author: GitPersonDto;
+  committer: GitPersonDto;
+  authored_at: string | null;
+  committed_at: string | null;
+  subject: string;
+  message: string;
+  refs: string[];
+}
+
+export type GitRefKindDto = "branch" | "remote_branch" | "tag" | "other";
+
+export interface GitRefDto {
+  name: string;
+  full_name: string;
+  kind: GitRefKindDto;
+  target: string;
+}
+
+export interface GitFactsDto {
+  repository: GitRepositoryDto | null;
+  head: GitHeadDto | null;
+  status: GitStatusDto;
+  recent_commits: GitCommitDto[];
+  refs: GitRefDto[];
+}

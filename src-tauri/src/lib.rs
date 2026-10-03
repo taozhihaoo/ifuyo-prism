@@ -57,6 +57,7 @@ pub fn run() {
             commands::start_graph,
             commands::get_graph_status,
             commands::get_dependency_graph,
+            commands::get_git_facts,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

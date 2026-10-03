@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { AppInfo } from "../types/prism";
 import OverviewPage from "./OverviewPage";
+import ChangesPage from "./ChangesPage";
 import UnderstandPage from "./UnderstandPage";
 import PlaceholderPage from "../components/PlaceholderPage";
 
@@ -37,13 +38,7 @@ export const PAGES: PageDef[] = [
   {
     key: "changes",
     label: "Changes",
-    milestoneTag: "M4",
-    render: () => (
-      <PlaceholderPage
-        milestone="M4"
-        description="Git facts, ChangeSet and change impact analysis: what changed, what it may affect."
-      />
-    ),
+    render: () => <ChangesPage />,
   },
   {
     key: "health",

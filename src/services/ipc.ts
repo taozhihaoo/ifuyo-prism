@@ -8,6 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   AppInfo,
   DependencyGraphResultDto,
+  GitFactsDto,
   GraphStatus,
   InspectStatus,
   PrismErrorDto,
@@ -101,4 +102,10 @@ export function getGraphStatus(): Promise<GraphStatus> {
 
 export function getDependencyGraph(): Promise<DependencyGraphResultDto | null> {
   return invoke<DependencyGraphResultDto | null>("get_dependency_graph");
+}
+
+// ---------- M4：Git facts ----------
+
+export function getGitFacts(includeIgnored: boolean): Promise<GitFactsDto> {
+  return invoke<GitFactsDto>("get_git_facts", { includeIgnored });
 }

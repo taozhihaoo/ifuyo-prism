@@ -102,6 +102,12 @@ impl fmt::Display for GitError {
 
 impl std::error::Error for GitError {}
 
+impl From<GitError> for prism_core::PrismErrorDto {
+    fn from(err: GitError) -> Self {
+        prism_core::PrismErrorDto::new(err.kind(), err.message())
+    }
+}
+
 impl From<prism_core::PrismError> for GitError {
     fn from(err: prism_core::PrismError) -> Self {
         use prism_core::PrismError;

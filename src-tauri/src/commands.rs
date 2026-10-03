@@ -10,10 +10,14 @@ use crate::state::{lock_session, status_string, AppState, InspectProgress};
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
 use prism_core::application::{AppInfo, RuntimeInfo};
 use prism_core::error::PrismErrorDto;
-use prism_core::task::TaskState;
+use prism_core::runtime::command::StdCommandRunner;
+use prism_core::task::{CancellationToken, TaskState};
+use prism_git::model::{GitCommit, GitRef, GitRepository, GitStatus};
+use prism_git::GitService;
 use prism_graph::DependencyGraphResult;
 use prism_project::{DiscoveryService, Project, ProjectDiscovery, ScanOptions, ScanProgress};
 use serde::Serialize;
+use std::sync::Arc;
 use tauri::State;
 
 /// 应用信息（名称、版本、平台、构建 profile）。
@@ -406,4 +410,57 @@ pub fn get_graph_status(state: State<'_, AppState>) -> GraphStatusDto {
 pub fn get_dependency_graph(state: State<'_, AppState>) -> Option<DependencyGraphResult> {
     let session = lock_session(&state.session);
     session.graph_model.clone()
+}
+
+// ---------- M4：Git facts ----------
+
+/// Git facts 快照（GUI Changes 页一次性消费；只读，规格 §32/§33）。
+#[derive(Debug, Clone, Serialize)]
+pub struct GitFactsDto {
+    /// 非 Git 项目为 None（规格 §25）。
+    pub repository: Option<GitRepository>,
+    pub head: Option<prism_git::GitHead>,
+    pub status: GitStatus,
+    pub recent_commits: Vec<GitCommit>,
+    pub refs: Vec<GitRef>,
+}
+
+#[tauri::command]
+pub fn get_git_facts(
+    state: State<'_, AppState>,
+    include_ignored: bool,
+) -> Result<GitFactsDto, PrismErrorDto> {
+    let root = {
+        let session = lock_session(&state.session);
+        session
+            .project
+            .as_ref()
+            .map(|project| project.root_path.clone())
+            .ok_or_else(|| {
+                PrismErrorDto::new(
+                    "invalid_input",
+                    "no project opened; call open_project first",
+                )
+            })?
+    };
+    let cancel = CancellationToken::new();
+    let service = GitService::new(Arc::new(StdCommandRunner::new()));
+    let status = service
+        .status(&root, include_ignored, &cancel)
+        .map_err(PrismErrorDto::from)?;
+    let (recent_commits, refs) = if status.repository.is_some() {
+        (
+            service.log(&root, 20, &cancel).unwrap_or_default(),
+            service.refs(&root, &cancel).unwrap_or_default(),
+        )
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    Ok(GitFactsDto {
+        repository: status.repository.clone(),
+        head: status.head.clone(),
+        status,
+        recent_commits,
+        refs,
+    })
 }

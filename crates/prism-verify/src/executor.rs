@@ -208,9 +208,10 @@ pub fn execute_plan_without_prereqs(
     runner: Arc<dyn CommandRunner>,
     project_root: &Path,
     max_concurrency: usize,
+    git: Option<&prism_git::GitService>,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
-    execute_plan_inner(plan, runner, project_root, max_concurrency, false, None, cancel)
+    execute_plan_inner(plan, runner, project_root, max_concurrency, false, git, cancel)
 }
 
 /// 有界并发执行（§29–§30）：按拓扑层分组，层间顺序（依赖语义），

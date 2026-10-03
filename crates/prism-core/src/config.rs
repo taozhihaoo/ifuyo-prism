@@ -121,6 +121,25 @@ pub struct VerifyCheckConfig {
     pub depends_on: Vec<String>,
 }
 
+/// release 检查配置（§62/§136-§139：只基于已有事实，无部署）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+pub struct ReleaseConfig {
+    /// required files（相对项目根；缺失 ⇒ ReleaseCheck Failed）。
+    pub required_files: Vec<String>,
+    /// 要求工作树干净（§139：dirty ⇒ Failed；永不自动 clean）。
+    pub require_clean_tree: bool,
+}
+
+impl Default for ReleaseConfig {
+    fn default() -> Self {
+        ReleaseConfig {
+            required_files: vec!["README.md".to_string()],
+            require_clean_tree: false,
+        }
+    }
+}
+
 /// verify 配置节（M8a §233）。
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(default, deny_unknown_fields)]
@@ -129,6 +148,8 @@ pub struct VerifyConfig {
     pub checks: std::collections::BTreeMap<String, VerifyCheckConfig>,
     /// required check id 清单（§72；整体结论据此判定）。
     pub required: Vec<String>,
+    /// release 检查配置（M8b §62/§136-§139）。
+    pub release: ReleaseConfig,
 }
 
 /// 单条健康规则的配置覆盖（§71）。键 = 稳定规则 id；

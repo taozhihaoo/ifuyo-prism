@@ -46,6 +46,7 @@ fn large_output_is_truncated_with_flag() {
         Arc::new(runner),
         &PathBuf::from("."),
         1,
+        None,
         &CancellationToken::new(),
     )
     .unwrap();
@@ -86,6 +87,7 @@ fn timeout_reports_timed_out_and_terminates_process() {
         Arc::new(StdCommandRunner::new()),
         &PathBuf::from("."),
         1,
+        None,
         &CancellationToken::new(),
     )
     .unwrap();

@@ -288,6 +288,9 @@ pub struct VerificationReport {
     pub counts: VerifyCounts,
     /// 整次验证观测到的副作用路径（执行前后 Git status 差异；§167/§198）。
     pub side_effects: Vec<String>,
+    /// 受影响的测试候选路径（§34/§247：Candidate impacted tests——
+    /// 绝不冒充 "Verified affected tests"）。
+    pub impacted_test_candidates: Vec<String>,
 }
 
 /// 引擎选项。

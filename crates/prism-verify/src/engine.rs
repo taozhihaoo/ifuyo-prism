@@ -57,6 +57,8 @@ pub fn run_verification(
     runner: Arc<dyn prism_core::CommandRunner>,
     max_concurrency: usize,
     enforce_prerequisites: bool,
+    git: Option<&prism_git::GitService>,
+    impacted_test_candidates: &[String],
     cancel: &CancellationToken,
 ) -> PrismResult<VerificationReport> {
     let selected_specs = select_specs(specs, options)?;
@@ -72,22 +74,33 @@ pub fn run_verification(
             completeness: prism_core::PrismCompleteness::Complete,
             counts: VerifyCounts::default(),
             side_effects: Vec::new(),
+            impacted_test_candidates: impacted_test_candidates.to_vec(),
         });
     }
     if cancel.is_cancelled() {
         return Err(PrismError::Cancelled);
     }
 
-    let runs = if enforce_prerequisites {
-        execute_plan_with(&selected_specs, runner, root, max_concurrency, cancel)?
-    } else {
-        execute_plan_without_prereqs(
+    let runs = match (enforce_prerequisites, git) {
+        (true, None) => {
+            execute_plan_with(&selected_specs, runner, root, max_concurrency, cancel)?
+        }
+        (true, Some(git)) => crate::executor::execute_plan_observed(
             &selected_specs,
             runner,
             root,
             max_concurrency,
+            git,
             cancel,
-        )?
+        )?,
+        (false, git) => execute_plan_without_prereqs(
+            &selected_specs,
+            runner,
+            root,
+            max_concurrency,
+            git,
+            cancel,
+        )?,
     };
 
     let mut counts = VerifyCounts::default();
@@ -148,5 +161,6 @@ pub fn run_verification(
         completeness,
         counts,
         side_effects: report_side_effects,
+        impacted_test_candidates: impacted_test_candidates.to_vec(),
     })
 }

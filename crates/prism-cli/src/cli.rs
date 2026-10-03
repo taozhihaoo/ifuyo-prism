@@ -221,6 +221,9 @@ pub enum Command {
         /// 只执行指定 check id（可多次，§147）
         #[arg(long = "check")]
         checks: Vec<String>,
+        /// 只报告当前变更相关的验证范围与受影响测试候选（§32-§36/§247）
+        #[arg(long)]
+        changed: bool,
         /// 只发现 + 展示计划，零命令执行（§144）
         #[arg(long)]
         dry_run: bool,

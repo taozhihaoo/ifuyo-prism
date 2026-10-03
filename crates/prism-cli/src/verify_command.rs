@@ -7,6 +7,7 @@ use prism_core::config::PrismConfig;
 use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
 use prism_verify::{discover_checks, render_html, render_text, CheckState};
+use prism_git::GitService;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -15,6 +16,7 @@ pub fn run(
     format: crate::cli::HealthFormatArg,
     checks: &[String],
     dry_run: bool,
+    changed: bool,
     fail_on_unavailable: bool,
 ) -> i32 {
     if !path.exists() {
@@ -44,12 +46,34 @@ pub fn run(
         fail_on_unavailable,
     };
 
+    // §167/§198：GitService 用于副作用观察（非 git 目录静默跳过）。
+    let git = GitService::new(runner.clone());
+
     let specs = discover_checks(path, &config.verify);
 
     let project_name = path
         .file_name()
         .map(|name| name.to_string_lossy().to_string())
         .unwrap_or_else(|| "project".to_string());
+
+    // §32-§36：--changed 时展示受影响测试候选（Candidate impacted tests，
+    // 绝不冒充 "Verified affected tests"）。npm 等工具不在本地 PATH 时仍可列出。
+    let impacted_test_candidates: Vec<String> = if changed {
+        let cancel_probe = CancellationToken::new();
+        prism_project::DiscoveryService::new()
+            .discover(path, prism_project::ScanOptions::default(), &cancel_probe, |_| {})
+            .map(|discovery| {
+                discovery
+                    .files
+                    .iter()
+                    .filter(|file| file.classification.kind == prism_project::FileKind::Test)
+                    .map(|file| file.relative_path.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    } else {
+        Vec::new()
+    };
 
     let report = match prism_verify::run_verification(
         &specs,
@@ -59,6 +83,8 @@ pub fn run(
         runner,
         2,
         true,
+        Some(&git),
+        &impacted_test_candidates,
         &cancel,
     ) {
         Ok(report) => report,

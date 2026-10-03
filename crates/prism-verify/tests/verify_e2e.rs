@@ -125,6 +125,7 @@ fn build_failure_blocks_dependent_test() {
         Arc::new(runner),
         &PathBuf::from("."),
         2,
+        None,
         &CancellationToken::new(),
     )
     .unwrap();
@@ -161,6 +162,8 @@ fn required_failure_makes_conclusion_fail() {
         Arc::new(runner),
         2,
         false,
+        None,
+        &[],
         &CancellationToken::new(),
     )
     .unwrap();
@@ -192,6 +195,8 @@ fn optional_unavailable_keeps_partial_not_fail() {
         Arc::new(runner),
         2,
         false,
+        None,
+        &[],
         &CancellationToken::new(),
     )
     .unwrap();
@@ -212,6 +217,7 @@ fn arbitrary_write_skipped_by_default() {
         Arc::new(runner.clone()),
         &PathBuf::from("."),
         2,
+        None,
         &CancellationToken::new(),
     )
     .unwrap();
@@ -238,6 +244,8 @@ fn dry_run_never_spawns_commands() {
         Arc::new(runner.clone()),
         2,
         false,
+        None,
+        &[],
         &CancellationToken::new(),
     )
     .unwrap();
@@ -285,6 +293,7 @@ fn failed_command_output_and_args_are_redacted() {
         Arc::new(runner),
         &PathBuf::from("."),
         2,
+        None,
         &CancellationToken::new(),
     )
     .unwrap();
@@ -310,6 +319,7 @@ fn pre_cancelled_token_yields_cancelled_runs() {
         Arc::new(FakeCommandRunner::new()),
         &PathBuf::from("."),
         2,
+        None,
         &cancel,
     )
     .unwrap();

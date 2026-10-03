@@ -141,6 +141,7 @@ fn run() -> i32 {
             json,
             format,
             checks,
+            changed,
             dry_run,
             fail_on_unavailable,
         }) => verify_command::run(
@@ -152,6 +153,7 @@ fn run() -> i32 {
             },
             checks.as_slice(),
             dry_run,
+            changed,
             fail_on_unavailable,
         ),
         Some(command) => not_implemented_yet(command.name()),

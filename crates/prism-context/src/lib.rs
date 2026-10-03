@@ -2,6 +2,7 @@ pub mod collectors;
 pub mod materializer;
 pub mod model;
 pub mod selector;
+pub mod service;
 pub mod task;
 
 pub use materializer::{classify_path, materialize, MaterializeReport};

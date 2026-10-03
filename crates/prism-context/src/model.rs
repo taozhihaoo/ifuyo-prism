@@ -47,6 +47,12 @@ pub fn scope_str(scope: ContextScope) -> &'static str {
     }
 }
 
+impl ContextManifest {
+    pub fn scope_str(&self) -> &'static str {
+        scope_str(self.scope)
+    }
+}
+
 /// 任务分类（§12/§13：允许多 kind）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

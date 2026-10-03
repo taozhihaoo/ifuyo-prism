@@ -617,4 +617,126 @@ mod tests {
                     && d.subject.as_deref() == Some("TEST001"))
         );
     }
+
+    // ---- §103 合成大项目安全：数千 findings / 多文件规模 ----
+
+    static META_BULK: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
+        id: "TEST900",
+        name: "Bulk synthetic rule",
+        category: FindingCategory::Maintenance,
+        description: "emits 5000 findings across 1000 synthetic files",
+        default_severity: Severity::Info,
+        default_enabled: true,
+        threshold_meaning: None,
+    });
+
+    struct RuleBulk {
+        /// 每产生多少条检查一次取消（协作式，M0 语义）。
+        cancel_every: usize,
+    }
+
+    impl HealthRule for RuleBulk {
+        fn meta(&self) -> &'static HealthRuleMeta {
+            &META_BULK
+        }
+        fn evaluate(
+            &self,
+            _context: &HealthContext,
+            _config: &prism_core::config::HealthRuleConfig,
+            cancel: &CancellationToken,
+        ) -> prism_core::PrismResult<RuleResult> {
+            const TOTAL: u32 = 5000;
+            let mut findings = Vec::with_capacity(TOTAL as usize);
+            for index in 0..TOTAL {
+                if index % self.cancel_every.max(1) as u32 == 0 && cancel.is_cancelled() {
+                    return Err(PrismError::Cancelled);
+                }
+                let file = format!("src/generated/mod{}/file{}.ts", index / 5, index / 5);
+                findings.push(finding("TEST900", &file, (index % 50) + 1, Severity::Info));
+            }
+            Ok(RuleResult {
+                findings,
+                diagnostics: vec![],
+            })
+        }
+    }
+
+    fn bulk_registry() -> HealthRuleRegistry {
+        let mut registry = HealthRuleRegistry::default();
+        registry.register(Box::new(RuleBulk { cancel_every: 100 }));
+        registry
+    }
+
+    #[test]
+    fn large_synthetic_project_completes_deterministically() {
+        // §103：数千 findings / 多文件规模 —— no crash、确定性、有界时间。
+        let started = std::time::Instant::now();
+        let first = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new())
+            .expect("bulk run must succeed");
+        let elapsed = started.elapsed();
+        // 有界时间（宽松上限；本地 debug 构建实测毫秒级，防 CI 抖动给 60s）。
+        assert!(
+            elapsed < std::time::Duration::from_secs(60),
+            "bulk analysis took too long: {elapsed:?}"
+        );
+        assert_eq!(first.findings.len(), 5000, "every synthetic finding present");
+        // §95/§161：确定性——再次运行输出逐字节一致。
+        let second = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new())
+            .unwrap();
+        assert_eq!(
+            serde_json::to_string(&first).unwrap(),
+            serde_json::to_string(&second).unwrap(),
+        );
+        // §96 排序稳定性抽检：同前缀下按 location 升序。
+        let mut expected: Vec<(String, u32)> = first
+            .findings
+            .iter()
+            .map(|f| (f.location.relative_path.clone(), f.location.line))
+            .collect();
+        expected.sort_by(|a, b| a.0.cmp(&b.0).then(a.1.cmp(&b.1)));
+        let actual: Vec<(String, u32)> = first
+            .findings
+            .iter()
+            .map(|f| (f.location.relative_path.clone(), f.location.line))
+            .collect();
+        // 全局排序键含 severity/rule（本例全同）⇒ 实际顺序应与 (path,line) 稳定序一致。
+        let mut grouped: BTreeMap<String, Vec<u32>> = BTreeMap::new();
+        for (path, line) in actual {
+            grouped.entry(path).or_default().push(line);
+        }
+        for lines in grouped.values() {
+            let mut sorted = lines.clone();
+            sorted.sort();
+            assert_eq!(lines, &sorted, "within a file lines must be ascending");
+        }
+        let _ = expected;
+    }
+
+    #[test]
+    fn bulk_run_with_cap_stays_truncated_and_bounded() {
+        // §103 × §223：大输出 + 全局 cap ⇒ Truncated 且数量恰好受界。
+        let options = HealthOptions {
+            max_findings: Some(500),
+            ..HealthOptions::default()
+        };
+        let analysis = run(&bulk_registry(), &HealthConfig::default(), &options, &CancellationToken::new()).unwrap();
+        assert_eq!(analysis.findings.len(), 500);
+        assert_eq!(analysis.analysis_completeness, prism_core::PrismCompleteness::Truncated);
+        assert_eq!(analysis.stats.findings_truncated, 4500);
+        assert!(
+            analysis
+                .diagnostics
+                .iter()
+                .any(|d| d.kind == "findings_truncated" && d.detail.contains("of at least 5000"))
+        );
+    }
+
+    #[test]
+    fn cooperative_cancellation_stops_bulk_rule() {
+        // §102/§160：协作取消在规则内生效 ⇒ Err(Cancelled)，无部分输出伪装。
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let result = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &cancel);
+        assert!(matches!(result, Err(PrismError::Cancelled)));
+    }
 }

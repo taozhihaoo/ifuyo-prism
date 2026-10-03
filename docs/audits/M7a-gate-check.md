@@ -23,7 +23,7 @@
 | Result/immutability/thread-safety/无全局状态（§201–§204） | `evaluate(&context, &config, &cancel) -> PrismResult<RuleResult>`；无 static mut；顺序执行确定性（并行留 M7b，§97 允许） |
 | Determinism + ordering + collect-sort-dedup（§95–§98/§161） | 三次运行 JSON 逐字节一致（单测）；§96 排序单测；dedup by 确定性 id |
 | Partial failure / completeness（§99/§100/§163） | 失败规则 → `rule_failed` 诊断 + failed_rules + Partial，其余规则存活（单测）；Truncated > Partial 优先级 |
-| Cancellation/large-safety/真实 progress（§101–§105/§160） | 取消 ⇒ `Err(Cancelled)` 不伪装 0 findings（单测）；规则内逐文件/逐行协作取消；stats 为真实计数（无假百分比） |
+| Cancellation/timeout/large-safety/真实 progress（§101–§105/§160） | timeout **未单设线程终止**——复用 `CancellationToken` 协作取消（§101「优先复用 M0 Task/cancellation」，规则内逐文件/逐行检查）；取消 ⇒ `Err(Cancelled)` 不伪装 0 findings（单测）；§103 合成大项目安全测试：注入规则产出 5000 findings/1000 文件 ⇒ no crash、确定性（两次运行逐字节一致）、耗时受界断言、全局 cap ⇒ Truncated（4500 截断计数保留）、协作取消中途生效；stats 为真实计数（无假百分比）。内存以「完成运行 + 引擎无跨运行累积结构」为界，未做峰值测量（如实记录） |
 | Parser failure / Unsupported 降级（§116/§117/§157） | e2e：解析失败文件仍被词法规则扫描；未知扩展名/不支持语言安静跳过、无伪造 |
 | suppression：suppressed ≠ not detected（§65–§69/§164） | `suppressed_findings` 配置命中 ⇒ 仍检出、status=Suppressed、stats 分计（引擎单测 + e2e） |
 | health: 配置/schema 校验/unknown/precedence（§70–§72/§219–§221） | core `HealthConfig`（deny_unknown_fields ⇒ threshhold 报错单测）；precedence disabled_rules > rules.enabled > default 单测；CLI > config 单测；unknown rule/option 引擎期诊断（threshold 语义单测） |

@@ -14,6 +14,7 @@
 
 mod changes_command;
 mod cli;
+mod context_command;
 mod env_command;
 mod health_command;
 mod verify_command;
@@ -193,6 +194,14 @@ fn run() -> i32 {
             }
             None => env_command::run(&path, json, strict, all_tools, refresh, format),
         },
+        Some(cli::Command::Context {
+            path,
+            task,
+            json,
+            scope,
+            target,
+            max_tokens,
+        }) => context_command::run(&path, task, json, scope, target, max_tokens),
         Some(command) => not_implemented_yet(command.name()),
     }
 }

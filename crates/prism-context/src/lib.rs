@@ -13,3 +13,9 @@ pub use model::{
     PackStatus, Priority, SelectionReason, SelectionTrace, SourceType, TargetResolution,
     TaskClassification, TaskKind, TaskSpecificity, CONTEXT_SCHEMA_VERSION,
 };
+pub use collectors::{collect_candidates, FactsInputs};
+pub use selector::{
+    apply_scope, estimate_candidate, normalize, prioritize, select, InvalidBudget, SelectionOutput,
+};
+pub use service::{render_text, ContextService};
+pub use task::{classify, extract_target, resolve_target};

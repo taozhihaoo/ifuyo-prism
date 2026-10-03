@@ -96,9 +96,18 @@ fn target_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
             ));
         }
         for symbol_id in symbols {
-            // 符号候选带 M2 身份（§94）；materializer 按符号 range 切片。
-            let path_part = symbol_id.rsplit_once('#').map(|(path, _)| path.to_string());
-            let name_part = symbol_id.rsplit('#').next().map(str::to_string);
+            // M2 SymbolId 形态（§94）：`symbol:{path}#{qualified}#{kind}`——
+            // 注意 "symbol:" 前缀粘在 path 段上。
+            let segments: Vec<&str> = symbol_id.split('#').collect();
+            let path_part = segments
+                .first()
+                .and_then(|first| first.strip_prefix("symbol:"))
+                .map(str::to_string);
+            let qualified = segments.get(1).map(|qualified| qualified.to_string());
+            let name_part = qualified
+                .as_deref()
+                .and_then(|qualified| qualified.rsplit('.').next())
+                .map(str::to_string);
             out.push(ContextCandidate {
                 source: ContextSource {
                     source_type: SourceType::Symbol,
@@ -108,23 +117,21 @@ fn target_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
                     provenance: "task target symbol".to_string(),
                 },
                 group: ContextGroup::TargetCode,
-                title: format!("Target symbol: {}", name_part.clone().unwrap_or_default()),
+                title: format!(
+                    "Target symbol: {}",
+                    name_part.clone().unwrap_or_else(|| symbol_id.clone())
+                ),
                 reasons: vec![SelectionReason::ExplicitTaskTarget],
                 evidence: vec![format!("M2 SymbolId {symbol_id}")],
                 symbol_id: Some(symbol_id.clone()),
                 symbol_name: name_part,
-                ..out.last().cloned().unwrap_or_else(|| {
-                    candidate(
-                        SourceType::Symbol,
-                        format!("symbol:{symbol_id}"),
-                        path_part,
-                        "task target symbol",
-                        ContextGroup::TargetCode,
-                        format!("Target symbol: {symbol_id}"),
-                        vec![SelectionReason::ExplicitTaskTarget],
-                        vec![],
-                    )
-                })
+                impact_distance: None,
+                change_state: None,
+                language: None,
+                symbol_range: None,
+                severity: None,
+                change_type: None,
+                line_count_estimate: None,
             });
         }
     }

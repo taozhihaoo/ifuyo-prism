@@ -317,10 +317,25 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<EnvCommand>,
     },
-    /// 生成 AI 上下文包（M10）
+    /// 生成确定性项目上下文包（M10a）
     Context {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 任务文本（确定性分类，§12）
+        #[arg(long)]
+        task: Option<String>,
+        /// 机器可读输出（stdout 仅 ContextPack JSON，§348）
+        #[arg(long)]
+        json: bool,
+        /// auto | current_change | target | full（§82）
+        #[arg(long)]
+        scope: Option<String>,
+        /// 显式目标（file/symbol），优先于 task 提取（§15）
+        #[arg(long)]
+        target: Option<String>,
+        /// 预算上限（estimated tokens，启发式 §32）
+        #[arg(long)]
+        max_tokens: Option<u64>,
     },
     /// 生成报告（随各里程碑逐步提供）
     Report {

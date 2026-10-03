@@ -71,14 +71,12 @@ fn info_json_output_is_valid_json() {
 
 #[test]
 fn future_commands_clearly_report_not_implemented() {
-    for args in [vec!["context", "."], vec!["report", "."]] {
-        let output = prism(&args);
-        assert!(!output.status.success(), "{args:?} must not fake success");
-        assert!(
-            stderr_text(&output).contains("Not implemented in current milestone."),
-            "{args:?} must state clearly it is not implemented"
-        );
-    }
+    let output = prism(&["report", "."]);
+    assert!(!output.status.success(), "report must not fake success");
+    assert!(
+        stderr_text(&output).contains("Not implemented in current milestone."),
+        "report must state clearly it is not implemented"
+    );
 }
 
 #[test]

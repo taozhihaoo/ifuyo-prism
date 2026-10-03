@@ -1,4 +1,5 @@
 pub mod model;
+pub mod task;
 
 pub use model::{
     BudgetReport, ContextBudget, ContextDiagnostic, ContextFocus, ContextGroup, ContextItem,

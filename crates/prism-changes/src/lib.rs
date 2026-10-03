@@ -24,6 +24,7 @@ pub mod matcher;
 pub mod model;
 pub mod module_change;
 pub mod revision;
+pub mod render;
 pub mod service;
 pub mod symbol_change;
 
@@ -42,5 +43,6 @@ pub use revision::{
     SideModel, SourceState,
 };
 pub use model::LineRange;
+pub use render::{render_markdown, render_text};
 pub use service::{ChangeSetOptions, ChangeSetService};
 pub use symbol_change::{SymbolChange, SymbolChangeType, SymbolCharacteristic};

@@ -42,6 +42,14 @@ impl GraphKindArg {
     }
 }
 
+/// `prism changes` 独有格式（含 markdown，规格 M5 §66）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ChangesFormatArg {
+    Text,
+    Json,
+    Markdown,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum FormatArg {
     Text,
@@ -82,10 +90,25 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
-    /// 查看变更与影响（M5/M6）
+    /// 代码级变更集：Git diff → 文件/符号/模块变更（M5 可用）
     Changes {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 比较 index 与 HEAD（staged），默认 HEAD → 工作区
+        #[arg(long)]
+        staged: bool,
+        /// RevisionRange 起点（与 --to 搭配，如 HEAD~1）
+        #[arg(long)]
+        from: Option<String>,
+        /// RevisionRange 终点（默认 HEAD）
+        #[arg(long)]
+        to: Option<String>,
+        /// 输出格式
+        #[arg(long, value_enum, default_value_t = ChangesFormatArg::Text)]
+        format: ChangesFormatArg,
+        /// 文件数上限（超出截断并标注）
+        #[arg(long, default_value_t = 200)]
+        max_files: usize,
     },
     /// 依赖与架构图（M3 可用）
     Graph {

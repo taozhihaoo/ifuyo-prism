@@ -2501,6 +2501,7 @@ dependencies = [
  "clap",
  "log",
  "prism-analysis",
+ "prism-changes",
  "prism-core",
  "prism-git",
  "prism-graph",

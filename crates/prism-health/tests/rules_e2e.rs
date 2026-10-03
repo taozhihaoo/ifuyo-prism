@@ -81,6 +81,7 @@ impl Fixture {
             impact: None,
             root: &self.root,
             derived: None,
+            health_config: &HealthConfig::default(),
         };
         analyze(
             &HealthRuleRegistry::with_builtins(),

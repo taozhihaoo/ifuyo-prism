@@ -181,6 +181,7 @@ pub fn run_analyze(
         impact: impact.as_ref(),
         root: path,
         derived: None,
+        health_config: &project_config.health,
     };
     match prism_health::analyze(
         &HealthRuleRegistry::with_builtins(),

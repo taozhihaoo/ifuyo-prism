@@ -789,6 +789,7 @@ pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto>
                 |_| {},
             )?;
             let graph = prism_graph::DependencyService::new().analyze(&discovery, &model)?;
+            let health_config = prism_core::config::HealthConfig::default();
             let context = prism_health::HealthContext {
                 project: &discovery.project,
                 code_model: Some(&model),
@@ -799,6 +800,7 @@ pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto>
                 impact: None,
                 root: &root,
                 derived: None,
+                health_config: &health_config,
             };
             prism_health::analyze(
                 &prism_health::HealthRuleRegistry::with_builtins(),

@@ -60,6 +60,8 @@ pub struct HealthContext<'a> {
     pub root: &'a std::path::Path,
     /// 派生事实（引擎按需构建一次共享，§91-§94）；调用方也可预构建传入。
     pub derived: Option<&'a crate::derived::DerivedFacts>,
+    /// 项目 health 配置（ARCH004 等配置驱动规则消费，§28/§133）。
+    pub health_config: &'a HealthConfig,
 }
 
 /// 引擎执行统计（§104：真实计数 progress，不造假百分比）。
@@ -534,6 +536,7 @@ mod tests {
             impact: None,
             root: std::path::Path::new("."),
             derived: None,
+            health_config: config,
         };
         analyze(registry, config, &context, options, cancel)
     }

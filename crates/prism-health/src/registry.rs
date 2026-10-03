@@ -57,6 +57,7 @@ impl HealthRuleRegistry {
         registry.register(Box::new(crate::rules::architecture::CircularDependencyRule));
         registry.register(Box::new(crate::rules::architecture::FanOutRule));
         registry.register(Box::new(crate::rules::architecture::FanInRule));
+        registry.register(Box::new(crate::rules::forbidden_dependency::ForbiddenDependencyRule));
         registry.register(Box::new(crate::rules::dependency::UnresolvedDependencyRule));
         registry.register(Box::new(crate::rules::dependency::AmbiguousDependencyRule));
         registry.register(Box::new(crate::rules::code::HighComplexityRule));

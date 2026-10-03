@@ -3,5 +3,6 @@ pub mod architecture;
 pub mod code;
 pub mod dependency;
 pub mod documentation;
+pub mod forbidden_dependency;
 pub mod maintenance;
 pub mod security;

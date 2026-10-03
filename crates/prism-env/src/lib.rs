@@ -20,6 +20,7 @@ pub mod probe;
 pub mod requirement;
 pub mod requirements;
 pub mod render;
+pub mod report;
 pub mod service;
 pub mod runtime;
 pub mod variables;
@@ -53,6 +54,7 @@ pub use requirement::match_requirements;
 pub use requirements::{collect_requirements, package_manager_requirement, parse_version_spec, ProjectFacts, RequirementProvider};
 pub use variables::{collect_variables, is_possibly_sensitive};
 pub use render::{render_text, sanitize};
+pub use report::{escape_html, render_html, render_markdown, shorten_home_paths};
 pub use service::{EnvironmentScanOptions, EnvironmentService};
 pub use version::{
     compare_versions, parse_version_output, parse_version_token, satisfies, ToolVersion,

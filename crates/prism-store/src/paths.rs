@@ -37,13 +37,12 @@ fn app_data_dir() -> PathBuf {
         });
         PathBuf::from(base)
     } else {
-        let base = std::env::var("XDG_DATA_HOME")
+        std::env::var("XDG_DATA_HOME")
             .ok()
             .filter(|value| !value.is_empty())
             .or_else(|| std::env::var("HOME").ok())
             .map(|home| PathBuf::from(home).join(".local/share"))
-            .unwrap_or_else(|| PathBuf::from("."));
-        base
+            .unwrap_or_else(|| PathBuf::from("."))
     }
 }
 

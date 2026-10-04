@@ -171,7 +171,7 @@ pub fn canonicalize(value: &serde_json::Value) -> serde_json::Value {
             // canonical 形态排序，稳定性一致）。
             let mut canonical: Vec<serde_json::Value> =
                 items.iter().map(canonicalize).collect();
-            canonical.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
+            canonical.sort_by_key(|value| value.to_string());
             serde_json::Value::Array(canonical)
         }
         serde_json::Value::Object(map) => {

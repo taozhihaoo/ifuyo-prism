@@ -2705,6 +2705,7 @@ name = "prism-snapshot"
 version = "0.1.0"
 dependencies = [
  "prism-core",
+ "prism-git",
  "prism-project",
  "prism-store",
  "serde",

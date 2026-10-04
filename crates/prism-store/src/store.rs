@@ -115,8 +115,7 @@ pub trait SnapshotStore: Send + Sync {
 /// Schema migrations（§64 P0：schema_migrations 表 + 顺序执行 + 失败即停）。
 const MIGRATIONS: &[(&str, &str)] = &[(
     "0001_initial",
-    concat!(
-        "CREATE TABLE projects (
+    "CREATE TABLE projects (
             id TEXT PRIMARY KEY,
             display_name TEXT NOT NULL,
             canonical_root TEXT NOT NULL UNIQUE,
@@ -157,7 +156,7 @@ const MIGRATIONS: &[(&str, &str)] = &[(
             PRIMARY KEY (snapshot_id, domain)
         );"
     ),
-)];
+];
 
 fn migrate(connection: &Connection) -> Result<(), StoreError> {
     connection

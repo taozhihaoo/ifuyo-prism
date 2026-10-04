@@ -276,10 +276,15 @@ export function exportContext(format: "json" | "markdown" | "text"): Promise<str
 
 // ---------- M11：Snapshot History ----------
 
-export function snapshotCapture(force?: boolean, note?: string): Promise<unknown> {
+export function snapshotCapture(
+  force?: boolean,
+  note?: string,
+  refreshVerification?: boolean,
+): Promise<unknown> {
   return invoke<unknown>("snapshot_capture", {
     force: force ?? null,
     note: note ?? null,
+    refreshVerification: refreshVerification ?? null,
   });
 }
 

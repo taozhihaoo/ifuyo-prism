@@ -48,25 +48,36 @@ fn snapshot_service(
 }
 
 /// `snapshot capture`（M11a §147 Manual First；session 防并发 §145）。
+/// M11b §14：捕获时注入 M1–M9 域事实（verification 域默认不跑——
+/// GUI 点击不得隐式执行测试命令；`refresh_verification` 显式开启）。
 #[tauri::command]
 pub fn snapshot_capture(
     state: State<'_, AppState>,
     force: Option<bool>,
     note: Option<String>,
+    refresh_verification: Option<bool>,
 ) -> Result<Value, PrismErrorDto> {
     let (root, service, cancel) = snapshot_service(&state)?;
+    let bundle = prism_snapshot::collect_analysis(&root, refresh_verification.unwrap_or(false))
+        .map_err(|err| {
+            PrismErrorDto::new(
+                "internal",
+                format!("snapshot domain analysis failed: {err}"),
+            )
+        })?;
+    for warning in &bundle.warnings {
+        eprintln!("prism: {warning}");
+    }
+    let facts = prism_snapshot::DomainFacts {
+        data: prism_snapshot::build_domain_data(&bundle.inputs()),
+    };
     let options = SnapshotCaptureOptions {
         force: force.unwrap_or(false),
         note,
         ..Default::default()
     };
     let result = service
-        .capture(
-            &root,
-            &prism_snapshot::DomainFacts::default(),
-            &options,
-            &cancel,
-        )
+        .capture(&root, &facts, &options, &cancel)
         .map_err(|err| PrismErrorDto::new("internal", format!("snapshot capture failed: {err}")))?;
     serde_json::to_value(&result)
         .map_err(|err| PrismErrorDto::new("internal", format!("serialize failed: {err}")))

@@ -24,6 +24,10 @@ pub struct FactsInputs<'a> {
     pub target: &'a ContextTarget,
     pub scope: ContextScope,
     pub cancel: &'a CancellationToken,
+    /// §136/§137：当前项目状态引用（M4 事实）。
+    pub state: crate::model::ContextStateReference,
+    /// §131–§132：M8 事实相对当前工作区的新鲜度。
+    pub verification_stale: crate::model::ContextFreshness,
 }
 
 /// 收集全部候选（各 collector 顺序稳定；候选内部排序由 selector 保证）。

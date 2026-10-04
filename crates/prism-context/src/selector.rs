@@ -271,6 +271,7 @@ pub fn select(
             used_files.insert(path.clone());
         }
         used_bytes += estimate;
+        let trust_level = trust_for(&candidate);
         selected.push(ContextItem {
             id: identity_of(&candidate.source),
             source: candidate.source.clone(),
@@ -281,6 +282,7 @@ pub fn select(
             priority,
             reasons: candidate.reasons.clone(),
             evidence: candidate.evidence.clone(),
+            trust_level,
             language: candidate.language.clone(),
             change_state: candidate.change_state.clone(),
             impact_distance: candidate.impact_distance,
@@ -312,6 +314,38 @@ pub fn select(
         },
         selected,
     })
+}
+
+/// §188–§191：按来源/理由映射信任层级（不 flatten）。
+fn trust_for(candidate: &ContextCandidate) -> crate::model::TrustLevel {
+    use crate::model::TrustLevel;
+    if candidate.reasons.contains(&SelectionReason::ProjectInstruction)
+        || candidate.reasons.contains(&SelectionReason::RelevantDocumentation)
+    {
+        return TrustLevel::Documentation;
+    }
+    if candidate.reasons.contains(&SelectionReason::FailedVerification) {
+        return TrustLevel::ObservedToolOutput;
+    }
+    if candidate.reasons.contains(&SelectionReason::RequiredEnvironment) {
+        return TrustLevel::PrismFact;
+    }
+    match candidate.source.source_type {
+        SourceType::HealthFinding
+        | SourceType::ImpactAnalysis
+        | SourceType::ChangeSet
+        | SourceType::EnvironmentFact
+        | SourceType::ProjectMetadata
+        | SourceType::ArchitectureNode => TrustLevel::PrismFact,
+        SourceType::CheckRun | SourceType::GitCommit | SourceType::GitDiff => {
+            TrustLevel::ObservedToolOutput
+        }
+        SourceType::Documentation => TrustLevel::Documentation,
+        SourceType::Configuration => TrustLevel::ProjectConfig,
+        SourceType::File | SourceType::Symbol | SourceType::Module | SourceType::Dependency => {
+            TrustLevel::PrismFact
+        }
+    }
 }
 
 fn detail_for(priority: Priority) -> crate::model::DetailLevel {

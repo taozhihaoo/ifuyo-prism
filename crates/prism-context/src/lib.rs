@@ -1,10 +1,12 @@
 pub mod collectors;
+pub mod health;
 pub mod materializer;
 pub mod model;
 pub mod selector;
 pub mod service;
 pub mod task;
 
+pub use health::{evaluate, ContextCoverage, ContextHealth, ContextHealthFinding, ContextHealthStatus, HealthInputs};
 pub use materializer::{classify_path, materialize, MaterializeReport};
 pub use model::{
     BudgetReport, ContextBudget, ContextDiagnostic, ContextFocus, ContextGroup, ContextItem,

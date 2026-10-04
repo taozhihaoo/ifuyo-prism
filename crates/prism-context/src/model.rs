@@ -284,6 +284,67 @@ impl SelectionReason {
     }
 }
 
+/// 信任层级（§188–§191：绝不 flatten——下游（人/AI）能看到每条事实
+/// 属于哪一层，evidence hierarchy 由层序表达，不出分数）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum TrustLevel {
+    /// Prism 生成的确定性事实（最高）。
+    PrismFact,
+    /// 项目配置（package.json/prism.config 等）。
+    ProjectConfig,
+    /// 工具观测输出（M8 CheckRun 输出等）。
+    ObservedToolOutput,
+    /// Git 事实。
+    GitFact,
+    /// 项目文档/说明（低；data 而非 authority，§187/§314）。
+    Documentation,
+    /// 启发式（最低）。
+    Heuristic,
+}
+
+impl TrustLevel {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            TrustLevel::PrismFact => "prism_fact",
+            TrustLevel::ProjectConfig => "project_config",
+            TrustLevel::ObservedToolOutput => "observed_tool_output",
+            TrustLevel::GitFact => "git_fact",
+            TrustLevel::Documentation => "documentation",
+            TrustLevel::Heuristic => "heuristic",
+        }
+    }
+}
+
+/// 风险信号（§193/§194：不是 score，只帮下游理解 context 局限）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RiskSignalKind {
+    TargetAmbiguous,
+    CriticalFindingPresent,
+    VerificationFailed,
+    VerificationStale,
+    EnvironmentMismatch,
+    DocumentationConflict,
+    ImpactTruncated,
+    ContextTruncated,
+}
+
+impl RiskSignalKind {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            RiskSignalKind::TargetAmbiguous => "target_ambiguous",
+            RiskSignalKind::CriticalFindingPresent => "critical_finding_present",
+            RiskSignalKind::VerificationFailed => "verification_failed",
+            RiskSignalKind::VerificationStale => "verification_stale",
+            RiskSignalKind::EnvironmentMismatch => "environment_mismatch",
+            RiskSignalKind::DocumentationConflict => "documentation_conflict",
+            RiskSignalKind::ImpactTruncated => "impact_truncated",
+            RiskSignalKind::ContextTruncated => "context_truncated",
+        }
+    }
+}
+
 /// 排除理由（§141/§373/§147）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -432,6 +493,36 @@ impl ContextGroup {
 
 // ---------- Item / Selection / Pack ----------
 
+/// 当前项目状态引用（§136/§137：session 描述，非 M11 持久化）。
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub struct ContextStateReference {
+    pub head_commit: Option<String>,
+    pub branch: Option<String>,
+    pub dirty: Option<bool>,
+    pub generated_at: String,
+}
+
+/// 事实新鲜度（§131–§135/§332–§337：signal 而非正确性，§337 no fake fresh）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ContextFreshness {
+    Current,
+    PossiblyStale,
+    Stale,
+    Unknown,
+}
+
+impl ContextFreshness {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ContextFreshness::Current => "current",
+            ContextFreshness::PossiblyStale => "possibly_stale",
+            ContextFreshness::Stale => "stale",
+            ContextFreshness::Unknown => "unknown",
+        }
+    }
+}
+
 /// 上下文条目（§21/§111/§112：Header/Metadata/Content/Reason 齐备；
 /// content 由 materializer **懒加载**填充 §202）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -448,6 +539,8 @@ pub struct ContextItem {
     /// 多理由保留（§92）。
     pub reasons: Vec<SelectionReason>,
     pub evidence: Vec<String>,
+    /// §112/§188–§190：信任层级（不 flatten）。
+    pub trust_level: TrustLevel,
     /// §112 metadata（compact，§113）。
     pub language: Option<String>,
     pub change_state: Option<String>,
@@ -556,8 +649,14 @@ pub struct ContextSummary {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ContextPack {
     pub manifest: ContextManifest,
+    /// §136/§137：当前项目状态引用。
+    pub state: ContextStateReference,
+    /// §193/§194：风险信号（非 score）。
+    pub risk_signals: Vec<RiskSignalKind>,
     /// 组内按 priority + 稳定 tie-break 排序；组间按 default_rank（§115）。
     pub items: Vec<ContextItem>,
     pub selection: SelectionTrace,
+    /// §61–§63/§126–§130：Context Health（≠ M7 project health，§62/§274）。
+    pub health: crate::health::ContextHealth,
     pub diagnostics: Vec<ContextDiagnostic>,
 }

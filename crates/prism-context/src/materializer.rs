@@ -303,6 +303,7 @@ mod tests {
             content: content.map(str::to_string),
             location: None,
             priority: Priority::High,
+            trust_level: crate::model::TrustLevel::PrismFact,
             reasons: vec![crate::model::SelectionReason::DirectlyChanged],
             evidence: vec![],
             language: None,

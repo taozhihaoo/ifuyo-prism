@@ -42,6 +42,12 @@ impl ContextService {
 
         // ---- 3) 候选收集（§87–§89；collector 隔离，§260）----
         let mut diagnostics = Vec::new();
+        let state = crate::model::ContextStateReference {
+            head_commit: None,
+            branch: None,
+            dirty: None,
+            generated_at: prism_core::Timestamp::now_utc().to_string(),
+        };
         let inputs = FactsInputs {
             discovery,
             code_model,
@@ -55,8 +61,12 @@ impl ContextService {
             target: &target,
             scope: request.scope,
             cancel,
+            state: state.clone(),
+            verification_stale: crate::model::ContextFreshness::Unknown,
         };
         let candidates = collect_candidates(&inputs);
+        let verification_stale = inputs.verification_stale;
+        drop(inputs);
 
         // ---- 4) Scope 过滤 + 选择 + 预算（§82–§90/§197–§201）----
         let (scoped, scope_excluded) =
@@ -170,7 +180,7 @@ impl ContextService {
             project_root: request.project_root.clone(),
             task: request.task.clone(),
             classification,
-            target,
+            target: target.clone(),
             scope: request.scope,
             generated_at: prism_core::Timestamp::now_utc().to_string(),
             status,
@@ -179,10 +189,57 @@ impl ContextService {
             limitations,
         };
 
+        // ---- 风险信号（§193/§194）+ Context Health（§61–§63/§126–§130）----
+        let mut risk_signals = Vec::new();
+        if matches!(target.resolution, TargetResolution::Ambiguous { .. }) {
+            risk_signals.push(crate::model::RiskSignalKind::TargetAmbiguous);
+        }
+        if items
+            .iter()
+            .any(|item| item.reasons.contains(&crate::model::SelectionReason::FailedVerification))
+        {
+            risk_signals.push(crate::model::RiskSignalKind::VerificationFailed);
+        }
+        if verification_stale == crate::model::ContextFreshness::Stale {
+            risk_signals.push(crate::model::RiskSignalKind::VerificationStale);
+        }
+        if items
+            .iter()
+            .any(|item| item.reasons.contains(&crate::model::SelectionReason::RequiredEnvironment))
+        {
+            risk_signals.push(crate::model::RiskSignalKind::EnvironmentMismatch);
+        }
+        if items.iter().any(|item| item.truncated) {
+            risk_signals.push(crate::model::RiskSignalKind::ContextTruncated);
+        }
+        if impact.map(|impact| impact.analysis_incomplete).unwrap_or(false) {
+            risk_signals.push(crate::model::RiskSignalKind::ImpactTruncated);
+        }
+        let health_input_pack = ContextPack {
+            manifest: manifest.clone(),
+            state: state.clone(),
+            risk_signals: risk_signals.clone(),
+            items: items.clone(),
+            selection: trace.clone(),
+            health: crate::health::ContextHealth::default(),
+            diagnostics: diagnostics.clone(),
+        };
+        let health = crate::health::evaluate(
+            &health_input_pack,
+            &crate::health::HealthInputs {
+                verification_stale,
+                environment_present: environment.is_some(),
+                docs_count: summary.docs,
+            },
+        );
+
         Ok(ContextPack {
             manifest,
+            state,
+            risk_signals,
             items,
             selection: trace,
+            health,
             diagnostics,
         })
     }

@@ -8,10 +8,10 @@
 
 | 门槛项 | 状态 | 证据 |
 | --- | --- | --- |
-| P0 要求全实现：ProjectSnapshot 模型 / 域 fingerprint / Canonical Serialization / prism-store（schema/migrations/事务/原子写/并发锁）/ 捕获编排与去重 / `prism snapshot` + `prism history` | ✅ | prism-snapshot/src/model.rs（§7 十域指纹 + §6 组合）；store.rs CanonicalJSON（§15，key+数组排序）；prism-store（§25 schema、§64 schema_migrations 顺序迁移、§65 事务原子写、busy_timeout §144）；capture.rs（§8 身份、§17 去重、§123 result） |
+| P0 要求全实现：ProjectSnapshot 模型 / 域 fingerprint / Canonical Serialization / prism-store（schema/migrations/事务/原子写/并发锁）/ 捕获编排与去重 / `prism snapshot` + `prism history` | ✅ | prism-snapshot/src/model.rs（§7 十域指纹 + §6 组合）；store.rs CanonicalJSON（§15，key+数组排序）；prism-store（§25 schema、§64 schema_migrations 顺序迁移、§65 事务原子写、busy_timeout §144）；capture.rs（§8 身份、§17 去重、§123 result、§145 per-project capture lock Busy） |
 | §196 Restart Persistence 真实通过 | ✅ | snapshot_cli.rs::snapshot_survives_process_restart——进程 A capture、独立进程 B history 断言同 id 可见 |
-| 本篇范围测试全绿 | ✅ | prism-store 3、prism-snapshot 8（§158 顺序无关 / §205-206 指纹变化 / §159 去重+force / §197-§199 多项目隔离 / §114 真实 git 只读）、context_cli 5（§196 restart / §17 unchanged 文案 / §197-§199 / §220 db-path / §217 reproducible） |
-| cargo test + clippy 0 + fmt | ✅ | **实测（fmt 补验）**：`cargo fmt --check` 首次运行 exit 1——548 个 hunk、103 个文件跨 M1–M11 累积（fmt 在此之前从未纳入门槛）；`cargo fmt` 全仓格式化后（无语义改动，独立 style 提交）`cargo fmt --check` exit 0；复测 `cargo test --workspace` 514+45 全绿、clippy 0 |
+| 本篇范围测试全绿 | ✅ | prism-store 5（含 §157 迁移幂等 + corrupt DB ⇒ StoreError 不 panic）、prism-snapshot 9（§158 顺序无关 / §205-206 指纹变化 / §159 去重+force / §197-§199 多项目隔离 / §114 真实 git 只读 / §145 Busy）、snapshot_cli 5（§196 restart / §17 unchanged 文案 / §197-§199 / §220 db-path / §217 reproducible） |
+| cargo test + clippy 0 + fmt | ✅ | **实测**：`cargo fmt --check` 首次运行 exit 1——548 个 hunk、103 个文件跨 M1–M11 累积（fmt 在此之前从未纳入门槛）；`cargo fmt` 全仓格式化（无语义改动，独立 style 提交）后 exit 0；M11b 新增代码再次 fmt 后复测 exit 0；`cargo test --workspace` 529+45 全绿、clippy 0 |
 | Git Safety（§114） | ✅ | 实测：对 Prism 仓库自身 capture 前后 HEAD + status 完全一致；capture.rs 全为 fs::read/git 只读 |
 | 【M11a 阶段审计】FACT/HYPOTHESIS/INFERENCE | ✅ | docs/audits/M11a-baseline-audit.md（实施前输出） |
 | 本地 commit `feat: add snapshot capture and storage (M11 part 1/2)`，不 push | ✅ | 见 git log（不 push） |

@@ -15,7 +15,7 @@ use prism_core::Timestamp;
 use prism_store::{DomainRow, ProjectRecord, SnapshotRecord, SnapshotStore};
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 /// 十个域的固定名单（§6）。
@@ -89,14 +89,51 @@ pub struct SnapshotCaptureOptions {
     pub include_git: bool,
 }
 
+/// §145：RAII 锁守卫——任何返回路径都释放 per-project capture 锁。
+struct CaptureLockGuard<'a> {
+    service: &'a SnapshotCaptureService,
+    root: String,
+}
+
+impl Drop for CaptureLockGuard<'_> {
+    fn drop(&mut self) {
+        self.service.release_capture_lock(&self.root);
+    }
+}
+
 /// Capture（§10/§11 pipeline 的本地实现；§323 store 不跑分析器）。
 pub struct SnapshotCaptureService {
     store: Arc<dyn SnapshotStore>,
+    /// §145：per-project capture lock——同一项目同时只允许一个 capture；
+    /// 第二请求返回 Busy（不启动两个相同扫描）。进程内锁；跨进程由
+    /// SQLite 事务/busy_timeout 兜底（§144）。
+    capture_locks: Mutex<std::collections::BTreeSet<String>>,
 }
 
 impl SnapshotCaptureService {
     pub fn new(store: Arc<dyn SnapshotStore>) -> Self {
-        SnapshotCaptureService { store }
+        SnapshotCaptureService {
+            store,
+            capture_locks: Mutex::new(Default::default()),
+        }
+    }
+
+    /// §145：尝试获取项目 capture 锁。
+    pub fn try_acquire_capture_lock(&self, canonical_root: &str) -> bool {
+        self.capture_locks
+            .lock()
+            .map(|mut locks| locks.insert(canonical_root.to_string()))
+            .unwrap_or(false)
+    }
+
+    /// §145：释放锁。
+    pub fn release_capture_lock(&self, canonical_root: &str) {
+        self.capture_locks
+            .lock()
+            .map(|mut locks| {
+                locks.remove(canonical_root);
+            })
+            .ok();
     }
 
     /// 捕获快照（快速路径：M1 结构 + M4 git；其余域按注入/NotCaptured）。
@@ -110,6 +147,20 @@ impl SnapshotCaptureService {
     ) -> prism_core::PrismResult<SnapshotCaptureResult> {
         let started = Instant::now();
         let now = Timestamp::now_utc().to_string();
+        let canonical_root = project_root.to_string_lossy().to_string();
+
+        // ---- §145：per-project capture lock ----
+        if !self.try_acquire_capture_lock(&canonical_root) {
+            return Err(prism_core::PrismError::InvalidInput {
+                message: "a snapshot capture is already running for this project (§145 Busy)"
+                    .to_string(),
+            });
+        }
+        // Drop guard：任何返回路径（含 `?`）都释放锁。
+        let _lock_guard = CaptureLockGuard {
+            service: self,
+            root: canonical_root.clone(),
+        };
 
         // ---- Resolve Project Identity（§8/§9）----
         let identity = resolve_project_identity(&*self.store, project_root, &now)?;
@@ -650,6 +701,46 @@ mod tests {
         assert_eq!(deleted, 1);
         let b_history = service.list(&dir_b).unwrap();
         assert_eq!(b_history.len(), 1, "§199 history isolation");
+    }
+
+    // §145：同项目并发 capture 第二请求 => Busy 错误。
+    #[test]
+    fn concurrent_capture_same_project_returns_busy() {
+        let dir = temp_project("busy", 1);
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store);
+        let canonical_root = dir.to_string_lossy().to_string();
+
+        // 模拟另一个 capture 持有锁。
+        assert!(service.try_acquire_capture_lock(&canonical_root));
+
+        let cancel = CancellationToken::new();
+        let result = service.capture(
+            &dir,
+            &DomainFacts::default(),
+            &SnapshotCaptureOptions::default(),
+            &cancel,
+        );
+        match result {
+            Err(prism_core::PrismError::InvalidInput { message }) => {
+                assert!(
+                    message.contains("§145"),
+                    "Busy error must cite §145: {message}"
+                );
+            }
+            other => panic!("§145: second capture must return Busy, got {other:?}"),
+        }
+
+        // 释放后可正常 capture。
+        service.release_capture_lock(&canonical_root);
+        let result = service.capture(
+            &dir,
+            &DomainFacts::default(),
+            &SnapshotCaptureOptions::default(),
+            &cancel,
+        );
+        assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     // §114/§145：capture 不修改工作树（git status/HEAD 前后一致）。

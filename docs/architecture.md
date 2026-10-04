@@ -179,10 +179,12 @@ M8  ✓ 已实现（prism-verify：Check 发现（Node/Python/C#/Rust/CI/自定�
     计划/拓扑调度/有界并发执行/WritePolicy 默认拒绝/超时取消/副作用观察/
     保守结构化解析（pytest/dotnet/junit/SARIF）/verified_state/CI 静态抽取/
     Release 检查/--changed 候选链；CLI verify checks/ci/release + GUI Verify 页）
-M11 ◐ M11a 已实现（prism-store：SQLite schema/migrations/事务原子写 +
+M11 ✓ 已实现（prism-store：SQLite schema/migrations/事务原子写 +
     SnapshotStore trait/InMemory 替身；prism-snapshot：ProjectSnapshot +
-    canonical serialization + 十域指纹 + capture 编排（身份/去重）；CLI
-    `prism snapshot`/`prism history`；M11b：compare/timeline/evolution）
+    canonical serialization + 十域指纹 + capture 编排（身份/去重）+
+    SnapshotComparator（十域 diff/finding 生命周期/verification 迁移）+
+    Timeline 派生（snapshots+git，确定性）+ history export/delete；CLI
+    `prism snapshot`/`prism history`/`prism compare`/`prism timeline`）
 M10 ✓ 已实现（prism-context：确定性任务分类/目标解析（Resolved/Ambiguous
     不猜）、11 collectors 消费 M1–M9 既有事实、归一化去重、优先级带、
     recipes、预算 + Critical 预留、懒物化 + 四级内容策略、边界截断、

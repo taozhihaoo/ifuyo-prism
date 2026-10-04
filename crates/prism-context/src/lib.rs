@@ -4,6 +4,7 @@ pub mod materializer;
 pub mod doc_health;
 pub mod model;
 pub mod selector;
+pub mod recipe;
 pub mod service;
 pub mod task;
 
@@ -23,3 +24,4 @@ pub use selector::{
 pub use service::{render_text, ContextService};
 pub use task::{classify, extract_target, resolve_target};
 pub use doc_health::{command_drift, extract_documented_commands, extract_documented_paths, normalize_command, path_drift, DocumentedCommand};
+pub use recipe::ContextRecipe;

@@ -129,15 +129,29 @@ impl ContextService {
             });
         }
 
-        // ---- 7) 分组排序（§114–§116）：组间 default_rank，组内 band + id ----
+        // ---- 7) 分组排序（§114–§116/§117–§125）：recipe 组序 + 组内 band + id ----
+        let recipe = crate::recipe::ContextRecipe::for_task(
+            classification
+                .kinds
+                .first()
+                .copied()
+                .unwrap_or(crate::model::TaskKind::Unknown),
+        );
+        let group_order = recipe.group_order(&classification.focus);
         items.sort_by(|a, b| {
-            a.group
-                .default_rank()
-                .cmp(&b.group.default_rank())
+            let rank_a = group_order
+                .iter()
+                .position(|group| *group == a.group)
+                .unwrap_or(usize::MAX);
+            let rank_b = group_order
+                .iter()
+                .position(|group| *group == b.group)
+                .unwrap_or(usize::MAX);
+            rank_a
+                .cmp(&rank_b)
                 .then_with(|| a.priority.cmp(&b.priority))
                 .then_with(|| a.id.cmp(&b.id))
         });
-
         // ---- 8) 汇总 + 状态（§259/§385–§388）----
         let summary = summarize(&items);
         let critical_truncated = items

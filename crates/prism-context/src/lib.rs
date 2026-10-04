@@ -1,6 +1,7 @@
 pub mod collectors;
 pub mod health;
 pub mod materializer;
+pub mod doc_health;
 pub mod model;
 pub mod selector;
 pub mod service;
@@ -21,3 +22,4 @@ pub use selector::{
 };
 pub use service::{render_text, ContextService};
 pub use task::{classify, extract_target, resolve_target};
+pub use doc_health::{command_drift, extract_documented_commands, extract_documented_paths, normalize_command, path_drift, DocumentedCommand};

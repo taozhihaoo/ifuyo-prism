@@ -2709,10 +2709,17 @@ dependencies = [
 name = "prism-snapshot"
 version = "0.1.0"
 dependencies = [
+ "prism-analysis",
+ "prism-changes",
  "prism-core",
+ "prism-env",
  "prism-git",
+ "prism-graph",
+ "prism-health",
+ "prism-impact",
  "prism-project",
  "prism-store",
+ "prism-verify",
  "serde",
  "serde_json",
  "uuid",

@@ -1,6 +1,7 @@
 pub mod capture;
 pub mod cli_render;
 pub mod compare;
+pub mod domains;
 pub mod model;
 pub mod report;
 pub mod timeline;
@@ -12,6 +13,7 @@ pub use compare::{
     compare_domain, set_diff, DomainDiff, FindingDiffEntry, FindingLifecycle, SnapshotDiff,
     VerificationTransition,
 };
+pub use domains::{build_domain_data, collect_analysis, AnalysisBundle, DomainInputs};
 pub use model::{
     canonicalize, combine_fingerprints, fingerprint_value, fnv1a_hex, CaptureStatus,
     DomainFreshness, DomainStatus, ProjectSnapshot, SnapshotBasis, SnapshotCaptureResult,

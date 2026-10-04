@@ -536,11 +536,12 @@ pub fn build_snapshot_diff(
         compatibility = "limited".to_string();
     }
 
-    let health_a = domain_json_a.get("health").unwrap_or(&empty);
-    let health_b = domain_json_b.get("health").unwrap_or(&empty);
+    // 生命周期读的是**域内容**（wrapper.data），不是 wrapper 本身。
+    let health_a = domain_content(domain_json_a.get("health").unwrap_or(&empty));
+    let health_b = domain_content(domain_json_b.get("health").unwrap_or(&empty));
     let finding_lifecycles = finding_lifecycles(health_a, health_b, compatibility == "compatible");
-    let verification_a = domain_json_a.get("verification").unwrap_or(&empty);
-    let verification_b = domain_json_b.get("verification").unwrap_or(&empty);
+    let verification_a = domain_content(domain_json_a.get("verification").unwrap_or(&empty));
+    let verification_b = domain_content(domain_json_b.get("verification").unwrap_or(&empty));
     let verification_transitions = verification_transitions(verification_a, verification_b);
 
     let get = |domain: &str| {

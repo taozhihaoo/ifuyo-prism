@@ -79,7 +79,7 @@ fn prism_store_error(err: prism_store::StoreError) -> prism_core::PrismError {
 }
 
 /// Capture 选项（§111）。
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct SnapshotCaptureOptions {
     /// §17：强制创建新 observation（跳过去重）。
     pub force: bool,
@@ -87,6 +87,17 @@ pub struct SnapshotCaptureOptions {
     pub note: Option<String>,
     /// §111：include_git（默认 true；git 域来自 M4 只读事实）。
     pub include_git: bool,
+}
+
+impl Default for SnapshotCaptureOptions {
+    // §111：include_git 默认 true——derive(Default) 会给 false，与规格漂移。
+    fn default() -> Self {
+        SnapshotCaptureOptions {
+            force: false,
+            note: None,
+            include_git: true,
+        }
+    }
 }
 
 /// §145：RAII 锁守卫——任何返回路径都释放 per-project capture 锁。

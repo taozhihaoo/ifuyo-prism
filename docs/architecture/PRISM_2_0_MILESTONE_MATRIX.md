@@ -7,7 +7,7 @@
 ```text
 2.0-M20 Baseline（本里程碑，✅ 完成）
   ↓ 提供架构基线/契约五件套/遗留台账
-2.0-M21 Intelligence Core
+2.0-M21 Intelligence Core（✅ 2026-10-05 完成——prism-intel crate + `prism intel` 切片）
   ↓ 依赖：Evidence/Identity/Freshness 契约（本文档套件）；不依赖具体实现
 2.0-M22 L0 Structural
   ↓ 依赖：M21 Core 模型；复用 prism-project/git/env

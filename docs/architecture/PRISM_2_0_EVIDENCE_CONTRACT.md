@@ -37,6 +37,8 @@ Finding       { id, rule_id, severity, status, confidence, location, evidence[],
 
 收敛在 M21 完成每域替换/适配；过渡期兼容层允许双形态并存，禁止一次性破坏各域 CLI JSON（§三十八 数据兼容）。
 
+> **2.0-M21 落地状态**：统一模型已实现于 `prism-intel` crate（形态与差异见 PRISM_2_0_INTELLIGENCE_CORE.md）——Origin 三级 / Confidence 四级+Reason / Evidence 内容寻址 / Freshness 四态均已落地并有不变量测试；依赖域为第一条接入切片。
+
 ## 4. Confidence 分级（对齐 1.0 词汇）
 
 ```text

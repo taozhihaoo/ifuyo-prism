@@ -23,9 +23,9 @@ Final Audit → 本地 commit（不 push）。
 | M10 | Context Engine | ContextPack：任务分类→收集→优先级→预算→脱敏（确定性选择引擎 + Context Health + trust/risk + recipes + MD/Text 渲染 + `prism context` 完整 CLI + GUI Context 页） | ✅ |
 | M11 | Snapshot / Timeline | SQLite 持久化、快照指纹、演化时间线（捕获/去重/原子存储 + 十域指纹 + compare/finding 生命周期/timeline 派生/`prism compare`/`prism timeline`/history export+delete） | ✅ |
 | M12 | Product UI | Desktop Shell/导航分组/主题密度/Settings/Command Palette(Ctrl+K)/快捷键/Overview 状态卡/History 页（功能级 Product UI；视觉终稿与 Toast 归 M12 收尾 P1） | ✅ |
-| M13 | Release Hardening | 安装器/自动更新/性能/隐私与许可审计 | ⏸ 暂缓 |
+| M13 | Release Hardening | 性能基线实测 + SQLite/任务/安全 hardening + 秘钥三层扫描 + MSI/NSIS 打包（8.07/4.35 MiB，RC 未发布） | ✅ |
 
-> **M13 为商业落地阶段，当前不是交付目标**。M12 产品 UI 已于 2026-10-05 交付（用户指令）。
+> M12 产品 UI 与 M13 Release Hardening 均已交付（2026-10-05）：Release Candidate（MSI/NSIS）已构建并记录 checksum，未发布。
 > V1 的完成定义（纲领 §18）：Understand → Change → Health → Verify → Context
 > 全链路闭环，即 M0–M11。
 

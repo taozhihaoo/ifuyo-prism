@@ -2563,6 +2563,7 @@ dependencies = [
  "prism-csharp",
  "prism-env",
  "prism-git",
+ "prism-godot",
  "prism-graph",
  "prism-health",
  "prism-impact",
@@ -2635,6 +2636,18 @@ name = "prism-git"
 version = "0.1.0"
 dependencies = [
  "prism-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "prism-godot"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-csharp",
+ "prism-intel",
+ "prism-project",
  "serde",
  "serde_json",
 ]

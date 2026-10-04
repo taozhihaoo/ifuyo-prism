@@ -399,13 +399,17 @@ mod tests {
     fn determinism_same_input_same_output() {
         let a = dependencies_to_intel(&fixture_graph(), &context());
         let b = dependencies_to_intel(&fixture_graph(), &context());
-        let ta = serde_json::to_string(&a.data).unwrap();
-        let tb = serde_json::to_string(&b.data).unwrap();
-        // observed_at 因 provenance/facts 携带时间而不同——比较剥离时间后的结构。
-        let strip = |t: &str| t.replace(&a.data.as_ref().unwrap().provenance.observed_at, "");
+        // observed_at 因 provenance/facts 携带时间而不同——各自剥离自己的
+        // 时间（时间不是结构事实；两次运行跨毫秒时只剥 A 的会误报）。
+        let strip = |outcome: &IntelOutcome<IntelBundle>| {
+            let text = serde_json::to_string(outcome).unwrap();
+            let bundle = outcome.data.as_ref().unwrap();
+            text.replace(&bundle.project.observed_at, "")
+                .replace(&bundle.provenance.observed_at, "")
+        };
         assert_eq!(
-            strip(&ta),
-            strip(&tb),
+            strip(&a),
+            strip(&b),
             "same input must produce same core output"
         );
         let keys_a: Vec<&String> = a.data.as_ref().unwrap().relations.keys().collect();

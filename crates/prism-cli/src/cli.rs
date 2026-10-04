@@ -56,6 +56,7 @@ pub enum IntelDomain {
     Dependency,
     Structural,
     Symbols,
+    Godot,
     All,
 }
 
@@ -210,7 +211,7 @@ pub enum Command {
     Intel {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
-        /// 分析域：dependency（M21）/ structural（M22 L0）/ symbols（M23 C#）/ all
+        /// 分析域：dependency（M21）/ structural（M22）/ symbols（M23）/ godot（M24）/ all
         #[arg(long, value_enum, default_value_t = IntelDomain::Dependency)]
         domain: IntelDomain,
         /// 符号搜索（symbols 域；按名称大小写不敏感子串）

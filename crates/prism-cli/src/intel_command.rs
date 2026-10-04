@@ -74,7 +74,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     // symbols 域也依赖 L0 的文件清单 + 语言标注（§三十四：不重扫文件系统）。
     let l0_needed = matches!(
         domain,
-        IntelDomain::Structural | IntelDomain::Symbols | IntelDomain::All
+        IntelDomain::Structural | IntelDomain::Symbols | IntelDomain::Godot | IntelDomain::All
     );
     let mut l0_bundle: Option<IntelBundle> = None;
     if l0_needed {
@@ -105,9 +105,13 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
 
     // ---- M23 C# 符号域（消费 M22 文件清单；§三十四）----
     let mut symbol_index: Option<prism_csharp::SymbolIndex> = None;
-    if matches!(domain, IntelDomain::Symbols | IntelDomain::All) {
-        let Some(l0) =
-            l0_bundle.or_else(|| merged.as_ref().and_then(|outcome| outcome.data.clone()))
+    if matches!(
+        domain,
+        IntelDomain::Symbols | IntelDomain::Godot | IntelDomain::All
+    ) {
+        let Some(l0) = l0_bundle
+            .clone()
+            .or_else(|| merged.as_ref().and_then(|outcome| outcome.data.clone()))
         else {
             eprintln!("prism: intel symbols domain requires the structural inventory");
             return crate::EXIT_ERROR;
@@ -140,9 +144,6 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             engine.update_file(relative_path, &source);
         }
         let index = engine.build_index();
-        if let Some(first_error) = csharp_files.first() {
-            let _ = first_error;
-        }
         let outcome = prism_csharp::intel::symbols_to_intel(
             &index,
             &identity,
@@ -172,14 +173,70 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             }
             return crate::EXIT_OK;
         }
+        // godot 域只需要符号**索引**（backed_by 查询），不吸收 symbols bundle。
+        if matches!(domain, IntelDomain::Symbols) {
+            absorb(
+                &mut merged,
+                &mut domain_label,
+                outcome,
+                "symbols",
+                "dependency+l0_structural+symbols",
+            );
+        }
+        symbol_index = Some(index);
+    }
+
+    // ---- M24 Godot 域（消费 L0 清单 + M23 符号索引；§61-§63）----
+    if matches!(domain, IntelDomain::Godot | IntelDomain::All) {
+        let Some(l0) = l0_bundle
+            .take()
+            .or_else(|| merged.as_ref().and_then(|outcome| outcome.data.clone()))
+        else {
+            eprintln!("prism: intel godot domain requires the structural inventory");
+            return crate::EXIT_ERROR;
+        };
+        let inventory: Vec<(String, String)> = l0
+            .entities
+            .values()
+            .filter_map(|entity| match &entity.location {
+                prism_intel::EntityLocation::FileOnly { path } if !path.is_empty() => {
+                    Some((path.clone(), String::new()))
+                }
+                _ => None,
+            })
+            .collect();
+        let godot_context = AnalysisContext::new(
+            identity.clone(),
+            AnalysisScope::Domain("godot".to_string()),
+            vec!["godot".to_string()],
+            cancel.clone(),
+        );
+        let outcome = prism_godot::analyze(&inventory, &project.root_path, &godot_context);
+        if guard_status(&outcome) {
+            return exit_for(&outcome);
+        }
+        warnings.extend(outcome.warnings.clone());
+        let analysis = outcome.data.unwrap();
+        if !analysis.is_godot_project() {
+            warnings.push(
+                "no project.godot found; godot domain empty (not a Godot project)".to_string(),
+            );
+        }
+        let godot_index = prism_godot::GodotIndex::build(&analysis);
+        let outcome = prism_godot::godot_to_intel(
+            &analysis,
+            &godot_index,
+            symbol_index.as_ref(),
+            &identity,
+            &prism_core::Timestamp::now_utc().to_string(),
+        );
         absorb(
             &mut merged,
             &mut domain_label,
             outcome,
-            "symbols",
-            "dependency+l0_structural+symbols",
+            "godot",
+            "dependency+l0_structural+symbols+godot",
         );
-        symbol_index = Some(index);
     }
 
     let outcome = merged.expect("at least one domain selected");

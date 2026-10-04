@@ -13,6 +13,7 @@ members = [
     "crates/prism-intel",
     "crates/prism-l0",
     "crates/prism-csharp",
+    "crates/prism-godot",
     "crates/prism-verify",
     "crates/prism-env",
     "crates/prism-context",
@@ -49,6 +50,7 @@ prism-health = { path = "crates/prism-health" }
 prism-intel = { path = "crates/prism-intel" }
 prism-l0 = { path = "crates/prism-l0" }
 prism-csharp = { path = "crates/prism-csharp" }
+prism-godot = { path = "crates/prism-godot" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }

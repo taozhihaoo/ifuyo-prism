@@ -1,0 +1,15 @@
+[package]
+name = "prism-godot"
+description = "Prism Godot Project Adapter (2.0-M24): project.godot/autoload/.tscn/.tres parsing, Scene-Node-Script-Symbol-Resource relations, NodePath resolution, and M21 IntelBundle integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-csharp.workspace = true
+prism-intel.workspace = true
+prism-project.workspace = true
+serde.workspace = true
+serde_json.workspace = true

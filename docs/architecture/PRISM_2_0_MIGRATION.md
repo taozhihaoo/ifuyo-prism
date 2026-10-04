@@ -26,7 +26,7 @@
 | prism-store（SQLite） | prism-store | 4 表 | Persistence（独占） | **Retain** | schema_migrations 框架 | 低 | 持续 |
 | 路径身份 | capture/CLI/GUI | canonical_root 列 | 统一 canonical 口径 | **Already migrated（M20）** | 非规范历史行按原字面量仍可查（见 §4） | 低 | ✅ 39c639b |
 | MCP | —（不存在） | — | read-only MCP server | **新建** | 无历史包袱 | — | M27 后候选 |
-| Godot 支持 | —（不存在） | — | Godot Adapter | **新建** | — | — | M24 |
+| Godot 支持 | —（不存在） | — | Godot Adapter | **新建** | — | — | ✅ 2.0-M24 落地（prism-godot + `prism intel --domain godot`） |
 | C# 支持 | Language 枚举仅识别 | — | C# L1+L2 | **新建** | — | — | M23/M25 |
 | `report` 占位命令 | prism-cli | — | 待评估（可能被 history export 取代） | **Defer** | exit 1 现状 | 无 | 2.0 后段 |
 

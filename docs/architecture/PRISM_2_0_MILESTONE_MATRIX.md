@@ -13,7 +13,7 @@
   ↓ 依赖：M21 Core 模型；复用 prism-project/git/env
 2.0-M23 L1 Symbol Engine（✅ 2026-10-05 完成——prism-csharp（tree-sitter-c-sharp）+ `prism intel --domain symbols`；Python 1.0 管线 KEEP 并行）
   ↓ 依赖：M21；M22 的 File Identity
-2.0-M24 Godot Adapter
+2.0-M24 Godot Adapter（✅ 2026-10-05 完成——prism-godot crate + `prism intel --domain godot`）
   ↓ 依赖：M21 契约 + M22 L0 + M23 的 Symbol 接口（Script→Symbol 层可后接）
 2.0-M25 C# L2 Semantic
   ↓ 依赖：M23 L1；后端选型（Roslyn 环境依赖须显式决策）

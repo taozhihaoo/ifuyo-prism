@@ -32,3 +32,24 @@
 ## C. INFERENCE
 
 M12 范围内不需要任何 core 改动（§0.1）；全部为 tauri 命令补充 + UI 结构/交互。
+
+
+---
+
+## M12 交付后复核（同日补充）
+
+以下缺口在 M12 实施中补齐：
+
+| 缺口 | 处置 | 证据 |
+|---|---|---|
+| 导航分组（§7 IA） | CONFIRMED 已实现 | Sidebar.tsx NAV_GROUPS：Project/Change/Quality/AI Context/History |
+| Recent Projects（§12/§68） | CONFIRMED 已实现 | prism-store `list_projects`（last_seen 降序）+ `list_recent_projects` IPC + Command Palette 项目项 |
+| Command Palette（§34） | CONFIRMED 已实现 | CommandPalette.tsx（Ctrl+K，方向键+Enter，页面+项目双类） |
+| Keyboard shortcuts（§46） | CONFIRMED 已实现 | Ctrl+K、Ctrl+1..9 页面直达（App.tsx） |
+| Settings/Theme/Density（§48/§11） | CONFIRMED 已实现 | SettingsProvider + SettingsPage + CSS data-theme/data-density |
+| Overview Status Cards（§14） | CONFIRMED 已实现 | OverviewPage Status 卡（health/verify/last-snapshot session 事实） |
+| GUI History（§127-§133） | CONFIRMED 已实现（M11b 末段交付） | SnapshotHistoryPage（list/compare A-B/timeline/delete） |
+
+**仍为 P1（记录，不在 M12 范围强做）**：Toast 统一通知组件（§47，当前内联错误如实显示）、
+独立 Architecture 页（DependencyView 已在 Understand 内，§16 数据能力完整）、
+Full-text search（§33 v1 只做导航/项目搜索）。

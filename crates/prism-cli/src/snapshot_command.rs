@@ -21,8 +21,15 @@ pub fn open_store() -> Result<Arc<dyn SnapshotStore>, prism_store::StoreError> {
     Ok(Arc::new(store))
 }
 
-/// `prism snapshot <path> [--force] [--note <text>] [--json]`。
-pub fn run_capture(path: &Path, force: bool, note: Option<String>, json: bool) -> i32 {
+/// `prism snapshot <path> [--force] [--note <text>] [--refresh-verification]
+/// [--json]`（M11b §14：捕获时注入 M1–M9 域事实）。
+pub fn run_capture(
+    path: &Path,
+    force: bool,
+    note: Option<String>,
+    refresh_verification: bool,
+    json: bool,
+) -> i32 {
     if !path.exists() {
         eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
@@ -35,18 +42,28 @@ pub fn run_capture(path: &Path, force: bool, note: Option<String>, json: bool) -
             return crate::EXIT_ERROR;
         }
     };
+    // M1–M9 分析一次跑完，注入 capture（§263：结果产出一次，不重算）。
+    let facts = match prism_snapshot::collect_analysis(path, refresh_verification) {
+        Ok(bundle) => {
+            for warning in &bundle.warnings {
+                eprintln!("prism: {warning}");
+            }
+            DomainFacts {
+                data: prism_snapshot::build_domain_data(&bundle.inputs()),
+            }
+        }
+        Err(err) => {
+            eprintln!("prism: snapshot domain analysis failed: {err}");
+            return crate::EXIT_ERROR;
+        }
+    };
     let service = SnapshotCaptureService::new(store);
     let options = SnapshotCaptureOptions {
         force,
         note,
         ..Default::default()
     };
-    let result = match service.capture(
-        path,
-        &DomainFacts::default(),
-        &options,
-        &CancellationToken::new(),
-    ) {
+    let result = match service.capture(path, &facts, &options, &CancellationToken::new()) {
         Ok(result) => result,
         Err(err) => {
             eprintln!("prism: snapshot capture failed: {err}");

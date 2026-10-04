@@ -352,6 +352,10 @@ pub enum Command {
         /// §91：用户备注
         #[arg(long)]
         note: Option<String>,
+        /// M11b §14：捕获时真实执行 M8 verify 以刷新 verification 域
+        /// （Manual Snapshot First §147：默认不跑——verify 会执行测试命令）
+        #[arg(long)]
+        refresh_verification: bool,
         #[arg(long)]
         json: bool,
     },

@@ -210,8 +210,9 @@ fn run() -> i32 {
             path,
             force,
             note,
+            refresh_verification,
             json,
-        }) => snapshot_command::run_capture(&path, force, note, json),
+        }) => snapshot_command::run_capture(&path, force, note, refresh_verification, json),
         Some(cli::Command::Compare {
             path,
             snapshot_a,

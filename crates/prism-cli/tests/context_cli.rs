@@ -188,6 +188,6 @@ fn context_small_budget_truncates_with_facts() {
     assert!(output.status.success(), "small budget must still generate (§199)");
     let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     // §199：极小预算 ⇒ Critical 保留 + limitations 声明，不崩溃。
-    assert!(value["manifest"]["limitations"].as_array().unwrap().len() > 0);
+    assert!(!value["manifest"]["limitations"].as_array().unwrap().is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

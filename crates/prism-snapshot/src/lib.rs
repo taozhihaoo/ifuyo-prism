@@ -1,4 +1,5 @@
 pub mod capture;
+pub mod compare;
 pub mod model;
 pub use capture::{
     resolve_project_identity, DomainFacts, SnapshotCaptureOptions, SnapshotCaptureService,
@@ -9,3 +10,4 @@ pub use model::{
     SnapshotDomainState, SNAPSHOT_SCHEMA_VERSION,
 };
 pub use prism_git;
+pub use compare::{compare_domain, set_diff, DomainDiff, FindingDiffEntry, FindingLifecycle, SnapshotDiff, VerificationTransition};

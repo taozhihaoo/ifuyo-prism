@@ -12,6 +12,7 @@ const DICT: Record<string, LocalizedText> = {
   "nav.group.quality": { en: "Quality", zh: "质量" },
   "nav.group.aiContext": { en: "AI Context", zh: "AI 上下文" },
   "nav.group.history": { en: "History", zh: "历史" },
+  "nav.group.system": { en: "System", zh: "系统" },
   // 页面名（导航/标题/调色板共用）
   "page.overview": { en: "Overview", zh: "概览" },
   "page.understand": { en: "Understand", zh: "代码理解" },

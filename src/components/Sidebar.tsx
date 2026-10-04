@@ -8,6 +8,7 @@ const NAV_GROUPS: { titleKey: string; keys: PageKey[] }[] = [
   { titleKey: "nav.group.quality", keys: ["health", "verify", "environment"] },
   { titleKey: "nav.group.aiContext", keys: ["context"] },
   { titleKey: "nav.group.history", keys: ["reports"] },
+  { titleKey: "nav.group.system", keys: ["settings"] },
 ];
 
 interface SidebarProps {

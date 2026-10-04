@@ -1195,3 +1195,10 @@ export interface TimelineDto {
   events: TimelineEventDto[];
   limitations: string[];
 }
+
+export interface RecentProjectDto {
+  id: string;
+  display_name: string;
+  canonical_root: string;
+  last_seen_at: string;
+}

@@ -8,6 +8,7 @@ import VerifyPage from "./VerifyPage";
 import EnvironmentPage from "./EnvironmentPage";
 import ContextPage from "./ContextPage";
 import SnapshotHistoryPage from "./SnapshotHistoryPage";
+import SettingsPage from "./SettingsPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
 export type PageKey =
@@ -18,7 +19,8 @@ export type PageKey =
   | "verify"
   | "environment"
   | "context"
-  | "reports";
+  | "reports"
+  | "settings";
 
 export interface PageDef {
   key: PageKey;
@@ -68,5 +70,10 @@ export const PAGES: PageDef[] = [
     key: "reports",
     label: "History",
     render: () => <SnapshotHistoryPage />,
+  },
+  {
+    key: "settings",
+    label: "Settings",
+    render: () => <SettingsPage />,
   },
 ];

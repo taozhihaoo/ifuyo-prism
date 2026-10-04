@@ -2,7 +2,9 @@
    统一 spacing / typography / layout / navigation / status / loading /
    error / empty state 的最小约定。结构正确优先，视觉打磨留给 M12。 */
 
-:root {
+/* Theme（§11/§48）：默认 dark；[data-theme] 切换。 */
+:root,
+:root[data-theme="dark"] {
   --color-bg: #0f172a;
   --color-surface: #131f38;
   --color-surface-raised: #1a2947;
@@ -12,14 +14,42 @@
   --color-accent: #22d3ee;
   --color-accent-soft: rgba(34, 211, 238, 0.14);
   --color-danger: #f87171;
+}
 
+:root[data-theme="light"] {
+  --color-bg: #f4f6fb;
+  --color-surface: #ffffff;
+  --color-surface-raised: #eef2f9;
+  --color-border: #d4dcec;
+  --color-text: #17233b;
+  --color-muted: #5b6b85;
+  --color-accent: #0e7490;
+  --color-accent-soft: rgba(14, 116, 144, 0.12);
+  --color-danger: #dc2626;
+}
+
+/* Density（§48 显示密度）：comfortable 默认 / compact 紧凑。 */
+:root {
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
   --space-5: 24px;
   --space-6: 32px;
+  --font-size-base: 14px;
+}
 
+:root[data-density="compact"] {
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 18px;
+  --space-6: 24px;
+  --font-size-base: 13px;
+}
+
+:root {
   --font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, "Cascadia Code", Consolas, monospace;
 
@@ -42,7 +72,7 @@ body {
   background: var(--color-bg);
   color: var(--color-text);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: var(--font-size-base);
   line-height: 1.5;
 }
 
@@ -549,4 +579,88 @@ body {
   padding: .5rem .8rem;
   border-left: 3px solid var(--border, #ddd);
   background: rgba(0, 0, 0, 0.03);
+}
+
+/* ---------- Nav groups（M12 §7 IA） ---------- */
+
+.nav-group-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-muted);
+  padding: var(--space-3) var(--space-2) var(--space-1);
+}
+
+/* ---------- Command Palette（§34） ---------- */
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12vh;
+  z-index: 100;
+}
+
+.palette {
+  width: min(560px, 90vw);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.palette-input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 15px;
+  outline: none;
+}
+
+.palette-list {
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: var(--space-1);
+  list-style: none;
+}
+
+.palette-item {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: none;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.palette-item:hover,
+.palette-item[data-active="true"] {
+  background: var(--color-accent-soft);
+}
+
+.palette-item .palette-hint {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.nav-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }

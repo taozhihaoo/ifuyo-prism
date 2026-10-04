@@ -97,6 +97,7 @@ pub trait SnapshotStore: Send + Sync {
         canonical_root: &str,
     ) -> Result<Option<ProjectRecord>, StoreError>;
     fn get_project(&self, id: &str) -> Result<Option<ProjectRecord>, StoreError>;
+    fn list_projects(&self) -> Result<Vec<ProjectRecord>, StoreError>;
     fn find_snapshot_by_fingerprint(
         &self,
         project_id: &str,
@@ -343,6 +344,37 @@ impl SnapshotStore for SqliteSnapshotStore {
             }));
         }
         Ok(None)
+    }
+
+    fn list_projects(&self) -> Result<Vec<ProjectRecord>, StoreError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
+        let mut statement = connection
+            .prepare(
+                "SELECT id, display_name, canonical_root, created_at, updated_at, last_seen_at, persistence_enabled FROM projects ORDER BY last_seen_at DESC",
+            )
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut rows = statement
+            .query([])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut out = Vec::new();
+        while let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
+            out.push(ProjectRecord {
+                id: row.get(0)?,
+                display_name: row.get(1)?,
+                canonical_root: row.get(2)?,
+                created_at: row.get(3)?,
+                updated_at: row.get(4)?,
+                last_seen_at: row.get(5)?,
+                persistence_enabled: row.get::<_, i64>(6)? != 0,
+            });
+        }
+        Ok(out)
     }
 
     fn find_snapshot_by_fingerprint(
@@ -660,6 +692,16 @@ impl SnapshotStore for InMemorySnapshotStore {
             .lock()
             .map_err(|_| StoreError::Unavailable("lock".into()))?;
         Ok(inner.projects.get(id).cloned())
+    }
+
+    fn list_projects(&self) -> Result<Vec<ProjectRecord>, StoreError> {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock".into()))?;
+        let mut out: Vec<ProjectRecord> = inner.projects.values().cloned().collect();
+        out.sort_by(|a, b| b.last_seen_at.cmp(&a.last_seen_at));
+        Ok(out)
     }
 
     fn find_snapshot_by_fingerprint(

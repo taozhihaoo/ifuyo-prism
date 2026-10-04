@@ -92,6 +92,7 @@ export function discoveryFixture(): ProjectDiscovery {
 }
 
 const ipc = vi.hoisted(() => ({
+  listRecentProjects: vi.fn().mockResolvedValue([]),
   getAppInfo: vi.fn(),
   getPrismVersion: vi.fn(),
   getRuntimeInfo: vi.fn(),

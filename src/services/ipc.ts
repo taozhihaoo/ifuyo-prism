@@ -298,3 +298,28 @@ export function snapshotTimeline(): Promise<TimelineDto> {
 export function deleteSnapshot(snapshotId: string): Promise<{ deleted: boolean }> {
   return invoke<{ deleted: boolean }>("delete_snapshot", { snapshotId });
 }
+
+// ---------- M12：Recent projects + Settings（§12/§48/§68） ----------
+
+export interface RecentProjectItem {
+  id: string;
+  display_name: string;
+  canonical_root: string;
+  last_seen_at: string;
+}
+
+export function listRecentProjects(): Promise<RecentProjectItem[]> {
+  return invoke<RecentProjectItem[]>("list_recent_projects");
+}
+
+export function registerProjectOpen(): Promise<void> {
+  return invoke<void>("register_project_open");
+}
+
+export function getStorageInfo(): Promise<{ db_path: string; db_exists: boolean }> {
+  return invoke<{ db_path: string; db_exists: boolean }>("get_storage_info");
+}
+
+export function getCurrentProjectPath(): Promise<{ root: string } | null> {
+  return invoke<{ root: string } | null>("get_current_project_path");
+}

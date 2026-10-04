@@ -5,7 +5,7 @@
 
 ## 1. Core 的职责
 
-统一承载工程智能的**表达层**：Entity / Fact / Evidence / Relation / Finding + Origin / Confidence / Provenance / Freshness + AnalysisContext + IntelOutcome（部分结果诚实表达）+ IntelBundle（确定性集合）。第一条垂直切片：依赖域（`translate::dependencies_to_intel`）。
+统一承载工程智能的**表达层**：Entity / Fact / Evidence / Relation / Finding + Origin / Confidence / Provenance / Freshness + AnalysisContext + IntelOutcome（部分结果诚实表达）+ IntelBundle（确定性集合）。垂直切片：依赖域（M21，`translate::dependencies_to_intel`）+ L0 结构域（M22，`prism-l0::structural_analysis`——Core 的第一个主要 Fact Producer）。
 
 ## 2. Core 的非职责
 

@@ -12,7 +12,7 @@
 
 | 1.0 组件 | 所有权（现） | 数据（现） | 2.0 去向 | 迁移方式 | 兼容策略 | 破坏风险 | 里程碑 |
 |---|---|---|---|---|---|---|---|
-| prism-project（发现/扫描） | prism-project | 内存 + session | L0 结构层 | **Extend** | 命令/JSON 不变 | 低 | M22 |
+| prism-project（发现/扫描） | prism-project | 内存 + session | L0 结构层 | **Extend** | 命令/JSON 不变 | 低 | ✅ 2.0-M22 落地（prism-l0 翻译器 + `prism intel --domain structural`） |
 | prism-git（只读事实） | prism-git | 无持久 | Change/History 事实源 | **Retain** | — | 无 | （既役）/M211 消费 |
 | prism-env（环境） | prism-env | 无持久（报告即产） | Environment Intelligence | **Extend** | 命令/JSON 不变 | 低 | M29 |
 | prism-parser/analysis（Python L1） | prism-parser/analysis | 无持久 | L1 Symbol Engine 参照实现 | **Migrate**（收编为 adapter 形态） | 现有 health/context 行为回归保护 | 低 | M23 |

@@ -157,8 +157,9 @@ get_app_info / get_prism_version / get_runtime_info   # 真实数据，来自 Ap
 - `health`：健康分析 + rules 子命令（M7）
 - `verify`：执行验证 + checks/ci/release 子命令（M8）
 - `env`：环境事实扫描与需求匹配（M9a）
-- `inspect|context|report`：占位，明确输出
+- `report`：占位，明确输出
   `Not implemented in current milestone.` 并以退出码 1 结束（不伪造数据）
+- 退出码补充：`inspect` 完成但有解析告警时为 5（M2 语义，EXIT_WARNINGS）
 - 退出码：`0` 成功 / `1` 错误或未实现 / `2` 用法错误
 
 ## 未来模块落位（随里程碑创建）
@@ -196,8 +197,8 @@ M9  ✓ 已实现（prism-env：host/shell/PATH 采集与规范化、allowlist T
     保留、匹配四态 + 端口 Available 语义、findings 引擎 + 聚合状态、端口/进程
     动态事实（observed_at）、MD/HTML 隐私报告、`prism env` 完整 CLI + GUI
     Environment 页（GUI/CLI 同源 service））
-M10 prism-context     ContextPack 组装（无 LLM）
-M11 prism-snapshot + prism-store   快照与 SQLite 持久化
+M10 ✓ 已实现（prism-context     ContextPack 组装（无 LLM））
+M11 ✓ 已实现（prism-snapshot + prism-store   快照与 SQLite 持久化）
 ```
 
 依赖方向不变：所有新 crate 只允许依赖 prism-core（及声明过的兄弟 crate），

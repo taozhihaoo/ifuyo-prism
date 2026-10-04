@@ -4,8 +4,8 @@
 //! 不重跑分析器 §112）。全部输出为事实（§35/§46/§235 no hidden inference）。
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use serde_json::Value;
+use std::collections::BTreeMap;
 
 /// 单域 diff 条目（§124 域 diff 的公共形态）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -108,8 +108,14 @@ fn domain_content(domain_json: &Value) -> &Value {
 pub fn set_diff(a: &[String], b: &[String]) -> (Vec<String>, Vec<String>) {
     let set_a: std::collections::BTreeSet<&String> = a.iter().collect();
     let set_b: std::collections::BTreeSet<&String> = b.iter().collect();
-    let added: Vec<String> = set_b.difference(&set_a).map(|item| (*item).clone()).collect();
-    let removed: Vec<String> = set_a.difference(&set_b).map(|item| (*item).clone()).collect();
+    let added: Vec<String> = set_b
+        .difference(&set_a)
+        .map(|item| (*item).clone())
+        .collect();
+    let removed: Vec<String> = set_a
+        .difference(&set_b)
+        .map(|item| (*item).clone())
+        .collect();
     (added, removed)
 }
 
@@ -130,7 +136,11 @@ pub fn compare_domain(domain: &str, a: &Value, b: &Value) -> DomainDiff {
         facts.push(format!(
             "domain not captured in snapshot {} (other snapshot: {})",
             if state_a == "not_captured" { "A" } else { "B" },
-            if state_a == "not_captured" { state_b } else { state_a }
+            if state_a == "not_captured" {
+                state_b
+            } else {
+                state_a
+            }
         ));
         return DomainDiff {
             domain: domain.to_string(),
@@ -147,7 +157,12 @@ pub fn compare_domain(domain: &str, a: &Value, b: &Value) -> DomainDiff {
         ));
         return DomainDiff {
             domain: domain.to_string(),
-            state: if state_a == state_b { "unchanged" } else { "changed" }.to_string(),
+            state: if state_a == state_b {
+                "unchanged"
+            } else {
+                "changed"
+            }
+            .to_string(),
             facts,
         };
     }
@@ -166,14 +181,10 @@ pub fn compare_domain(domain: &str, a: &Value, b: &Value) -> DomainDiff {
             }
             match (value_a.as_array(), value_b.as_array()) {
                 (Some(array_a), Some(array_b)) => {
-                    let strings_a: Vec<String> = array_a
-                        .iter()
-                        .map(|item| item.to_string())
-                        .collect();
-                    let strings_b: Vec<String> = array_b
-                        .iter()
-                        .map(|item| item.to_string())
-                        .collect();
+                    let strings_a: Vec<String> =
+                        array_a.iter().map(|item| item.to_string()).collect();
+                    let strings_b: Vec<String> =
+                        array_b.iter().map(|item| item.to_string()).collect();
                     let (added, removed) = set_diff(&strings_a, &strings_b);
                     for item in &added {
                         facts.push(format!("{key} added: {item}"));
@@ -194,7 +205,11 @@ pub fn compare_domain(domain: &str, a: &Value, b: &Value) -> DomainDiff {
         }
     }
 
-    let state = if facts.is_empty() { "unchanged" } else { "changed" };
+    let state = if facts.is_empty() {
+        "unchanged"
+    } else {
+        "changed"
+    };
     DomainDiff {
         domain: domain.to_string(),
         state: state.to_string(),
@@ -222,8 +237,14 @@ mod tests {
         let b = json!({ "status": "available", "data": { "files": ["b.ts", "c.ts"] } });
         let diff = compare_domain("structure", &a, &b);
         assert_eq!(diff.state, "changed");
-        assert!(diff.facts.iter().any(|fact| fact.contains("added: \"c.ts\"")));
-        assert!(diff.facts.iter().any(|fact| fact.contains("removed: \"a.ts\"")));
+        assert!(diff
+            .facts
+            .iter()
+            .any(|fact| fact.contains("added: \"c.ts\"")));
+        assert!(diff
+            .facts
+            .iter()
+            .any(|fact| fact.contains("removed: \"a.ts\"")));
     }
 
     #[test]
@@ -232,7 +253,10 @@ mod tests {
         let a = json!({ "status": "available", "data": { "tools": ["node"] } });
         let b = json!({ "status": "unavailable" });
         let diff = compare_domain("environment", &a, &b);
-        assert!(diff.facts.iter().any(|fact| fact.contains("§245") || fact.contains("availability changed")));
+        assert!(diff
+            .facts
+            .iter()
+            .any(|fact| fact.contains("§245") || fact.contains("availability changed")));
     }
 
     #[test]
@@ -273,7 +297,10 @@ pub fn finding_fingerprint(rule_id: &str, subject: &str, path: &str) -> String {
 /// 从健康域 JSON 抽取 finding 指纹集合（持久化事实直读）。
 pub fn collect_findings(health_json: &Value) -> std::collections::BTreeMap<String, String> {
     let mut out = std::collections::BTreeMap::new();
-    if let Some(findings) = health_json.get("findings").and_then(|findings| findings.as_array()) {
+    if let Some(findings) = health_json
+        .get("findings")
+        .and_then(|findings| findings.as_array())
+    {
         for finding in findings {
             let rule_id = finding
                 .get("rule_id")
@@ -347,7 +374,10 @@ pub fn finding_lifecycles(
 }
 
 /// Verification 状态迁移（§73：状态变化是事实，不解释原因）。
-pub fn verification_transitions(verification_a: &Value, verification_b: &Value) -> Vec<VerificationTransition> {
+pub fn verification_transitions(
+    verification_a: &Value,
+    verification_b: &Value,
+) -> Vec<VerificationTransition> {
     let runs = |json: &Value| -> std::collections::BTreeMap<String, String> {
         let mut map = std::collections::BTreeMap::new();
         if let Some(items) = json.get("checks").and_then(|checks| checks.as_array()) {
@@ -402,7 +432,10 @@ mod finding_tests {
         let findings_b = collect_findings(&json!({ "findings": [b] }));
         let keys_a: Vec<&String> = findings_a.keys().collect();
         let keys_b: Vec<&String> = findings_b.keys().collect();
-        assert_eq!(keys_a, keys_b, "§37: same logical finding = same fingerprint");
+        assert_eq!(
+            keys_a, keys_b,
+            "§37: same logical finding = same fingerprint"
+        );
         // 且不误判成 resolved+new。
         let lifecycles = finding_lifecycles(
             &json!({ "findings": [finding("ARCH003", "Registry", "src/registry.ts", 52)] }),
@@ -471,8 +504,16 @@ pub fn build_snapshot_diff(
     domain_json_b: &BTreeMap<String, Value>,
 ) -> SnapshotDiff {
     let domain_names = [
-        "structure", "code", "architecture", "git", "change", "impact", "health",
-        "verification", "environment", "context_health",
+        "structure",
+        "code",
+        "architecture",
+        "git",
+        "change",
+        "impact",
+        "health",
+        "verification",
+        "environment",
+        "context_health",
     ];
     let empty = Value::Null;
     let mut domain_diffs: BTreeMap<String, DomainDiff> = BTreeMap::new();
@@ -502,11 +543,13 @@ pub fn build_snapshot_diff(
     let verification_b = domain_json_b.get("verification").unwrap_or(&empty);
     let verification_transitions = verification_transitions(verification_a, verification_b);
 
-    let get = |domain: &str| domain_diffs.get(domain).cloned().unwrap_or(DomainDiff {
-        domain: domain.to_string(),
-        state: "unchanged".to_string(),
-        facts: vec![],
-    });
+    let get = |domain: &str| {
+        domain_diffs.get(domain).cloned().unwrap_or(DomainDiff {
+            domain: domain.to_string(),
+            state: "unchanged".to_string(),
+            facts: vec![],
+        })
+    };
 
     SnapshotDiff {
         snapshot_a: snapshot_a_id.to_string(),

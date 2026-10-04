@@ -117,12 +117,20 @@ pub fn build_timeline(
 
     // ---- 快照事件（按 captured_at 升序处理，便于 diff 派生）----
     let mut ordered: Vec<&ProjectSnapshot> = snapshots.iter().collect();
-    ordered.sort_by(|a, b| a.captured_at.cmp(&b.captured_at).then_with(|| a.id.cmp(&b.id)));
+    ordered.sort_by(|a, b| {
+        a.captured_at
+            .cmp(&b.captured_at)
+            .then_with(|| a.id.cmp(&b.id))
+    });
 
     let mut previous: Option<&ProjectSnapshot> = None;
     for snapshot in &ordered {
         events.push(TimelineEvent {
-            id: deterministic_id(snapshot.captured_at.as_str(), "snapshot_captured", &snapshot.id),
+            id: deterministic_id(
+                snapshot.captured_at.as_str(),
+                "snapshot_captured",
+                &snapshot.id,
+            ),
             timestamp: snapshot.captured_at.clone(),
             project_id: project_id.to_string(),
             kind: TimelineEventKind::SnapshotCaptured,
@@ -228,12 +236,27 @@ fn fingerprint_of(snapshot: &ProjectSnapshot, domain: &str) -> String {
 /// 域 → 事件类型/来源（§45）。
 fn domain_event(domain: &str) -> (TimelineEventKind, TimelineSource) {
     match domain {
-        "architecture" => (TimelineEventKind::ArchitectureChanged, TimelineSource::Derived),
+        "architecture" => (
+            TimelineEventKind::ArchitectureChanged,
+            TimelineSource::Derived,
+        ),
         "health" => (TimelineEventKind::HealthChanged, TimelineSource::Derived),
-        "verification" => (TimelineEventKind::VerificationChanged, TimelineSource::Derived),
-        "environment" => (TimelineEventKind::EnvironmentChanged, TimelineSource::Derived),
-        "documentation" => (TimelineEventKind::DocumentationChanged, TimelineSource::Derived),
-        "context_health" => (TimelineEventKind::ContextHealthChanged, TimelineSource::Derived),
+        "verification" => (
+            TimelineEventKind::VerificationChanged,
+            TimelineSource::Derived,
+        ),
+        "environment" => (
+            TimelineEventKind::EnvironmentChanged,
+            TimelineSource::Derived,
+        ),
+        "documentation" => (
+            TimelineEventKind::DocumentationChanged,
+            TimelineSource::Derived,
+        ),
+        "context_health" => (
+            TimelineEventKind::ContextHealthChanged,
+            TimelineSource::Derived,
+        ),
         _ => (TimelineEventKind::SnapshotCaptured, TimelineSource::Derived),
     }
 }
@@ -265,10 +288,22 @@ mod tests {
         counts.insert("findings".to_string(), 3u64);
         let mut fingerprints = BTreeMap::new();
         for domain in [
-            "structure", "code", "architecture", "git", "change", "impact", "health",
-            "verification", "environment", "context_health",
+            "structure",
+            "code",
+            "architecture",
+            "git",
+            "change",
+            "impact",
+            "health",
+            "verification",
+            "environment",
+            "context_health",
         ] {
-            let value = if domain == "architecture" { architecture } else { "same" };
+            let value = if domain == "architecture" {
+                architecture
+            } else {
+                "same"
+            };
             fingerprints.insert(domain.to_string(), crate::model::fnv1a_hex(value));
         }
         ProjectSnapshot {
@@ -333,7 +368,11 @@ mod tests {
             .filter(|event| event.kind == TimelineEventKind::ArchitectureChanged)
             .collect();
         assert_eq!(arch_events.len(), 1, "§233 dedup");
-        assert_eq!(arch_events[0].source, TimelineSource::Derived, "§90 source label");
+        assert_eq!(
+            arch_events[0].source,
+            TimelineSource::Derived,
+            "§90 source label"
+        );
     }
 
     // §153：排序稳定且 timestamp ASC。
@@ -369,10 +408,12 @@ mod tests {
         }];
         let timeline = build_timeline("proj:test", &[], &commits);
         assert_eq!(timeline.events.len(), 1);
-        assert!(timeline
-            .limitations
-            .iter()
-            .any(|limitation| limitation.contains("starts with the first snapshot")),
-            "§88 no fabricated Prism history");
+        assert!(
+            timeline
+                .limitations
+                .iter()
+                .any(|limitation| limitation.contains("starts with the first snapshot")),
+            "§88 no fabricated Prism history"
+        );
     }
 }

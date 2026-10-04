@@ -1,12 +1,12 @@
 //! CLI compare/timeline/export/delete 渲染与命令逻辑（规格 M11b §59–§62/
 //! §97/§124–§125/§179–§182/§261–§263）。
 
-use prism_core::task::CancellationToken;
-use prism_core::Timestamp;
 use crate::compare::build_snapshot_diff;
 use crate::report::{
     counts_from_json, evolution_summary, render_compare_markdown, render_timeline_markdown,
 };
+use prism_core::task::CancellationToken;
+use prism_core::Timestamp;
 use prism_store::SnapshotStore;
 use std::path::Path;
 use std::sync::Arc;
@@ -15,12 +15,22 @@ use std::sync::Arc;
 pub fn load_snapshot_json(
     store: &dyn SnapshotStore,
     snapshot_id: &str,
-) -> Result<(serde_json::Value, std::collections::BTreeMap<String, serde_json::Value>), String>
-{
-    let Some(record) = store.get_snapshot(snapshot_id).map_err(|err| err.to_string())? else {
+) -> Result<
+    (
+        serde_json::Value,
+        std::collections::BTreeMap<String, serde_json::Value>,
+    ),
+    String,
+> {
+    let Some(record) = store
+        .get_snapshot(snapshot_id)
+        .map_err(|err| err.to_string())?
+    else {
         return Err(format!("snapshot not found: {snapshot_id}"));
     };
-    let domains = store.get_domains(snapshot_id).map_err(|err| err.to_string())?;
+    let domains = store
+        .get_domains(snapshot_id)
+        .map_err(|err| err.to_string())?;
     let mut domain_json = std::collections::BTreeMap::new();
     for row in domains {
         // wrapper 形态：compare 直读 status + data（M11a schema 列映射）。
@@ -210,7 +220,9 @@ pub fn render_history_export(
     else {
         return Err("no snapshots for this project yet".to_string());
     };
-    let snapshots = store.list_snapshots(&project.id).map_err(|err| err.to_string())?;
+    let snapshots = store
+        .list_snapshots(&project.id)
+        .map_err(|err| err.to_string())?;
     let snapshot_values: Vec<serde_json::Value> = snapshots
         .iter()
         .map(|record| {
@@ -230,9 +242,8 @@ pub fn render_history_export(
             events: vec![],
             limitations: vec!["timeline unavailable".to_string()],
         });
-    let limitations = vec![
-        "Export contains engineering facts, not source code (spec 61).".to_string(),
-    ];
+    let limitations =
+        vec!["Export contains engineering facts, not source code (spec 61).".to_string()];
     let project_json = serde_json::json!({
         "id": project.id,
         "display_name": project.display_name,

@@ -491,7 +491,10 @@ impl SnapshotStore for SqliteSnapshotStore {
             .query([snapshot_id])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
         let mut out = Vec::new();
-        while let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        while let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             out.push(DomainRow {
                 snapshot_id: row.get(0)?,
                 domain: row.get(1)?,
@@ -520,7 +523,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query([project_id])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(row_to_snapshot_checked(row)?));
         }
         Ok(None)
@@ -543,7 +549,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query(rusqlite::params![project_id, captured_at])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(row_to_snapshot_checked(row)?));
         }
         Ok(None)

@@ -4,8 +4,8 @@
 //! deterministic）；JSON 走 serde。复用中央 redact（§261 export 前再脱敏）。
 
 use crate::compare::SnapshotDiff;
-use crate::timeline::Timeline;
 use crate::model::ProjectSnapshot;
+use crate::timeline::Timeline;
 use prism_core::privacy::redact_text;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

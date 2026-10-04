@@ -3,7 +3,7 @@
 //! 脚本化响应：按 `program` 匹配返回预置 `CommandOutput` 或错误；
 //! 未命中走默认行为（exit 0 / 空输出）。不真实 spawn 进程。
 
-use prism_core::runtime::command::{CommandOutput, CommandSpec, CommandRunner};
+use prism_core::runtime::command::{CommandOutput, CommandRunner, CommandSpec};
 use prism_core::task::CancellationToken;
 use prism_core::PrismError;
 use prism_core::PrismResult;
@@ -78,18 +78,23 @@ impl CommandRunner for FakeCommandRunner {
             .get(&spec.program)
             .cloned();
         match response {
-            Some(FakeResponse::Output { exit_code, stdout, stderr }) => {
-                Ok(CommandOutput {
-                    exit_code: Some(exit_code),
-                    stdout,
-                    stderr,
-                    duration_ms: 5,
-                    output_truncated: false,
-                })
-            }
+            Some(FakeResponse::Output {
+                exit_code,
+                stdout,
+                stderr,
+            }) => Ok(CommandOutput {
+                exit_code: Some(exit_code),
+                stdout,
+                stderr,
+                duration_ms: 5,
+                output_truncated: false,
+            }),
             Some(FakeResponse::SpawnFailed { message }) => Err(PrismError::Command { message }),
             Some(FakeResponse::TimedOut) => Err(PrismError::Command {
-                message: format!("command {:?} timed out after {}ms", spec.program, spec.timeout_ms),
+                message: format!(
+                    "command {:?} timed out after {}ms",
+                    spec.program, spec.timeout_ms
+                ),
             }),
             Some(FakeResponse::Cancelled) => Err(PrismError::Cancelled),
             None => Ok(CommandOutput {

@@ -40,12 +40,18 @@ fn dependency_finding(
         severity,
         confidence,
         title: title.to_string(),
-        message: format!("Could not uniquely resolve \"{raw_target}\" referenced by {source_path}."),
+        message: format!(
+            "Could not uniquely resolve \"{raw_target}\" referenced by {source_path}."
+        ),
         explanation: FindingExplanation {
             what: what.to_string(),
             evidence_summary: format!(
                 "resolution status = {}; requested target = \"{raw_target}\"",
-                if rule_id == "DEP002" { "Ambiguous" } else { "Unresolved" }
+                if rule_id == "DEP002" {
+                    "Ambiguous"
+                } else {
+                    "Unresolved"
+                }
             ),
             why_it_matters: Some(why.to_string()),
         },
@@ -64,9 +70,11 @@ fn dependency_finding(
             line.unwrap_or(1),
             column.unwrap_or(1),
         ))],
-        suggested_action: Some("Verify the dependency specifier and the availability of the target.".to_string()),
+        suggested_action: Some(
+            "Verify the dependency specifier and the availability of the target.".to_string(),
+        ),
         status: FindingStatus::Active,
-            change_relation: None,
+        change_relation: None,
         metadata: [("raw_target".to_string(), raw_target.to_string())]
             .into_iter()
             .collect(),
@@ -124,7 +132,8 @@ static DEP001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "DEP001",
     name: "Unresolved Dependency",
     category: FindingCategory::Dependency,
-    description: "A dependency reference could not be resolved to a local target (M3 resolution fact).",
+    description:
+        "A dependency reference could not be resolved to a local target (M3 resolution fact).",
     default_severity: Severity::Warning,
     default_enabled: true,
     threshold_meaning: None,
@@ -135,7 +144,8 @@ static DEP002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "DEP002",
     name: "Ambiguous Dependency",
     category: FindingCategory::Dependency,
-    description: "A dependency reference matched multiple candidates and could not be uniquely resolved.",
+    description:
+        "A dependency reference matched multiple candidates and could not be uniquely resolved.",
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: None,
@@ -158,7 +168,6 @@ impl HealthRule for UnresolvedDependencyRule {
         evaluate_dependencies(context, cancel, "DEP001", false)
     }
 }
-
 
 pub struct AmbiguousDependencyRule;
 

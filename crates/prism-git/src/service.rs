@@ -117,7 +117,8 @@ impl GitService {
         let Some(repository) = self.provider.discover(path, cancel)? else {
             return Ok(None);
         };
-        self.provider.resolve_revision(&repository, revision, cancel)
+        self.provider
+            .resolve_revision(&repository, revision, cancel)
     }
 
     /// 读取历史 revision 中某路径的 blob；非 Git 项目返回 Missing。

@@ -147,7 +147,9 @@ impl ChangeSetService {
             ChangeScope::Staged => GitDiffScope::Staged,
             ChangeScope::RevisionRange => GitDiffScope::RevisionRange,
         };
-        let diff = self.git.diff(root, git_scope, base, target, options.max_files, cancel)?;
+        let diff = self
+            .git
+            .diff(root, git_scope, base, target, options.max_files, cancel)?;
 
         // ---- WorkingTree scope 合并 untracked（git diff 不含 untracked）----
         let mut diff_files = diff.files.clone();
@@ -184,7 +186,11 @@ impl ChangeSetService {
             ChangeScope::WorkingTree | ChangeScope::Staged => Box::new(GitRevisionSource::new(
                 self.runner.clone(),
                 root,
-                if scope == ChangeScope::Staged { ":0" } else { "HEAD" },
+                if scope == ChangeScope::Staged {
+                    ":0"
+                } else {
+                    "HEAD"
+                },
             )),
             ChangeScope::RevisionRange => Box::new(GitRevisionSource::new(
                 self.runner.clone(),
@@ -252,12 +258,8 @@ impl ChangeSetService {
             collect_side_diagnostics(Side::Before, &path, before_state, before, &mut diagnostics);
             collect_side_diagnostics(Side::After, &path, after_state, after, &mut diagnostics);
 
-            let mut mapping_status = mapping_for_states(
-                change_type,
-                before_state,
-                after_state,
-                git_file.is_binary,
-            );
+            let mut mapping_status =
+                mapping_for_states(change_type, before_state, after_state, git_file.is_binary);
             if git_file.is_binary {
                 diagnostics.push(ChangeDiagnostic {
                     kind: ChangeDiagnosticKind::BinaryFile,
@@ -675,7 +677,10 @@ fn aggregate_modules(
                             ModuleChangeType::Deleted,
                             old_path,
                             symbol_count,
-                            format!("file deleted and parsed before => file module removed ({})", file.id),
+                            format!(
+                                "file deleted and parsed before => file module removed ({})",
+                                file.id
+                            ),
                         );
                     } else {
                         record_module(
@@ -730,7 +735,10 @@ fn aggregate_modules(
                             ModuleChangeType::Modified,
                             &path,
                             0,
-                            format!("contains changed file; namespace declared on both sides ({})", file.id),
+                            format!(
+                                "contains changed file; namespace declared on both sides ({})",
+                                file.id
+                            ),
                         );
                     }
                 }
@@ -757,7 +765,9 @@ fn aggregate_modules(
             } else {
                 ModuleKind::FileModule
             },
-            change_type: accumulator.change_type.unwrap_or(ModuleChangeType::Modified),
+            change_type: accumulator
+                .change_type
+                .unwrap_or(ModuleChangeType::Modified),
             changed_files: accumulator.changed_files,
             changed_symbol_count: accumulator.changed_symbols,
             mapping_status: MappingStatus::Mapped,
@@ -775,10 +785,7 @@ fn shared_namespaces(before: &FileModel, after: &FileModel) -> Vec<String> {
         let Some(parse) = &model.parse else {
             return Default::default();
         };
-        let root_prefix = format!(
-            "{}.",
-            crate::matcher::qualified_root(&model.relative_path)
-        );
+        let root_prefix = format!("{}.", crate::matcher::qualified_root(&model.relative_path));
         parse
             .symbols
             .iter()

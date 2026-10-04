@@ -5,9 +5,9 @@
 //! 全程只读（§156–§158）；取消在逐 item 间生效（§324）。
 
 use crate::model::{ContextItem, FileContentLevel, Priority};
+use prism_analysis::ProjectCodeModel;
 use prism_core::privacy::redact_text;
 use prism_core::task::CancellationToken;
-use prism_analysis::ProjectCodeModel;
 use std::path::Path;
 
 /// 巨型文件阈值（超过 ⇒ skeleton/metadata-only，§174）。
@@ -40,7 +40,12 @@ pub fn classify_path(path: &str) -> FileSpecialness {
         return FileSpecialness::Minified;
     }
     const LOCKFILES: [&str; 6] = [
-        "package-lock.json", "cargo.lock", "pnpm-lock.yaml", "yarn.lock", "uv.lock", "poetry.lock",
+        "package-lock.json",
+        "cargo.lock",
+        "pnpm-lock.yaml",
+        "yarn.lock",
+        "uv.lock",
+        "poetry.lock",
     ];
     if LOCKFILES.contains(&name) {
         return FileSpecialness::Lockfile;
@@ -106,12 +111,18 @@ pub fn materialize(
             report.unavailable += 1;
             continue;
         }
-        let size = std::fs::metadata(&full_path).map(|meta| meta.len()).unwrap_or(0);
+        let size = std::fs::metadata(&full_path)
+            .map(|meta| meta.len())
+            .unwrap_or(0);
         let special_only = matches!(
             specialness,
             FileSpecialness::Binary | FileSpecialness::Minified | FileSpecialness::Lockfile
         ) || size > HUGE_FILE_BYTES && item.priority != Priority::Critical;
-        if special_only || matches!(specialness, FileSpecialness::Generated | FileSpecialness::Vendor)
+        if special_only
+            || matches!(
+                specialness,
+                FileSpecialness::Generated | FileSpecialness::Vendor
+            )
         {
             // §169–§173/§38：metadata/skeleton，不搬运全文。
             item.content = Some(match specialness {
@@ -138,7 +149,8 @@ pub fn materialize(
 
         // ---- 正常读取 + 切片（§168/§203）----
         let Ok(raw) = std::fs::read_to_string(&full_path) else {
-            item.unavailable_reason = Some("file could not be read (permission/encoding)".to_string());
+            item.unavailable_reason =
+                Some("file could not be read (permission/encoding)".to_string());
             item.content_level = FileContentLevel::MetadataOnly;
             item.content = Some(compose_metadata_content(item));
             report.unavailable += 1;
@@ -192,7 +204,10 @@ pub fn materialize(
 /// 切片范围（§203）：有 symbol_range 用之；否则全文。
 fn slice_range(item: &ContextItem, total_lines: u64) -> (u64, u64) {
     match item.ranges.first() {
-        Some(range) => (range.start.max(1), range.end.min(total_lines).max(range.start)),
+        Some(range) => (
+            range.start.max(1),
+            range.end.min(total_lines).max(range.start),
+        ),
         None => (1, total_lines),
     }
 }
@@ -339,9 +354,18 @@ mod tests {
     fn special_files_become_metadata_or_skeleton() {
         assert_eq!(classify_path("logo.png"), FileSpecialness::Binary);
         assert_eq!(classify_path("app.min.js"), FileSpecialness::Minified);
-        assert_eq!(classify_path("package-lock.json"), FileSpecialness::Lockfile);
-        assert_eq!(classify_path("node_modules/x/y.js"), FileSpecialness::Vendor);
-        assert_eq!(classify_path("src/bundle.generated.ts"), FileSpecialness::Generated);
+        assert_eq!(
+            classify_path("package-lock.json"),
+            FileSpecialness::Lockfile
+        );
+        assert_eq!(
+            classify_path("node_modules/x/y.js"),
+            FileSpecialness::Vendor
+        );
+        assert_eq!(
+            classify_path("src/bundle.generated.ts"),
+            FileSpecialness::Generated
+        );
         assert_eq!(classify_path("src/app.ts"), FileSpecialness::Normal);
     }
 
@@ -382,19 +406,30 @@ mod tests {
         let report = materialize(&mut items, &dir, None, &budget, &CancellationToken::new());
         assert_eq!(report.truncated, 1);
         assert!(items[0].truncated);
-        assert!(items[0].truncation_reason.as_deref().unwrap().contains("line boundary"));
+        assert!(items[0]
+            .truncation_reason
+            .as_deref()
+            .unwrap()
+            .contains("line boundary"));
         let original = items[0].original_size.unwrap();
         let included = items[0].included_size.unwrap();
         assert!(included < original);
         // 边界完整：内容以完整行结尾（无半行）。
         let content = items[0].content.as_deref().unwrap();
-        assert!(content.starts_with("line-0000"), "head-first, line-boundary cut");
+        assert!(
+            content.starts_with("line-0000"),
+            "head-first, line-boundary cut"
+        );
     }
 
     #[test]
     fn secrets_redacted_during_materialization() {
         let dir = temp("secret");
-        std::fs::write(dir.join("cfg.txt"), "API_TOKEN=super-secret-value\nnormal=line\n").unwrap();
+        std::fs::write(
+            dir.join("cfg.txt"),
+            "API_TOKEN=super-secret-value\nnormal=line\n",
+        )
+        .unwrap();
         let mut items = vec![item_with(Some("cfg.txt"), None)];
         materialize(
             &mut items,
@@ -404,7 +439,10 @@ mod tests {
             &CancellationToken::new(),
         );
         let content = items[0].content.as_deref().unwrap();
-        assert!(!content.contains("super-secret-value"), "§ secret never leaks");
+        assert!(
+            !content.contains("super-secret-value"),
+            "§ secret never leaks"
+        );
         assert!(content.contains("[REDACTED]"));
     }
 

@@ -4,8 +4,8 @@
 //! 本模块只做匹配，独立于采集器（§127）。
 
 use crate::model::{
-    MatchResult, PackageManagerInfo, RequirementConflict, RequirementKind, RequirementMatch,
-    RequirementOperator, EnvironmentRequirement, ToolFact,
+    EnvironmentRequirement, MatchResult, PackageManagerInfo, RequirementConflict, RequirementKind,
+    RequirementMatch, RequirementOperator, ToolFact,
 };
 use crate::version::satisfies;
 
@@ -27,7 +27,13 @@ pub fn match_requirements(
         .iter()
         .map(|requirement| {
             match_requirement(
-                requirement, conflicts, tools, package_managers, variables, ports, project_root,
+                requirement,
+                conflicts,
+                tools,
+                package_managers,
+                variables,
+                ports,
+                project_root,
             )
         })
         .collect()
@@ -43,10 +49,9 @@ fn match_requirement(
     project_root: &Path,
 ) -> RequirementMatch {
     // §45/§103/§327：冲突主体不解释为单一明确需求 ⇒ Unknown（列出各来源）。
-    if conflicts
-        .iter()
-        .any(|conflict| conflict.kind == requirement.kind && conflict.subject == requirement.subject)
-    {
+    if conflicts.iter().any(|conflict| {
+        conflict.kind == requirement.kind && conflict.subject == requirement.subject
+    }) {
         let sources: Vec<&str> = conflicts
             .iter()
             .find(|conflict| {
@@ -133,9 +138,7 @@ fn match_package_manager(
     let Some(info) = info else {
         // §105/§209：只有 lookup 确认缺失（probe NotFound）才 Unsatisfied；
         // 完全没有事实 ⇒ Unknown。
-        let lookup = tools
-            .iter()
-            .find(|tool| tool.name == requirement.subject);
+        let lookup = tools.iter().find(|tool| tool.name == requirement.subject);
         let (result, evidence) = match lookup {
             Some(tool) if tool.probe == crate::model::ProbeOutcome::NotFound => (
                 MatchResult::Unsatisfied,
@@ -185,11 +188,7 @@ fn match_package_manager(
             ),
         },
         (Some(version), _) => {
-            let result = satisfies(
-                Some(version),
-                requirement.operator,
-                &requirement.expected,
-            );
+            let result = satisfies(Some(version), requirement.operator, &requirement.expected);
             RequirementMatch {
                 requirement_id: requirement.id.clone(),
                 subject: requirement.subject.clone(),
@@ -293,11 +292,7 @@ fn match_port(
     let evidence = match occupant {
         Some(info) => format!(
             "port {expected} LISTENING on {} (pid {:?}, process {:?}, source: {}, observed: {})",
-            info.address,
-            info.pid,
-            info.process_name,
-            info.source,
-            info.observed_at
+            info.address, info.pid, info.process_name, info.source, info.observed_at
         ),
         None => format!("port {expected} has no listener (observed via port discovery)"),
     };
@@ -321,13 +316,19 @@ fn match_variable(
             requirement_id: requirement.id.clone(),
             subject: requirement.subject.clone(),
             result: MatchResult::Satisfied,
-            evidence: format!("variable '{}' present (value never captured, §54)", requirement.subject),
+            evidence: format!(
+                "variable '{}' present (value never captured, §54)",
+                requirement.subject
+            ),
         },
         (None, RequirementOperator::Exists) => RequirementMatch {
             requirement_id: requirement.id.clone(),
             subject: requirement.subject.clone(),
             result: MatchResult::Unsatisfied,
-            evidence: format!("variable '{}' absent from process environment", requirement.subject),
+            evidence: format!(
+                "variable '{}' absent from process environment",
+                requirement.subject
+            ),
         },
         // §54：不采集值 ⇒ 值类 operator 无法判定 ⇒ Unknown（不猜）。
         (_, _) => RequirementMatch {
@@ -359,7 +360,11 @@ fn bool_match(exists: bool, operator: &RequirementOperator) -> MatchResult {
 fn file_evidence(kind: &str, subject: &str, exists: bool) -> String {
     format!(
         "{kind} '{subject}' {}",
-        if exists { "exists in project root" } else { "not found in project root" }
+        if exists {
+            "exists in project root"
+        } else {
+            "not found in project root"
+        }
     )
 }
 
@@ -405,14 +410,39 @@ mod tests {
     #[test]
     fn satisfied_unsatisfied_unknown_not_applicable() {
         let requirements = vec![
-            requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "22"),
-            requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "24"),
-            requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "22"),
-            requirement(RequirementKind::Sdk, "android-sdk", RequirementOperator::Exists, ""),
+            requirement(
+                RequirementKind::Runtime,
+                "node",
+                RequirementOperator::AtLeast,
+                "22",
+            ),
+            requirement(
+                RequirementKind::Runtime,
+                "node",
+                RequirementOperator::AtLeast,
+                "24",
+            ),
+            requirement(
+                RequirementKind::Runtime,
+                "node",
+                RequirementOperator::AtLeast,
+                "22",
+            ),
+            requirement(
+                RequirementKind::Sdk,
+                "android-sdk",
+                RequirementOperator::Exists,
+                "",
+            ),
         ];
         let mut requirements = requirements;
         requirements[2] = {
-            let mut req = requirement(RequirementKind::Runtime, "rustc", RequirementOperator::AtLeast, "1.85");
+            let mut req = requirement(
+                RequirementKind::Runtime,
+                "rustc",
+                RequirementOperator::AtLeast,
+                "1.85",
+            );
             req.applicable = false;
             req
         };
@@ -433,7 +463,12 @@ mod tests {
     #[test]
     fn version_unknown_is_not_unsatisfied() {
         // §158：exists 但 probe 失败 ⇒ Unknown。
-        let requirements = vec![requirement(RequirementKind::Runtime, "node", RequirementOperator::AtLeast, "22")];
+        let requirements = vec![requirement(
+            RequirementKind::Runtime,
+            "node",
+            RequirementOperator::AtLeast,
+            "22",
+        )];
         let tools = vec![tool("node", None, ProbeOutcome::Failed)];
         let matches = match_requirements(&requirements, &[], &tools, &[], &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unknown);
@@ -456,7 +491,8 @@ mod tests {
             project_association: None,
             source: ToolSource::Path,
         }];
-        let matches = match_requirements(&requirements, &[], &[], &managers, &[], &[], Path::new("."));
+        let matches =
+            match_requirements(&requirements, &[], &[], &managers, &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Satisfied);
 
         // §105：pnpm absent + npm present ⇒ Unsatisfied（不是 npm is good enough）。
@@ -503,15 +539,8 @@ mod tests {
             source: "netstat".to_string(),
             observed_at: "2026-10-03T00:00:00Z".to_string(),
         }];
-        let matches = match_requirements(
-            &requirements,
-            &[],
-            &[],
-            &[],
-            &[],
-            &occupied,
-            Path::new("."),
-        );
+        let matches =
+            match_requirements(&requirements, &[], &[], &[], &[], &occupied, Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unsatisfied);
         assert!(matches[0].evidence.contains("1234"));
         assert!(matches[0].evidence.contains("LISTENING"));
@@ -537,7 +566,12 @@ mod tests {
         assert!(matches[0].evidence.contains("pid None"));
 
         // 非法端口 ⇒ Unknown（不猜）。
-        let bad = vec![requirement(RequirementKind::Port, "vite", RequirementOperator::Available, "")];
+        let bad = vec![requirement(
+            RequirementKind::Port,
+            "vite",
+            RequirementOperator::Available,
+            "",
+        )];
         let matches = match_requirements(&bad, &[], &[], &[], &[], &[], Path::new("."));
         assert_eq!(matches[0].result, MatchResult::Unknown);
     }
@@ -551,13 +585,40 @@ mod tests {
             source: VariableSource::ProcessEnvironment,
         }];
         let requirements = vec![
-            requirement(RequirementKind::EnvironmentVariable, "CI", RequirementOperator::Exists, ""),
-            requirement(RequirementKind::EnvironmentVariable, "CI", RequirementOperator::Equals, "true"),
-            requirement(RequirementKind::EnvironmentVariable, "MISSING_VAR", RequirementOperator::Exists, ""),
+            requirement(
+                RequirementKind::EnvironmentVariable,
+                "CI",
+                RequirementOperator::Exists,
+                "",
+            ),
+            requirement(
+                RequirementKind::EnvironmentVariable,
+                "CI",
+                RequirementOperator::Equals,
+                "true",
+            ),
+            requirement(
+                RequirementKind::EnvironmentVariable,
+                "MISSING_VAR",
+                RequirementOperator::Exists,
+                "",
+            ),
         ];
-        let matches = match_requirements(&requirements, &[], &[], &[], &variables, &[], Path::new("."));
+        let matches = match_requirements(
+            &requirements,
+            &[],
+            &[],
+            &[],
+            &variables,
+            &[],
+            Path::new("."),
+        );
         assert_eq!(matches[0].result, MatchResult::Satisfied);
-        assert_eq!(matches[1].result, MatchResult::Unknown, "§54: values never captured");
+        assert_eq!(
+            matches[1].result,
+            MatchResult::Unknown,
+            "§54: values never captured"
+        );
         assert_eq!(matches[2].result, MatchResult::Unsatisfied);
     }
 }

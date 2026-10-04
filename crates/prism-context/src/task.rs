@@ -4,8 +4,7 @@
 //! （§17）——匹配不到 ⇒ Unknown/Generic 并如实声明（§18）。
 
 use crate::model::{
-    ContextFocus, ContextTarget, TargetResolution, TaskClassification, TaskKind,
-    TaskSpecificity,
+    ContextFocus, ContextTarget, TargetResolution, TaskClassification, TaskKind, TaskSpecificity,
 };
 use prism_analysis::ProjectCodeModel;
 
@@ -13,20 +12,54 @@ use prism_analysis::ProjectCodeModel;
 const KEYWORDS: &[(TaskKind, &[&str])] = &[
     (
         TaskKind::BugInvestigation,
-        &["bug", "fix", "error", "崩溃", "修复", "错误", "调查", "investigate", "500", "失败", "fail"],
+        &[
+            "bug",
+            "fix",
+            "error",
+            "崩溃",
+            "修复",
+            "错误",
+            "调查",
+            "investigate",
+            "500",
+            "失败",
+            "fail",
+        ],
     ),
     (TaskKind::Test, &["test", "测试", "failing"]),
-    (TaskKind::Ci, &["ci", "github actions", "workflow", "pipeline", "流水线", "构建流程"]),
+    (
+        TaskKind::Ci,
+        &[
+            "ci",
+            "github actions",
+            "workflow",
+            "pipeline",
+            "流水线",
+            "构建流程",
+        ],
+    ),
     (TaskKind::Refactor, &["refactor", "重构"]),
-    (TaskKind::Feature, &["feature", "新增", "添加", "实现", "implement"]),
+    (
+        TaskKind::Feature,
+        &["feature", "新增", "添加", "实现", "implement"],
+    ),
     (TaskKind::Change, &["diff", "变更", "改动"]),
     (TaskKind::Review, &["review", "审查", "评审"]),
-    (TaskKind::Security, &["security", "安全", "漏洞", "credential"]),
-    (TaskKind::Documentation, &["docs", "documentation", "文档", "readme"]),
+    (
+        TaskKind::Security,
+        &["security", "安全", "漏洞", "credential"],
+    ),
+    (
+        TaskKind::Documentation,
+        &["docs", "documentation", "文档", "readme"],
+    ),
     (TaskKind::Release, &["release", "发布"]),
     (TaskKind::Environment, &["environment", "环境"]),
     (TaskKind::Build, &["build", "编译", "构建失败"]),
-    (TaskKind::Architecture, &["architecture", "架构", "模块结构"]),
+    (
+        TaskKind::Architecture,
+        &["architecture", "架构", "模块结构"],
+    ),
 ];
 
 /// kind → 关注面（§14；多对多并集，排序去重）。
@@ -40,10 +73,18 @@ fn focus_for(kind: TaskKind) -> &'static [ContextFocus] {
         ],
         TaskKind::Test => &[ContextFocus::Tests, ContextFocus::Code],
         TaskKind::Ci => &[ContextFocus::Ci, ContextFocus::Verification],
-        TaskKind::Refactor => &[ContextFocus::Code, ContextFocus::Architecture, ContextFocus::Impact],
+        TaskKind::Refactor => &[
+            ContextFocus::Code,
+            ContextFocus::Architecture,
+            ContextFocus::Impact,
+        ],
         TaskKind::Feature => &[ContextFocus::Code, ContextFocus::Tests],
         TaskKind::Change => &[ContextFocus::Changes, ContextFocus::Git],
-        TaskKind::Review => &[ContextFocus::Changes, ContextFocus::Code, ContextFocus::Health],
+        TaskKind::Review => &[
+            ContextFocus::Changes,
+            ContextFocus::Code,
+            ContextFocus::Health,
+        ],
         TaskKind::Security => &[ContextFocus::Code, ContextFocus::Health],
         TaskKind::Documentation => &[ContextFocus::Documentation],
         TaskKind::Release => &[ContextFocus::Changes, ContextFocus::Verification],
@@ -74,9 +115,7 @@ pub fn classify(task: Option<&str>) -> TaskClassification {
     let lower = text.to_lowercase();
     let mut kinds: Vec<TaskKind> = Vec::new();
     for (kind, keywords) in KEYWORDS {
-        if keywords.iter().any(|keyword| lower.contains(keyword))
-            && !kinds.contains(kind)
-        {
+        if keywords.iter().any(|keyword| lower.contains(keyword)) && !kinds.contains(kind) {
             kinds.push(*kind);
         }
     }
@@ -107,9 +146,10 @@ pub fn classify(task: Option<&str>) -> TaskClassification {
 /// symbol 形态（snake_case / CamelCase 标识符）。保守——宁缺勿滥。
 pub fn extract_target(task: Option<&str>) -> Option<String> {
     let text = task?;
-    for token in text.split(|c: char| c.is_whitespace() || matches!(c, ',' | '，' | '"' | '“' | '”' | '「' | '」')) {
-        let token = token
-            .trim_matches(|c: char| matches!(c, '.' | ':' | '(' | ')' | '（' | '）'));
+    for token in text.split(|c: char| {
+        c.is_whitespace() || matches!(c, ',' | '，' | '"' | '“' | '”' | '「' | '」')
+    }) {
+        let token = token.trim_matches(|c: char| matches!(c, '.' | ':' | '(' | ')' | '（' | '）'));
         if token.is_empty() {
             continue;
         }
@@ -120,9 +160,12 @@ pub fn extract_target(task: Option<&str>) -> Option<String> {
         let mut parts = token.rsplit('.');
         let (maybe_ext, stem) = (parts.next(), parts.next());
         if let (Some(ext), Some(stem)) = (maybe_ext, stem) {
-            if (1..=4).contains(&ext.len()) && ext.chars().all(|c| c.is_ascii_alphanumeric())
+            if (1..=4).contains(&ext.len())
+                && ext.chars().all(|c| c.is_ascii_alphanumeric())
                 && !stem.is_empty()
-                && stem.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+                && stem
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
             {
                 return Some(token.to_string());
             }
@@ -177,10 +220,8 @@ pub fn resolve_target(
         for result in &model.parse_results {
             for symbol in &result.symbols {
                 if symbol.name == raw || symbol.qualified_name.ends_with(&raw) {
-                    symbol_hits.push((
-                        symbol.id.as_str().to_string(),
-                        result.relative_path.clone(),
-                    ));
+                    symbol_hits
+                        .push((symbol.id.as_str().to_string(), result.relative_path.clone()));
                 }
             }
         }
@@ -292,20 +333,41 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("src/Battle")).unwrap();
         std::fs::create_dir_all(dir.join("src/Legacy")).unwrap();
-        std::fs::write(dir.join("src/Battle/BattleManager.ts"), "class BattleManager {}\n").unwrap();
-        std::fs::write(dir.join("src/Legacy/BattleManager.ts"), "class BattleManager {}\n").unwrap();
-        std::fs::write(dir.join("src/UniqueResolver.ts"), "class UniqueResolver {}\n").unwrap();
+        std::fs::write(
+            dir.join("src/Battle/BattleManager.ts"),
+            "class BattleManager {}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/Legacy/BattleManager.ts"),
+            "class BattleManager {}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("src/UniqueResolver.ts"),
+            "class UniqueResolver {}\n",
+        )
+        .unwrap();
 
         let cancel = CancellationToken::new();
         let discovery = prism_project::DiscoveryService::new()
             .discover(&dir, prism_project::ScanOptions::default(), &cancel, |_| {})
             .unwrap();
         let model = prism_analysis::CodeAnalysisService::new()
-            .analyze(&discovery, prism_analysis::CodeAnalysisOptions::default(), &cancel, |_| {})
+            .analyze(
+                &discovery,
+                prism_analysis::CodeAnalysisOptions::default(),
+                &cancel,
+                |_| {},
+            )
             .unwrap();
 
         // 完整唯一路径 ⇒ Resolved。
-        let resolved = resolve_target(Some("src/Battle/BattleManager.ts"), Some(&discovery), Some(&model));
+        let resolved = resolve_target(
+            Some("src/Battle/BattleManager.ts"),
+            Some(&discovery),
+            Some(&model),
+        );
         match resolved.resolution {
             TargetResolution::Resolved { paths, .. } => {
                 assert_eq!(paths, vec!["src/Battle/BattleManager.ts".to_string()]);
@@ -317,7 +379,10 @@ mod tests {
         let ambiguous = resolve_target(Some("BattleManager"), Some(&discovery), Some(&model));
         match ambiguous.resolution {
             TargetResolution::Ambiguous { candidates } => {
-                assert!(candidates.len() >= 2, "both locations should be candidates: {candidates:?}");
+                assert!(
+                    candidates.len() >= 2,
+                    "both locations should be candidates: {candidates:?}"
+                );
             }
             other => panic!("expected ambiguous, got {other:?}"),
         }

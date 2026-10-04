@@ -74,7 +74,10 @@ fn resolve_conflicts(
     let mut groups: std::collections::BTreeMap<(String, String), Vec<EnvironmentRequirement>> =
         Default::default();
     for requirement in all {
-        let key = (format!("{:?}", requirement.kind), requirement.subject.clone());
+        let key = (
+            format!("{:?}", requirement.kind),
+            requirement.subject.clone(),
+        );
         groups.entry(key).or_default().push(requirement);
     }
 
@@ -207,8 +210,7 @@ fn numeric(text: &str) -> Option<String> {
     }
     // "1.22." / 尾点清理；多段保留前 3 段。
     let parts: Vec<&str> = head.split('.').filter(|p| !p.is_empty()).take(3).collect();
-    (parts.iter().all(|p| p.parse::<u64>().is_ok()) && !parts.is_empty())
-        .then(|| parts.join("."))
+    (parts.iter().all(|p| p.parse::<u64>().is_ok()) && !parts.is_empty()).then(|| parts.join("."))
 }
 
 // ---------- Node（§71） ----------
@@ -704,7 +706,11 @@ mod tests {
     #[test]
     fn consistent_sources_merge_without_conflict() {
         let dir = temp("consistent");
-        std::fs::write(dir.join("package.json"), r#"{ "engines": { "node": ">=22" } }"#).unwrap();
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{ "engines": { "node": ">=22" } }"#,
+        )
+        .unwrap();
         std::fs::write(dir.join(".nvmrc"), ">=22\n").unwrap();
         let mut file_storage: Vec<String> = Vec::new();
         let facts = facts_with(&dir, &["package.json", ".nvmrc"], &mut file_storage);
@@ -746,12 +752,27 @@ mod tests {
     #[test]
     fn dotnet_global_json_and_rust_toolchain() {
         let dir = temp("multi");
-        std::fs::write(dir.join("global.json"), r#"{ "sdk": { "version": "9.0.200" } }"#).unwrap();
-        std::fs::write(dir.join("rust-toolchain.toml"), "[toolchain]\nchannel = \"1.85\"\n").unwrap();
+        std::fs::write(
+            dir.join("global.json"),
+            r#"{ "sdk": { "version": "9.0.200" } }"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("rust-toolchain.toml"),
+            "[toolchain]\nchannel = \"1.85\"\n",
+        )
+        .unwrap();
         let mut file_storage: Vec<String> = Vec::new();
-        let facts = facts_with(&dir, &["global.json", "rust-toolchain.toml"], &mut file_storage);
+        let facts = facts_with(
+            &dir,
+            &["global.json", "rust-toolchain.toml"],
+            &mut file_storage,
+        );
         let (requirements, _) = collect_requirements(&facts);
-        let dotnet = requirements.iter().find(|r| r.kind == RequirementKind::Sdk).unwrap();
+        let dotnet = requirements
+            .iter()
+            .find(|r| r.kind == RequirementKind::Sdk)
+            .unwrap();
         assert_eq!(dotnet.expected, "9.0.200");
         assert_eq!(dotnet.source_kind, SourceKind::ProjectConfig);
         let rustc = requirements.iter().find(|r| r.subject == "rustc").unwrap();
@@ -763,12 +784,24 @@ mod tests {
     #[test]
     fn readme_conflicts_with_package_json() {
         let dir = temp("readme");
-        std::fs::write(dir.join("package.json"), r#"{ "engines": { "node": ">=22" } }"#).unwrap();
-        std::fs::write(dir.join("README.md"), "# Demo\n\nRequires Node 20 or later.\n").unwrap();
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{ "engines": { "node": ">=22" } }"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("README.md"),
+            "# Demo\n\nRequires Node 20 or later.\n",
+        )
+        .unwrap();
         let mut file_storage: Vec<String> = Vec::new();
         let facts = facts_with(&dir, &["package.json", "README.md"], &mut file_storage);
         let (requirements, conflicts) = collect_requirements(&facts);
-        assert_eq!(conflicts.len(), 1, "README Node 20 vs engines >=22 ⇒ conflict");
+        assert_eq!(
+            conflicts.len(),
+            1,
+            "README Node 20 vs engines >=22 ⇒ conflict"
+        );
         assert_eq!(conflicts[0].entries.len(), 2);
         let readme_entry = conflicts[0]
             .entries
@@ -779,7 +812,10 @@ mod tests {
         assert_eq!(readme_entry.expected, "20");
         assert_eq!(readme_entry.operator, RequirementOperator::AtLeast);
         // §43/§364：两条都保留。
-        assert_eq!(requirements.iter().filter(|r| r.subject == "node").count(), 2);
+        assert_eq!(
+            requirements.iter().filter(|r| r.subject == "node").count(),
+            2
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 

@@ -6,7 +6,7 @@
 //! M4 GitStatus（§59，只读）。
 
 use crate::model::{
-    EnvFileKind, EnvFileInfo, EnvKeyInfo, ENV_FILE_KEY_CAP, ENV_FILE_READ_CAP_BYTES,
+    EnvFileInfo, EnvFileKind, EnvKeyInfo, ENV_FILE_KEY_CAP, ENV_FILE_READ_CAP_BYTES,
 };
 use prism_core::task::CancellationToken;
 use std::path::Path;
@@ -92,14 +92,12 @@ pub fn collect_env_files(
         let tracked = status.as_ref().and_then(|status| {
             let repository = status.repository.as_ref()?;
             let _ = repository;
-            Some(match status
-                .entries
-                .iter()
-                .find(|entry| entry.path == *candidate)
-            {
-                Some(entry) => !entry.is_untracked,
-                None => true, // 干净文件 = 已跟踪。
-            })
+            Some(
+                match status.entries.iter().find(|entry| entry.path == *candidate) {
+                    Some(entry) => !entry.is_untracked,
+                    None => true, // 干净文件 = 已跟踪。
+                },
+            )
         });
         files.push(EnvFileInfo {
             path: candidate.to_string(),
@@ -147,7 +145,10 @@ mod tests {
         assert_eq!(env_file_kind(".env.local"), EnvFileKind::SecretCandidate);
         assert_eq!(env_file_kind(".env.example"), EnvFileKind::Template);
         assert_eq!(env_file_kind(".env.template"), EnvFileKind::Template);
-        assert_eq!(env_file_kind(".env.production"), EnvFileKind::SecretCandidate);
+        assert_eq!(
+            env_file_kind(".env.production"),
+            EnvFileKind::SecretCandidate
+        );
     }
 
     // §60：只解析 key names，值绝不入库（结构性 + 序列化双重断言）。
@@ -198,7 +199,10 @@ mod tests {
         assert_eq!(env_file.keys.len(), 1);
         assert!(env_file.keys[0].possibly_sensitive);
 
-        let example = files.iter().find(|file| file.path == ".env.example").unwrap();
+        let example = files
+            .iter()
+            .find(|file| file.path == ".env.example")
+            .unwrap();
         assert_eq!(example.kind, EnvFileKind::Template);
         assert_eq!(example.tracked, Some(false), "未 add ⇒ untracked");
 

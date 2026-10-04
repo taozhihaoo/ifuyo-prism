@@ -179,10 +179,7 @@ fn pure_rename_keeps_rename_fact_and_moves_symbols() {
 #[test]
 fn rename_with_body_modification_records_both_facts() {
     let fixture = Fixture::new("rename-mod");
-    fixture.write(
-        "src/old.ts",
-        "export function worker() {\n  return 1;\n}\n",
-    );
+    fixture.write("src/old.ts", "export function worker() {\n  return 1;\n}\n");
     fixture.commit_all("base");
     fixture.move_file("src/old.ts", "src/new.ts");
     fixture.write(
@@ -225,22 +222,19 @@ fn added_and_deleted_files_produce_whole_side_symbols() {
     let changeset = fixture.build(ChangeScope::WorkingTree);
     assert_eq!(changeset.summary.files_added, 1);
     assert_eq!(changeset.summary.files_deleted, 1);
-    assert!(
-        changeset
-            .symbols
-            .iter()
-            .any(|s| s.name == "shiny" && s.change_type == SymbolChangeType::Added)
-    );
-    assert!(
-        changeset
-            .symbols
-            .iter()
-            .any(|s| s.name == "legacy" && s.change_type == SymbolChangeType::Deleted)
-    );
+    assert!(changeset
+        .symbols
+        .iter()
+        .any(|s| s.name == "shiny" && s.change_type == SymbolChangeType::Added));
+    assert!(changeset
+        .symbols
+        .iter()
+        .any(|s| s.name == "legacy" && s.change_type == SymbolChangeType::Deleted));
     // 删除侧 before 源可得 ⇒ 不产生 without-baseline 诊断。
-    assert!(!changeset.diagnostics.iter().any(
-        |d| d.kind == prism_changes::ChangeDiagnosticKind::DeletedFileWithoutBaseline
-    ));
+    assert!(!changeset
+        .diagnostics
+        .iter()
+        .any(|d| d.kind == prism_changes::ChangeDiagnosticKind::DeletedFileWithoutBaseline));
 }
 
 /// §88：二进制文件 ⇒ FileChange Modified + is_binary + NotApplicable。
@@ -256,12 +250,10 @@ fn binary_file_change_is_not_symbol_mapped() {
     let file = &changeset.files[0];
     assert!(file.is_binary);
     assert_eq!(file.mapping_status, MappingStatus::NotApplicable);
-    assert!(
-        changeset
-            .diagnostics
-            .iter()
-            .any(|d| d.kind == prism_changes::ChangeDiagnosticKind::BinaryFile)
-    );
+    assert!(changeset
+        .diagnostics
+        .iter()
+        .any(|d| d.kind == prism_changes::ChangeDiagnosticKind::BinaryFile));
     assert!(changeset.symbols.is_empty());
 }
 
@@ -275,13 +267,14 @@ fn unsupported_language_keeps_changeset_valid() {
 
     let changeset = fixture.build(ChangeScope::WorkingTree);
     assert_eq!(changeset.summary.files_modified, 1);
-    assert_eq!(changeset.files[0].mapping_status, MappingStatus::NotApplicable);
-    assert!(
-        changeset
-            .diagnostics
-            .iter()
-            .any(|d| d.kind == prism_changes::ChangeDiagnosticKind::UnsupportedLanguage)
+    assert_eq!(
+        changeset.files[0].mapping_status,
+        MappingStatus::NotApplicable
     );
+    assert!(changeset
+        .diagnostics
+        .iter()
+        .any(|d| d.kind == prism_changes::ChangeDiagnosticKind::UnsupportedLanguage));
 }
 
 /// §86：跨语言（Python / C#）符号级映射。
@@ -340,11 +333,23 @@ fn cross_language_python_and_csharp_symbol_changes() {
 #[test]
 fn special_paths_survive_the_whole_pipeline() {
     let fixture = Fixture::new("paths");
-    fixture.write("src/中文 模块(新).ts", "export function 特殊() {\n  return 1;\n}\n");
-    fixture.write("src/emoji 🚀.ts", "export function rocket() {\n  return 1;\n}\n");
+    fixture.write(
+        "src/中文 模块(新).ts",
+        "export function 特殊() {\n  return 1;\n}\n",
+    );
+    fixture.write(
+        "src/emoji 🚀.ts",
+        "export function rocket() {\n  return 1;\n}\n",
+    );
     fixture.commit_all("base");
-    fixture.write("src/中文 模块(新).ts", "export function 特殊() {\n  return 2;\n}\n");
-    fixture.write("src/emoji 🚀.ts", "export function rocket() {\n  return 2;\n}\n");
+    fixture.write(
+        "src/中文 模块(新).ts",
+        "export function 特殊() {\n  return 2;\n}\n",
+    );
+    fixture.write(
+        "src/emoji 🚀.ts",
+        "export function rocket() {\n  return 2;\n}\n",
+    );
 
     let changeset = fixture.build(ChangeScope::WorkingTree);
     assert_eq!(changeset.summary.files_modified, 2);
@@ -356,12 +361,10 @@ fn special_paths_survive_the_whole_pipeline() {
         "unicode symbol expected: {:?}",
         changeset.symbols
     );
-    assert!(
-        changeset
-            .symbols
-            .iter()
-            .any(|s| s.name == "rocket" && s.change_type == SymbolChangeType::Modified)
-    );
+    assert!(changeset
+        .symbols
+        .iter()
+        .any(|s| s.name == "rocket" && s.change_type == SymbolChangeType::Modified));
 }
 
 /// §90：whitespace-only 变更不崩溃、不虚构语义结果。
@@ -376,9 +379,11 @@ fn whitespace_only_change_stays_honest() {
     assert_eq!(changeset.summary.files_modified, 1);
     // M5 不做语义等价证明（§46/§48）：diff 行变化 ⇒ 符号 Modified 是事实；
     // 不得出现"语义未变"之类无证据结论。
-    assert!(changeset.symbols.iter().all(
-        |s| s.change_type == SymbolChangeType::Modified || s.change_type == SymbolChangeType::Added,
-    ));
+    assert!(changeset
+        .symbols
+        .iter()
+        .all(|s| s.change_type == SymbolChangeType::Modified
+            || s.change_type == SymbolChangeType::Added,));
 }
 
 /// §89：git-only 变更（rename-only 无 hunk）仍产生 FileChange。
@@ -394,7 +399,11 @@ fn git_only_rename_without_hunks_still_recorded() {
         .files
         .iter()
         .find(|f| f.change_type == prism_changes::FileChangeType::Renamed);
-    assert!(renamed.is_some(), "rename must be recorded: {:?}", changeset.files);
+    assert!(
+        renamed.is_some(),
+        "rename must be recorded: {:?}",
+        changeset.files
+    );
     assert_eq!(renamed.unwrap().old_path.as_deref(), Some("src/a.ts"));
 }
 
@@ -405,7 +414,10 @@ fn file_limit_marks_changeset_truncated() {
     fixture.write("src/a.ts", "export const a = 1;\n");
     fixture.commit_all("base");
     for i in 0..5 {
-        fixture.write(&format!("src/f{i}.ts"), &format!("export const f{i} = {i};\n"));
+        fixture.write(
+            &format!("src/f{i}.ts"),
+            &format!("export const f{i} = {i};\n"),
+        );
     }
 
     let service = ChangeSetService::new(Arc::new(StdCommandRunner::new()));

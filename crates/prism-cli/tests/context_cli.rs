@@ -36,7 +36,13 @@ fn temp_project(name: &str) -> std::path::PathBuf {
 fn context_json_is_machine_readable_with_manifest() {
     let dir = temp_project("json");
     // §81：任务式请求。
-    let output = prism(&["context", dir.to_str().unwrap(), "--task", "重构 BattleManager", "--json"]);
+    let output = prism(&[
+        "context",
+        dir.to_str().unwrap(),
+        "--task",
+        "重构 BattleManager",
+        "--json",
+    ]);
     assert!(output.status.success());
     // §348：stdout 只有 JSON。
     let value: serde_json::Value =
@@ -52,8 +58,13 @@ fn context_json_is_machine_readable_with_manifest() {
     assert!(!items.is_empty());
     let target = items
         .iter()
-        .find(|item| item["reasons"].as_array().unwrap()
-            .iter().any(|reason| reason == "explicit_task_target"))
+        .find(|item| {
+            item["reasons"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|reason| reason == "explicit_task_target")
+        })
         .expect("target item present");
     assert_eq!(target["priority"], "critical");
     assert!(target["content"].is_string(), "materialized content");
@@ -68,7 +79,13 @@ fn context_selection_is_reproducible() {
     // （manifest.id/captured 时间戳天然不同，不计入）。
     let dir = temp_project("repro");
     let run = || {
-        let output = prism(&["context", dir.to_str().unwrap(), "--task", "重构 BattleManager", "--json"]);
+        let output = prism(&[
+            "context",
+            dir.to_str().unwrap(),
+            "--task",
+            "重构 BattleManager",
+            "--json",
+        ]);
         let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
         let ids: Vec<String> = value["items"]
             .as_array()
@@ -117,13 +134,22 @@ fn context_missing_path_is_invalid_input() {
 #[test]
 fn context_dry_run_shows_plan_without_content() {
     let dir = temp_project("dryrun");
-    let output = prism(&["context", dir.to_str().unwrap(), "--task", "重构 BattleManager", "--dry-run"]);
+    let output = prism(&[
+        "context",
+        dir.to_str().unwrap(),
+        "--task",
+        "重构 BattleManager",
+        "--dry-run",
+    ]);
     assert!(output.status.success());
     let stdout = stdout_text(&output);
     assert!(stdout.contains("Selection plan"));
     assert!(stdout.contains("explicit_task_target"));
     // plan 不含物化正文（正文以 class 开头）。
-    assert!(!stdout.contains("class BattleManager"), "dry-run must not materialize");
+    assert!(
+        !stdout.contains("class BattleManager"),
+        "dry-run must not materialize"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -154,7 +180,13 @@ fn context_check_health_outputs_health_json() {
 #[test]
 fn context_markdown_renders_pack() {
     let dir = temp_project("md");
-    let output = prism(&["context", dir.to_str().unwrap(), "--markdown", "--task", "重构 BattleManager"]);
+    let output = prism(&[
+        "context",
+        dir.to_str().unwrap(),
+        "--markdown",
+        "--task",
+        "重构 BattleManager",
+    ]);
     assert!(output.status.success());
     let stdout = stdout_text(&output);
     assert!(stdout.starts_with("# Prism Context Pack"));
@@ -185,9 +217,15 @@ fn context_small_budget_truncates_with_facts() {
         "--max-tokens",
         "128",
     ]);
-    assert!(output.status.success(), "small budget must still generate (§199)");
+    assert!(
+        output.status.success(),
+        "small budget must still generate (§199)"
+    );
     let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     // §199：极小预算 ⇒ Critical 保留 + limitations 声明，不崩溃。
-    assert!(!value["manifest"]["limitations"].as_array().unwrap().is_empty());
+    assert!(!value["manifest"]["limitations"]
+        .as_array()
+        .unwrap()
+        .is_empty());
     let _ = std::fs::remove_dir_all(&dir);
 }

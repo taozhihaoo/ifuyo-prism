@@ -7,7 +7,7 @@
 
 use prism_core::task::CancellationToken;
 use prism_snapshot::{DomainFacts, SnapshotCaptureOptions, SnapshotCaptureService};
-use prism_store::{SqliteSnapshotStore, SnapshotStore};
+use prism_store::{SnapshotStore, SqliteSnapshotStore};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -22,12 +22,7 @@ pub fn open_store() -> Result<Arc<dyn SnapshotStore>, prism_store::StoreError> {
 }
 
 /// `prism snapshot <path> [--force] [--note <text>] [--json]`。
-pub fn run_capture(
-    path: &Path,
-    force: bool,
-    note: Option<String>,
-    json: bool,
-) -> i32 {
+pub fn run_capture(path: &Path, force: bool, note: Option<String>, json: bool) -> i32 {
     if !path.exists() {
         eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
@@ -41,7 +36,11 @@ pub fn run_capture(
         }
     };
     let service = SnapshotCaptureService::new(store);
-    let options = SnapshotCaptureOptions { force, note, ..Default::default() };
+    let options = SnapshotCaptureOptions {
+        force,
+        note,
+        ..Default::default()
+    };
     let result = match service.capture(
         path,
         &DomainFacts::default(),
@@ -129,10 +128,7 @@ pub fn run_history(path: &Path, json: bool, limit: Option<usize>) -> i32 {
                 .map(|note| format!(" · note: {note}"))
                 .unwrap_or_default()
         );
-        println!(
-            "    fingerprint: {}",
-            snapshot.state_fingerprint
-        );
+        println!("    fingerprint: {}", snapshot.state_fingerprint);
     }
     crate::EXIT_OK
 }

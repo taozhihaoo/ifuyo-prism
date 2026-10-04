@@ -19,7 +19,8 @@ static DOC001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "DOC001",
     name: "Documented Command Not Found",
     category: FindingCategory::Documentation,
-    description: "A README code-block command references an npm script that package.json does not define.",
+    description:
+        "A README code-block command references an npm script that package.json does not define.",
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: None,
@@ -30,7 +31,8 @@ static DOC002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "DOC002",
     name: "Documented Path Not Found",
     category: FindingCategory::Documentation,
-    description: "A README link or fenced reference points to a project-relative path that does not exist.",
+    description:
+        "A README link or fenced reference points to a project-relative path that does not exist.",
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: None,

@@ -5,9 +5,9 @@
 //! verified_state 记录 CleanAtCommit/DirtyWorkspace（§276/§277）。
 
 use crate::state::lock_session;
-use prism_core::error::PrismErrorDto;
 use crate::state::AppState;
 use prism_core::config::PrismConfig;
+use prism_core::error::PrismErrorDto;
 use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::TaskState;
 use prism_verify::discover_checks;
@@ -35,7 +35,10 @@ fn verify_root(state: &State<'_, AppState>) -> Result<std::path::PathBuf, PrismE
         .as_ref()
         .map(|project| project.root_path.clone())
         .ok_or_else(|| {
-            prism_core::error::PrismErrorDto::new("invalid_input", "no project opened; call open_project first")
+            prism_core::error::PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            )
         })
 }
 
@@ -44,14 +47,15 @@ fn verify_root(state: &State<'_, AppState>) -> Result<std::path::PathBuf, PrismE
 pub fn verify_plan(state: State<'_, AppState>) -> Result<VerifyPlanDto, PrismErrorDto> {
     let root = verify_root(&state)?;
     let config_path = root.join(PrismConfig::config_file_name());
-    let (config, _loaded) = PrismConfig::load(&config_path).map_err(|err| {
-        PrismErrorDto::new("config", format!("config invalid: {err}"))
-    })?;
+    let (config, _loaded) = PrismConfig::load(&config_path)
+        .map_err(|err| PrismErrorDto::new("config", format!("config invalid: {err}")))?;
     let specs = discover_checks(&root, &config.verify);
     let plan = prism_verify::plan_checks(&specs);
     let mut session = lock_session(&state.session);
     session.verify_plan = Some(plan.clone());
-    Ok(VerifyPlanDto { checks: plan.checks })
+    Ok(VerifyPlanDto {
+        checks: plan.checks,
+    })
 }
 
 /// 显式执行验证（§118 Run all / Run selected；§297 用户可见执行意图）。
@@ -64,9 +68,8 @@ pub fn start_verify(
 ) -> Result<String, PrismErrorDto> {
     let root = verify_root(&state)?;
     let config_path = root.join(PrismConfig::config_file_name());
-    let (config, _loaded) = PrismConfig::load(&config_path).map_err(|err| {
-        PrismErrorDto::new("config", format!("config invalid: {err}"))
-    })?;
+    let (config, _loaded) = PrismConfig::load(&config_path)
+        .map_err(|err| PrismErrorDto::new("config", format!("config invalid: {err}")))?;
     let changed = changed.unwrap_or(false);
     let (root, token, session_arc) = {
         let mut session = lock_session(&state.session);
@@ -156,10 +159,14 @@ pub fn get_verify_results(
     state: State<'_, AppState>,
 ) -> Option<(VerifyPlanDto, Option<prism_verify::VerificationReport>)> {
     let session = lock_session(&state.session);
-    session
-        .verify_plan
-        .clone()
-        .map(|plan| (VerifyPlanDto { checks: plan.checks }, session.verify_report.clone()))
+    session.verify_plan.clone().map(|plan| {
+        (
+            VerifyPlanDto {
+                checks: plan.checks,
+            },
+            session.verify_report.clone(),
+        )
+    })
 }
 
 /// 取消当前验证（§93：传播/终止/清理/标记 Cancelled）。

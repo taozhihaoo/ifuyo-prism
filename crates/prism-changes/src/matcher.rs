@@ -226,8 +226,7 @@ fn emit_side_symbols(
             path: input.path.clone(),
             before_symbol_id: (side == Side::Before).then(|| symbol.id.clone()),
             after_symbol_id: (side == Side::After).then(|| symbol.id.clone()),
-            before_qualified_name: (side == Side::Before)
-                .then(|| symbol.qualified_name.clone()),
+            before_qualified_name: (side == Side::Before).then(|| symbol.qualified_name.clone()),
             after_qualified_name: (side == Side::After).then(|| symbol.qualified_name.clone()),
             name: symbol.name.clone(),
             kind: symbol.kind,
@@ -305,9 +304,13 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
         }
         matched_before_ids.insert(before.id.as_str().to_string());
         matched_after_ids.insert(after.id.as_str().to_string());
-        output
-            .changes
-            .push(modified_change(input, before, after, hits_before, hits_after));
+        output.changes.push(modified_change(
+            input,
+            before,
+            after,
+            hits_before,
+            hits_after,
+        ));
     }
 
     // ---- Stage 2/3：孤儿侧匹配（rename 文件 local identity / 同文件 rename）----
@@ -346,7 +349,11 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
             let hits_before = input.changed.hits_old(&before.range);
             let hits_after = input.changed.hits_new(&after.range);
             output.changes.push(renamed_or_moved_change(
-                input, before, after, hits_before, hits_after,
+                input,
+                before,
+                after,
+                hits_before,
+                hits_after,
             ));
         }
         before_only.retain(|symbol| !matched_before_ids.contains(symbol.id.as_str()));
@@ -385,7 +392,11 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
             let hits_before = input.changed.hits_old(&before.range);
             let hits_after = input.changed.hits_new(&after.range);
             output.changes.push(renamed_or_moved_change(
-                input, before, after, hits_before, hits_after,
+                input,
+                before,
+                after,
+                hits_before,
+                hits_after,
             ));
         }
         for (b_index, candidates) in ambiguous {
@@ -424,7 +435,10 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
                 continue;
             }
             output.changes.push(orphan_change(
-                input, Side::Before, before, SymbolChangeType::Deleted,
+                input,
+                Side::Before,
+                before,
+                SymbolChangeType::Deleted,
             ));
         }
     }
@@ -436,7 +450,10 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
                 continue;
             }
             output.changes.push(orphan_change(
-                input, Side::After, after, SymbolChangeType::Added,
+                input,
+                Side::After,
+                after,
+                SymbolChangeType::Added,
             ));
         }
     }
@@ -444,16 +461,18 @@ fn match_modified_pair(input: &SymbolMatchInput, output: &mut SymbolMatchOutput)
         output.diagnostics.push(ChangeDiagnostic {
             kind: ChangeDiagnosticKind::SymbolMappingUnavailable,
             path: Some(input.path.clone()),
-            detail: "after parse has error diagnostics; deletions suppressed as possibly unrecovered"
-                .to_string(),
+            detail:
+                "after parse has error diagnostics; deletions suppressed as possibly unrecovered"
+                    .to_string(),
         });
     }
     if suppressed_added {
         output.diagnostics.push(ChangeDiagnostic {
             kind: ChangeDiagnosticKind::SymbolMappingUnavailable,
             path: Some(input.path.clone()),
-            detail: "before parse has error diagnostics; additions suppressed as possibly unrecovered"
-                .to_string(),
+            detail:
+                "before parse has error diagnostics; additions suppressed as possibly unrecovered"
+                    .to_string(),
         });
     }
 }
@@ -469,7 +488,8 @@ fn rename_evidence(input: &SymbolMatchInput, before: &Symbol, after: &Symbol) ->
     let (Some(before_model), Some(after_model)) = (input.before, input.after) else {
         return false;
     };
-    let (Some(before_text), Some(after_text)) = (model_content(before_model), model_content(after_model))
+    let (Some(before_text), Some(after_text)) =
+        (model_content(before_model), model_content(after_model))
     else {
         return false;
     };
@@ -503,7 +523,12 @@ fn modified_change(
     hits_after: bool,
 ) -> SymbolChange {
     let mut characteristics: Vec<SymbolCharacteristic> = Vec::new();
-    if hits_before && input.changed.old.contains(&(before.range.start.line as u64)) {
+    if hits_before
+        && input
+            .changed
+            .old
+            .contains(&(before.range.start.line as u64))
+    {
         characteristics.push(SymbolCharacteristic::DeclarationChanged);
     }
     if hits_after {
@@ -526,9 +551,7 @@ fn modified_change(
         || (hits_after && body_lines_hit(&input.changed.new, &after.range, true));
     if body_hit {
         match after.kind {
-            SymbolKind::Function
-            | SymbolKind::Method
-            | SymbolKind::Constructor => {
+            SymbolKind::Function | SymbolKind::Method | SymbolKind::Constructor => {
                 characteristics.push(SymbolCharacteristic::BodyChanged);
             }
             SymbolKind::Import => characteristics.push(SymbolCharacteristic::ImportChanged),
@@ -575,7 +598,11 @@ fn modified_change(
 }
 
 /// 除声明行外是否仍有变更行落在符号范围内（body 证据）。
-fn body_lines_hit(lines: &std::collections::BTreeSet<u64>, range: &SourceRange, skip_decl: bool) -> bool {
+fn body_lines_hit(
+    lines: &std::collections::BTreeSet<u64>,
+    range: &SourceRange,
+    skip_decl: bool,
+) -> bool {
     lines.iter().any(|line| {
         if !range_contains_line(range, *line) {
             return false;
@@ -619,8 +646,7 @@ fn renamed_or_moved_change(
     hits_after: bool,
 ) -> SymbolChange {
     let mut change = modified_change(input, before, after, hits_before, hits_after);
-    let file_renamed = input.git_is_rename
-        && input.before_read_path != input.after_read_path;
+    let file_renamed = input.git_is_rename && input.before_read_path != input.after_read_path;
     change.change_type = if file_renamed {
         SymbolChangeType::Moved
     } else {
@@ -662,11 +688,7 @@ fn orphan_change(
             Some(symbol.qualified_name.clone()),
             Some(display_range(&symbol.range)),
         ),
-        Side::After => (
-            None,
-            None,
-            None,
-        ),
+        Side::After => (None, None, None),
     };
     let (before_symbol_id, after_symbol_id) = match side {
         Side::Before => (symbol_id, None),
@@ -676,11 +698,7 @@ fn orphan_change(
         Side::Before => (qualified, None),
         Side::After => (None, Some(symbol.qualified_name.clone())),
     };
-    let location_before = if side == Side::Before {
-        location
-    } else {
-        None
-    };
+    let location_before = if side == Side::Before { location } else { None };
     let location_after = if side == Side::After {
         Some(display_range(&symbol.range))
     } else {
@@ -721,8 +739,8 @@ mod tests {
     use crate::revision::{FileModel, SourceState};
     use prism_core::ids::FileId;
     use prism_core::task::CancellationToken;
-    use prism_parser::{ParseRequest, ParserRegistry};
     use prism_core::Confidence;
+    use prism_parser::{ParseRequest, ParserRegistry};
     use prism_project::{FileClassification, FileKind};
 
     fn file_model(path: &str, content: &str) -> FileModel {
@@ -733,7 +751,9 @@ mod tests {
             .unwrap()
             .to_string_lossy()
             .to_string();
-        let language = classifier.detect_language(&file_name).expect("ts test fixture");
+        let language = classifier
+            .detect_language(&file_name)
+            .expect("ts test fixture");
         let request = ParseRequest {
             file_id: FileId::from_string(format!("file:{path}")),
             relative_path: path.to_string(),
@@ -837,8 +857,14 @@ export function gamma() {
             ],
         };
         let changed_lines = ChangedLines::from_hunks(&[hunk]);
-        assert_eq!(changed_lines.old.iter().copied().collect::<Vec<_>>(), vec![3]);
-        assert_eq!(changed_lines.new.iter().copied().collect::<Vec<_>>(), vec![4]);
+        assert_eq!(
+            changed_lines.old.iter().copied().collect::<Vec<_>>(),
+            vec![3]
+        );
+        assert_eq!(
+            changed_lines.new.iter().copied().collect::<Vec<_>>(),
+            vec![4]
+        );
         assert_eq!(changed_lines.ranges.len(), 1);
     }
 
@@ -848,11 +874,18 @@ export function gamma() {
         let after_src = BEFORE_SRC.replace("return 3;", "return 42;");
         let after = file_model("src/a.ts", &after_src);
         let changed_lines = changed(&[10], &[10]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
 
         let gamma = find(&output, "gamma");
         assert_eq!(gamma.change_type, SymbolChangeType::Modified);
-        assert!(gamma.characteristics.contains(&SymbolCharacteristic::BodyChanged));
+        assert!(gamma
+            .characteristics
+            .contains(&SymbolCharacteristic::BodyChanged));
         assert_eq!(gamma.confidence, MatchConfidence::Exact);
         assert_eq!(gamma.mapping_status, MappingStatus::Mapped);
         // 未触及的符号不得出现（§23：不靠文件级修改外推）。
@@ -866,9 +899,16 @@ export function gamma() {
         let after_src = BEFORE_SRC.replace("beta(x: number)", "beta(x: number, y: number)");
         let after = file_model("src/a.ts", &after_src);
         let changed_lines = changed(&[5], &[5]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         let beta = find(&output, "beta");
-        assert!(beta.characteristics.contains(&SymbolCharacteristic::SignatureChanged));
+        assert!(beta
+            .characteristics
+            .contains(&SymbolCharacteristic::SignatureChanged));
         assert_eq!(beta.change_type, SymbolChangeType::Modified);
     }
 
@@ -878,25 +918,42 @@ export function gamma() {
         let after_src = BEFORE_SRC.replace("gamma", "gamma_renamed");
         let after = file_model("src/a.ts", &after_src);
         let changed_lines = changed(&[9], &[9]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         let renamed = find(&output, "gamma_renamed");
         assert_eq!(renamed.change_type, SymbolChangeType::Renamed);
         assert_eq!(renamed.confidence, MatchConfidence::HighConfidence);
         assert!(renamed.before_qualified_name.is_some());
-        assert!(output.diagnostics.is_empty(), "unique candidate: {output:?}");
+        assert!(
+            output.diagnostics.is_empty(),
+            "unique candidate: {output:?}"
+        );
         // 不应同时出现 Deleted gamma + Added gamma_renamed。
-        assert!(output.changes.iter().all(|change| change.change_type != SymbolChangeType::Deleted));
+        assert!(output
+            .changes
+            .iter()
+            .all(|change| change.change_type != SymbolChangeType::Deleted));
     }
 
     #[test]
     fn duplicate_symbols_stay_ambiguous() {
         // zeta 与两个 after 候选主体一致 ⇒ Ambiguous，不硬选（§83）。
         let before_text = "export function helper() {\n  return 2;\n}\n\nexport function zeta() {\n  return 2;\n}\n";
-        let after_text = "export function a1() {\n  return 2;\n}\n\nexport function a2() {\n  return 2;\n}\n";
+        let after_text =
+            "export function a1() {\n  return 2;\n}\n\nexport function a2() {\n  return 2;\n}\n";
         let before = file_model("src/a.ts", before_text);
         let after = file_model("src/a.ts", after_text);
         let changed_lines = changed(&[1, 5], &[1, 5]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         assert!(
             output
                 .diagnostics
@@ -913,27 +970,42 @@ export function gamma() {
         let before = file_model("src/a.ts", before_src);
         let after = file_model("src/a.ts", after_src);
         let changed_lines = changed(&[3], &[3]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         let render = find(&output, "render");
         assert_eq!(render.change_type, SymbolChangeType::Modified);
-        assert!(render.characteristics.contains(&SymbolCharacteristic::BodyChanged));
+        assert!(render
+            .characteristics
+            .contains(&SymbolCharacteristic::BodyChanged));
         let widget = find(&output, "Widget");
         assert_eq!(widget.change_type, SymbolChangeType::Modified);
         assert!(
-            !widget.characteristics.contains(&SymbolCharacteristic::BodyChanged),
+            !widget
+                .characteristics
+                .contains(&SymbolCharacteristic::BodyChanged),
             "container is structurally modified, not body-changed (§25)"
         );
     }
 
     #[test]
     fn multi_symbol_hunk_covers_all_overlapped_symbols() {
-        let before_src = "export function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n";
+        let before_src =
+            "export function one() {\n  return 1;\n}\n\nexport function two() {\n  return 2;\n}\n";
         let after_src = "export function one() {\n  return 11;\n}\n\nexport function two() {\n  return 22;\n}\n";
         let before = file_model("src/a.ts", before_src);
         let after = file_model("src/a.ts", after_src);
         // 一个大 hunk 覆盖两个符号（§24：全部实际覆盖者都要出现）。
         let changed_lines = changed(&[2, 6], &[2, 6]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         assert!(output.changes.iter().any(|change| change.name == "one"));
         assert!(output.changes.iter().any(|change| change.name == "two"));
     }
@@ -962,9 +1034,17 @@ export function gamma() {
         let after_src = BEFORE_SRC.replace("return 3;", "return 33;");
         let after = file_model("src/a.ts", &after_src);
         let changed_lines = changed(&[10], &[10]);
-        let output = run(Some(&before), Some(&after), &changed_lines, FileChangeType::Modified);
+        let output = run(
+            Some(&before),
+            Some(&after),
+            &changed_lines,
+            FileChangeType::Modified,
+        );
         assert!(
-            output.changes.iter().all(|change| change.kind != SymbolKind::File),
+            output
+                .changes
+                .iter()
+                .all(|change| change.kind != SymbolKind::File),
             "whole-file symbol must not swallow changes"
         );
     }
@@ -972,12 +1052,23 @@ export function gamma() {
     #[test]
     fn range_contains_line_honors_exclusive_end() {
         let range = SourceRange {
-            start: prism_parser::SourceLocation { line: 20, column: 1, byte_offset: 0 },
-            end: prism_parser::SourceLocation { line: 46, column: 1, byte_offset: 100 },
+            start: prism_parser::SourceLocation {
+                line: 20,
+                column: 1,
+                byte_offset: 0,
+            },
+            end: prism_parser::SourceLocation {
+                line: 46,
+                column: 1,
+                byte_offset: 100,
+            },
         };
         assert!(range_contains_line(&range, 20));
         assert!(range_contains_line(&range, 45));
-        assert!(!range_contains_line(&range, 46), "end.column=1 excludes end line");
+        assert!(
+            !range_contains_line(&range, 46),
+            "end.column=1 excludes end line"
+        );
         assert!(!range_contains_line(&range, 19));
     }
 }

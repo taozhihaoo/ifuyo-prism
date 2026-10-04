@@ -20,11 +20,7 @@ pub fn resolve_executable(program: &str, working_directory: &Path) -> Option<Pat
     for dir in std::env::split_paths(&path_var) {
         let base = dir.join(program);
         for extension in &extensions {
-            let candidate = PathBuf::from(format!(
-                "{}{}",
-                base.to_string_lossy(),
-                extension
-            ));
+            let candidate = PathBuf::from(format!("{}{}", base.to_string_lossy(), extension));
             if candidate.is_file() {
                 return Some(candidate);
             }

@@ -42,12 +42,7 @@ pub fn render_text(report: &VerificationReport) -> String {
                 check.kind.as_str(),
                 check.name
             );
-            let _ = writeln!(
-                out,
-                "    {} {}",
-                check.program,
-                check.args.join(" ")
-            );
+            let _ = writeln!(out, "    {} {}", check.program, check.args.join(" "));
             let _ = writeln!(out, "    source: {}", check.detected_from);
             if check.required {
                 let _ = writeln!(out, "    required");
@@ -71,11 +66,7 @@ pub fn render_text(report: &VerificationReport) -> String {
         counts.timed_out,
         counts.error
     );
-    let _ = writeln!(
-        out,
-        "Completeness: {:?}\n",
-        report.completeness
-    );
+    let _ = writeln!(out, "Completeness: {:?}\n", report.completeness);
     match &report.verified_state {
         Some(crate::model::VerifiedState::DirtyWorkspace { changed_files }) => {
             // §277 的用户可见文案。
@@ -84,7 +75,9 @@ pub fn render_text(report: &VerificationReport) -> String {
                 "{changed_files} working-tree changes present at verification time."
             );
         }
-        Some(crate::model::VerifiedState::CleanAtCommit { commit: Some(commit) }) => {
+        Some(crate::model::VerifiedState::CleanAtCommit {
+            commit: Some(commit),
+        }) => {
             let _ = writeln!(out, "Working tree clean at commit {commit}.");
         }
         Some(crate::model::VerifiedState::CleanAtCommit { commit: None }) => {

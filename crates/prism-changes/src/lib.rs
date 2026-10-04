@@ -23,26 +23,26 @@ pub mod file_change;
 pub mod matcher;
 pub mod model;
 pub mod module_change;
-pub mod revision;
 pub mod render;
+pub mod revision;
 pub mod service;
 pub mod symbol_change;
 
 pub use diagnostic::{ChangeDiagnostic, ChangeDiagnosticKind};
 pub use evidence::ChangeEvidence;
+pub use file_change::{FileChange, FileChangeType};
 pub use matcher::{compute_symbol_changes, ChangedLines, SymbolMatchInput};
 pub use model::ChangedRange;
-pub use file_change::{FileChange, FileChangeType};
+pub use model::LineRange;
 pub use model::{
-    ChangeScope, ChangeSet, ChangeSource, ChangeSummary, CHANGESET_SCHEMA_VERSION, MatchConfidence,
-    MappingStatus,
+    ChangeScope, ChangeSet, ChangeSource, ChangeSummary, MappingStatus, MatchConfidence,
+    CHANGESET_SCHEMA_VERSION,
 };
 pub use module_change::{ModuleChange, ModuleChangeType};
+pub use render::{render_markdown, render_text};
 pub use revision::{
     build_side_model, CurrentWorkingTreeSource, FileModel, GitRevisionSource, RevisionSource,
     SideModel, SourceState,
 };
-pub use model::LineRange;
-pub use render::{render_markdown, render_text};
 pub use service::{ChangeSetOptions, ChangeSetService};
 pub use symbol_change::{SymbolChange, SymbolChangeType, SymbolCharacteristic};

@@ -34,14 +34,15 @@ pub fn sanitize(text: &str) -> String {
 /// 人类可读文本（§296）。
 pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
     let mut out = String::new();
-    out.push_str(&format!(
-        "Environment ({})\n",
-        snapshot.project_root
-    ));
+    out.push_str(&format!("Environment ({})\n", snapshot.project_root));
     out.push_str(&format!(
         "  OS         {} {} ({})\n",
         snapshot.host.os_name,
-        snapshot.host.os_version.as_deref().unwrap_or("version unknown"),
+        snapshot
+            .host
+            .os_version
+            .as_deref()
+            .unwrap_or("version unknown"),
         snapshot.host.architecture.as_str()
     ));
     out.push_str(&format!(
@@ -64,7 +65,10 @@ pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
         let path = sanitize(fact.path.as_deref().unwrap_or("-"));
         out.push_str(&format!(
             "  {:<10} {:<32} {:<12} {}\n",
-            fact.name, version, status_label(fact), path
+            fact.name,
+            version,
+            status_label(fact),
+            path
         ));
         for additional in &fact.additional_paths {
             out.push_str(&format!("             also found: {additional}\n"));
@@ -80,10 +84,7 @@ pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
             out.push_str(&format!(
                 "  {:<10} {}\n",
                 runtime.name,
-                runtime
-                    .raw_version
-                    .as_deref()
-                    .unwrap_or("version unknown")
+                runtime.raw_version.as_deref().unwrap_or("version unknown")
             ));
         }
     }
@@ -176,11 +177,7 @@ pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
 
     if !snapshot.matches.is_empty() {
         out.push_str("\nRequirements\n");
-        for (requirement, matched) in snapshot
-            .requirements
-            .iter()
-            .zip(snapshot.matches.iter())
-        {
+        for (requirement, matched) in snapshot.requirements.iter().zip(snapshot.matches.iter()) {
             let expected = if requirement.expected.is_empty() {
                 requirement.operator.as_str().to_string()
             } else {
@@ -200,10 +197,7 @@ pub fn render_text(snapshot: &EnvironmentSnapshot) -> String {
     if !snapshot.diagnostics.is_empty() {
         out.push_str("\nDiagnostics\n");
         for diagnostic in &snapshot.diagnostics {
-            out.push_str(&format!(
-                "  [{}] {}\n",
-                diagnostic.kind, diagnostic.detail
-            ));
+            out.push_str(&format!("  [{}] {}\n", diagnostic.kind, diagnostic.detail));
         }
     }
 

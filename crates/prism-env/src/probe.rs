@@ -43,9 +43,15 @@ impl ToolProbe {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProbeResult {
     /// 成功；携带（可能被截断的）输出。
-    Output { text: String, output_truncated: bool },
+    Output {
+        text: String,
+        output_truncated: bool,
+    },
     /// 非零退出（§156：exists 但 probe failed）。
-    Failed { exit_code: Option<i32>, stderr_tail: String },
+    Failed {
+        exit_code: Option<i32>,
+        stderr_tail: String,
+    },
     /// 超时（§308 ProbeTimedOut）。
     TimedOut,
     /// 扫描取消（§116）。
@@ -63,15 +69,16 @@ pub fn run_probe(
 ) -> ProbeResult {
     // Windows `.cmd`/`.bat` shim（npm/pnpm/corepack…）经 cmd.exe /C
     // 显式 argv 运行（§112 安全边界不变：program 仍来自 allowlist）。
-    let (program, args) =
-        if prism_core::runtime::lookup::needs_windows_script_wrap(&probe.program, working_directory)
-        {
-            let mut wrapped = vec!["/C".to_string(), probe.program.clone()];
-            wrapped.extend(probe.args.iter().cloned());
-            ("cmd.exe".to_string(), wrapped)
-        } else {
-            (probe.program.clone(), probe.args.clone())
-        };
+    let (program, args) = if prism_core::runtime::lookup::needs_windows_script_wrap(
+        &probe.program,
+        working_directory,
+    ) {
+        let mut wrapped = vec!["/C".to_string(), probe.program.clone()];
+        wrapped.extend(probe.args.iter().cloned());
+        ("cmd.exe".to_string(), wrapped)
+    } else {
+        (probe.program.clone(), probe.args.clone())
+    };
 
     let mut command_spec = CommandSpec::new(program, args)
         .with_working_directory(working_directory.to_path_buf())
@@ -97,9 +104,7 @@ pub fn run_probe(
         Err(prism_core::PrismError::Command { message }) if message.contains("timed out") => {
             ProbeResult::TimedOut
         }
-        Err(prism_core::PrismError::Command { message }) => {
-            ProbeResult::SpawnFailed { message }
-        }
+        Err(prism_core::PrismError::Command { message }) => ProbeResult::SpawnFailed { message },
         Err(err) => ProbeResult::SpawnFailed {
             message: err.to_string(),
         },

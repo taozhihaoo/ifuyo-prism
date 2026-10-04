@@ -102,7 +102,11 @@ pub fn compare_versions(a: &ToolVersion, b: &ToolVersion) -> Ordering {
 /// 需求判定（§46–§50/§158）：
 /// - 实际版本缺失（unknown）⇒ Unknown（不是 Unsatisfied，§158）
 /// - 期望值解析失败 ⇒ Unknown（不猜）
-pub fn satisfies(actual: Option<&ToolVersion>, operator: RequirementOperator, expected: &str) -> MatchResult {
+pub fn satisfies(
+    actual: Option<&ToolVersion>,
+    operator: RequirementOperator,
+    expected: &str,
+) -> MatchResult {
     let Some(expected_version) = parse_version_token(expected) else {
         return MatchResult::Unknown;
     };
@@ -149,14 +153,21 @@ mod tests {
     fn numeric_comparison_not_lexicographic() {
         let v20_1 = parse_version_token("20.1").unwrap();
         let v20_10 = parse_version_token("20.10").unwrap();
-        assert_eq!(compare_versions(&v20_1, &v20_10), Ordering::Less, "20.1 < 20.10");
+        assert_eq!(
+            compare_versions(&v20_1, &v20_10),
+            Ordering::Less,
+            "20.1 < 20.10"
+        );
 
         let v20 = parse_version_token("20").unwrap();
         let v22 = parse_version_token("22").unwrap();
         assert_eq!(compare_versions(&v20, &v22), Ordering::Less);
 
         let v20_0_0 = parse_version_token("22.0.0").unwrap();
-        assert_eq!(compare_versions(&v20_0_0, &parse_version_token("22").unwrap()), Ordering::Equal);
+        assert_eq!(
+            compare_versions(&v20_0_0, &parse_version_token("22").unwrap()),
+            Ordering::Equal
+        );
     }
 
     #[test]
@@ -192,11 +203,23 @@ mod tests {
     fn at_least_semantics_with_unknown() {
         let v20 = parse_version_token("20.1.0").unwrap();
         let v23 = parse_version_token("23.0.0").unwrap();
-        assert_eq!(satisfies(Some(&v23), RequirementOperator::AtLeast, "22"), MatchResult::Satisfied);
-        assert_eq!(satisfies(Some(&v20), RequirementOperator::AtLeast, "22"), MatchResult::Unsatisfied);
+        assert_eq!(
+            satisfies(Some(&v23), RequirementOperator::AtLeast, "22"),
+            MatchResult::Satisfied
+        );
+        assert_eq!(
+            satisfies(Some(&v20), RequirementOperator::AtLeast, "22"),
+            MatchResult::Unsatisfied
+        );
         // §158：exists 但 version unknown ⇒ Unknown，不是 Unsatisfied。
-        assert_eq!(satisfies(None, RequirementOperator::AtLeast, "22"), MatchResult::Unknown);
+        assert_eq!(
+            satisfies(None, RequirementOperator::AtLeast, "22"),
+            MatchResult::Unknown
+        );
         // 期望值不是版本 ⇒ Unknown（不猜）。
-        assert_eq!(satisfies(Some(&v20), RequirementOperator::AtLeast, "beta"), MatchResult::Unknown);
+        assert_eq!(
+            satisfies(Some(&v20), RequirementOperator::AtLeast, "beta"),
+            MatchResult::Unknown
+        );
     }
 }

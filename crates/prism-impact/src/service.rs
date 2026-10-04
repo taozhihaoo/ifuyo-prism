@@ -6,8 +6,8 @@
 
 use crate::model::{
     ImpactAnalysis, ImpactCompleteness, ImpactConfidence, ImpactDiagnostic, ImpactDiagnosticKind,
-    ImpactKind, ImpactOptions, ImpactReason, ImpactSummary, ImpactableNode, NodeKind,
-    RiskSignal, RiskSignalKind, IMPACT_SCHEMA_VERSION,
+    ImpactKind, ImpactOptions, ImpactReason, ImpactSummary, ImpactableNode, NodeKind, RiskSignal,
+    RiskSignalKind, IMPACT_SCHEMA_VERSION,
 };
 use crate::traversal::{build_seeds, traverse, ReverseIndex};
 use prism_changes::{ChangeDiagnosticKind, ChangeSet};
@@ -66,9 +66,7 @@ impl ImpactAnalysisService {
             }
             impacted_items.push(item);
         }
-        impacted_items.sort_by(|a, b| {
-            (&a.node_kind, &a.node_id).cmp(&(&b.node_kind, &b.node_id))
-        });
+        impacted_items.sort_by(|a, b| (&a.node_kind, &a.node_id).cmp(&(&b.node_kind, &b.node_id)));
 
         // ---- 文档候选（§28/§29：仅存在已知关系证据时；当前 M3 无文档引用边）----
         let mut diagnostics: Vec<ImpactDiagnostic> = Vec::new();
@@ -76,10 +74,7 @@ impl ImpactAnalysisService {
             .iter()
             .filter(|item| item.node_kind == NodeKind::Documentation)
             .count() as u64;
-        if options.include_docs
-            && documentation_candidates == 0
-            && !change_set.symbols.is_empty()
-        {
+        if options.include_docs && documentation_candidates == 0 && !change_set.symbols.is_empty() {
             diagnostics.push(ImpactDiagnostic {
                 kind: ImpactDiagnosticKind::NoDocumentationEvidence,
                 subject: None,
@@ -94,14 +89,20 @@ impl ImpactAnalysisService {
             diagnostics.push(ImpactDiagnostic {
                 kind: ImpactDiagnosticKind::TraversalDepthExceeded,
                 subject: None,
-                detail: format!("reverse traversal stopped at max_depth={}", options.max_depth),
+                detail: format!(
+                    "reverse traversal stopped at max_depth={}",
+                    options.max_depth
+                ),
             });
         }
         if output.node_limit_reached {
             diagnostics.push(ImpactDiagnostic {
                 kind: ImpactDiagnosticKind::ImpactNodeLimitReached,
                 subject: None,
-                detail: format!("impacted node limit reached (max_nodes={})", options.max_nodes),
+                detail: format!(
+                    "impacted node limit reached (max_nodes={})",
+                    options.max_nodes
+                ),
             });
         }
         if output.unresolved_edges > 0 {
@@ -118,7 +119,10 @@ impl ImpactAnalysisService {
             diagnostics.push(ImpactDiagnostic {
                 kind: ImpactDiagnosticKind::AmbiguousRelationship,
                 subject: None,
-                detail: format!("{0} ambiguous relationship(s) not traversed", output.ambiguous_edges),
+                detail: format!(
+                    "{0} ambiguous relationship(s) not traversed",
+                    output.ambiguous_edges
+                ),
             });
         }
         diagnostics.sort_by(|a, b| {
@@ -171,9 +175,7 @@ impl ImpactAnalysisService {
                 continue;
             };
             let mut kinds = vec![ImpactKind::DirectlyChanged];
-            let kind = file
-                .new_file_kind
-                .or(file.old_file_kind);
+            let kind = file.new_file_kind.or(file.old_file_kind);
             if kind == Some(prism_project::FileKind::Config) {
                 kinds.push(ImpactKind::ConfigurationCandidate);
             }
@@ -277,7 +279,9 @@ impl ImpactAnalysisService {
                 let kind = match diagnostic.kind {
                     ChangeDiagnosticKind::ParseFailed => ImpactDiagnosticKind::ParseFailure,
                     ChangeDiagnosticKind::UnsupportedLanguage
-                    | ChangeDiagnosticKind::GeneratedFile => ImpactDiagnosticKind::UnsupportedLanguage,
+                    | ChangeDiagnosticKind::GeneratedFile => {
+                        ImpactDiagnosticKind::UnsupportedLanguage
+                    }
                     ChangeDiagnosticKind::SymbolMappingAmbiguous
                     | ChangeDiagnosticKind::RenameMappingUncertain => {
                         ImpactDiagnosticKind::AmbiguousRelationship
@@ -408,7 +412,11 @@ impl ImpactAnalysisService {
                 kind: RiskSignalKind::DeletedReferencedSymbol,
                 count: deleted_referenced.len() as u64,
                 detail: "deleted symbols still referenced by unresolved call sites".to_string(),
-                evidence: deleted_referenced.iter().take(cap as usize).cloned().collect(),
+                evidence: deleted_referenced
+                    .iter()
+                    .take(cap as usize)
+                    .cloned()
+                    .collect(),
             });
         }
 
@@ -460,8 +468,7 @@ impl ImpactAnalysisService {
             .files
             .iter()
             .filter(|file| {
-                file.new_file_kind.or(file.old_file_kind)
-                    == Some(prism_project::FileKind::Config)
+                file.new_file_kind.or(file.old_file_kind) == Some(prism_project::FileKind::Config)
             })
             .filter_map(|file| file.new_path.clone().or_else(|| file.old_path.clone()))
             .collect::<Vec<_>>();

@@ -442,11 +442,13 @@ mod tests {
         let config: HealthConfig = serde_json::from_str(text).unwrap();
         assert_eq!(config.architecture.forbidden_dependencies.len(), 2);
         assert_eq!(config.architecture.forbidden_dependencies[0].from, "ui");
-        assert_eq!(config.architecture.forbidden_dependencies[1].to, "infrastructure");
-        // deny_unknown_fields：拼错的键报错（§72）。
-        let bad: Result<HealthConfig, _> = serde_json::from_str(
-            r#"{ "architecture": { "forbidden": [] } }"#,
+        assert_eq!(
+            config.architecture.forbidden_dependencies[1].to,
+            "infrastructure"
         );
+        // deny_unknown_fields：拼错的键报错（§72）。
+        let bad: Result<HealthConfig, _> =
+            serde_json::from_str(r#"{ "architecture": { "forbidden": [] } }"#);
         assert!(bad.is_err());
         let bad_dep: Result<HealthConfig, _> = serde_json::from_str(
             r#"{ "architecture": { "forbidden_dependencies": [ { "from": "ui" } ] } }"#,

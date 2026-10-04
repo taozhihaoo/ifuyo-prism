@@ -63,7 +63,10 @@ fn rules_reflects_config_disable() {
     let output = prism(&["health", dir.to_str().unwrap(), "rules"]);
     assert!(output.status.success());
     let text = stdout_text(&output);
-    assert!(text.contains("disabled"), "MAINT001 must show disabled: {text}");
+    assert!(
+        text.contains("disabled"),
+        "MAINT001 must show disabled: {text}"
+    );
 }
 
 #[test]

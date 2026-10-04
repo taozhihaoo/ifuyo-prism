@@ -5,8 +5,9 @@
 //! 测试约定：qualified = "lib.foo" ⇒ 所在文件 = "lib.ts"（M2 路径根式）。
 
 use prism_changes::{
-    ChangeEvidence, ChangeScope, ChangeSet, ChangeSource, ChangeSummary, FileChange, FileChangeType,
-    MappingStatus, MatchConfidence, SymbolChange, SymbolChangeType, SymbolCharacteristic,
+    ChangeEvidence, ChangeScope, ChangeSet, ChangeSource, ChangeSummary, FileChange,
+    FileChangeType, MappingStatus, MatchConfidence, SymbolChange, SymbolChangeType,
+    SymbolCharacteristic,
 };
 use prism_core::ids::{ModuleId, SymbolId};
 use prism_core::task::CancellationToken;
@@ -130,11 +131,7 @@ fn graph(
 
 // ---------- 合成 ChangeSet 构造 ----------
 
-fn symbol_change(
-    path: &str,
-    qualified: &str,
-    change_type: SymbolChangeType,
-) -> SymbolChange {
+fn symbol_change(path: &str, qualified: &str, change_type: SymbolChangeType) -> SymbolChange {
     SymbolChange {
         file_change_id: format!("fc:{path}"),
         path: path.to_string(),
@@ -146,7 +143,11 @@ fn symbol_change(
             .then(|| qualified.to_string()),
         after_qualified_name: (change_type != SymbolChangeType::Deleted)
             .then(|| qualified.to_string()),
-        name: qualified.rsplit('.').next().unwrap_or(qualified).to_string(),
+        name: qualified
+            .rsplit('.')
+            .next()
+            .unwrap_or(qualified)
+            .to_string(),
         kind: SymbolKind::Function,
         change_type,
         characteristics: vec![SymbolCharacteristic::BodyChanged],
@@ -155,7 +156,10 @@ fn symbol_change(
         changed_ranges: vec![],
         mapping_status: MappingStatus::Mapped,
         confidence: MatchConfidence::Exact,
-        evidence: ChangeEvidence::new(prism_changes::evidence::EvidenceSource::SymbolRangeOverlap, "test"),
+        evidence: ChangeEvidence::new(
+            prism_changes::evidence::EvidenceSource::SymbolRangeOverlap,
+            "test",
+        ),
     }
 }
 
@@ -217,17 +221,27 @@ fn reverse_dependency_chain_distances() {
             file_module("service.ts"),
             file_module("ctl.ts"),
         ],
-        vec![dependency("service.ts", "util.ts"), dependency("ctl.ts", "service.ts")],
+        vec![
+            dependency("service.ts", "util.ts"),
+            dependency("ctl.ts", "service.ts"),
+        ],
         vec![],
     );
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:util.ts", "util.ts")];
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
 
     let service = impacted(&output, NodeKind::FileModule, "module:file:service.ts");
     assert_eq!(service.distance, 1);
     assert!(service.kinds.contains(&ImpactKind::DirectDependent));
-    assert!(service.reasons.contains(&ImpactReason::DependsOnChangedModule));
+    assert!(service
+        .reasons
+        .contains(&ImpactReason::DependsOnChangedModule));
 
     let ctl = impacted(&output, NodeKind::FileModule, "module:file:ctl.ts");
     assert_eq!(ctl.distance, 2);
@@ -247,7 +261,11 @@ fn call_chain_caller_and_transitive_caller() {
     // a.driver() 调 b.worker()；b.worker() 调 c.leaf()。改 c ⇒
     // b = Caller(1)；a = TransitiveCaller(2)。
     let g = graph(
-        vec![file_module("a.ts"), file_module("b.ts"), file_module("c.ts")],
+        vec![
+            file_module("a.ts"),
+            file_module("b.ts"),
+            file_module("c.ts"),
+        ],
         vec![],
         vec![
             call("a.driver", "b.worker", true),
@@ -255,11 +273,19 @@ fn call_chain_caller_and_transitive_caller() {
         ],
     );
     let index = prism_impact::ReverseIndex::build(&g);
-    let changeset =
-        base_changeset(vec![symbol_change("c.ts", "c.leaf", SymbolChangeType::Modified)]);
+    let changeset = base_changeset(vec![symbol_change(
+        "c.ts",
+        "c.leaf",
+        SymbolChangeType::Modified,
+    )]);
     let seeds = build_seeds(&changeset);
     assert_eq!(seeds.len(), 1, "symbol seed expected");
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
 
     let b = impacted(
         &output,
@@ -303,13 +329,21 @@ fn deleted_symbol_finds_callers_via_name_index() {
     );
     let index = prism_impact::ReverseIndex::build(&g);
     // M5：Deleted 符号只有 before 身份。
-    let changeset =
-        base_changeset(vec![symbol_change("lib.ts", "lib.foo", SymbolChangeType::Deleted)]);
+    let changeset = base_changeset(vec![symbol_change(
+        "lib.ts",
+        "lib.foo",
+        SymbolChangeType::Deleted,
+    )]);
     let seeds = build_seeds(&changeset);
     assert_eq!(seeds.len(), 1);
     assert!(seeds[0].deleted_symbol);
 
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     let caller = impacted(
         &output,
         NodeKind::Symbol,
@@ -333,7 +367,12 @@ fn cycle_terminates_and_keeps_self_changed() {
     );
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:a.ts", "a.ts")];
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     assert_eq!(output.impacted.len(), 1, "cycle must terminate");
     assert!(output.impacted.contains_key("file_module:module:file:b.ts"));
     assert!(!output.impacted.contains_key("file_module:module:file:a.ts"));
@@ -351,9 +390,16 @@ fn unresolved_dependency_not_traversed() {
     );
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:changed.ts", "changed.ts")];
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     assert!(
-        !output.impacted.contains_key("file_module:module:file:consumer.ts"),
+        !output
+            .impacted
+            .contains_key("file_module:module:file:consumer.ts"),
         "unresolved edge must not fabricate impact (§103)"
     );
     assert_eq!(output.unresolved_edges, 1);
@@ -379,12 +425,20 @@ fn multiple_paths_merge_to_one_node_with_min_distance() {
     );
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:a.ts", "a.ts")];
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     let b = impacted(&output, NodeKind::FileModule, "module:file:b.ts");
     assert_eq!(b.distance, 1, "min distance wins (§82)");
     assert_eq!(b.path_count, 2, "both evidence paths counted (§34)");
     assert_eq!(output.impacted.len(), 2);
-    assert_eq!(impacted(&output, NodeKind::FileModule, "module:file:c.ts").distance, 1);
+    assert_eq!(
+        impacted(&output, NodeKind::FileModule, "module:file:c.ts").distance,
+        1
+    );
 }
 
 // ---------- §37/§78/§110/§111：上限 ----------
@@ -402,15 +456,28 @@ fn large_fan_out_is_bounded_and_deterministic() {
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:util.ts", "util.ts")];
 
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     assert_eq!(output.impacted.len(), 1000);
     // 确定性（§79）：键序稳定。
     let first = output.impacted.keys().next().unwrap().clone();
-    let again = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let again = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     assert_eq!(first, *again.impacted.keys().next().unwrap());
 
     // max_nodes（§37）。
-    let options = ImpactOptions { max_nodes: 100, ..ImpactOptions::default() };
+    let options = ImpactOptions {
+        max_nodes: 100,
+        ..ImpactOptions::default()
+    };
     let truncated = traverse(&seeds, &index, &options, &CancellationToken::new());
     assert!(truncated.node_limit_reached);
     assert!(truncated.impacted.len() <= 101, "seeds + capped nodes");
@@ -435,11 +502,20 @@ fn max_depth_stops_traversal() {
     );
     let index = prism_impact::ReverseIndex::build(&g);
     let seeds = vec![module_seed("module:file:n1.ts", "n1.ts")];
-    let options = ImpactOptions { max_depth: 2, ..ImpactOptions::default() };
+    let options = ImpactOptions {
+        max_depth: 2,
+        ..ImpactOptions::default()
+    };
     let output = traverse(&seeds, &index, &options, &CancellationToken::new());
-    assert!(output.impacted.contains_key("file_module:module:file:n2.ts"));
-    assert!(output.impacted.contains_key("file_module:module:file:n3.ts"));
-    assert!(!output.impacted.contains_key("file_module:module:file:n4.ts"));
+    assert!(output
+        .impacted
+        .contains_key("file_module:module:file:n2.ts"));
+    assert!(output
+        .impacted
+        .contains_key("file_module:module:file:n3.ts"));
+    assert!(!output
+        .impacted
+        .contains_key("file_module:module:file:n4.ts"));
     assert!(output.depth_exceeded, "§36/§78：截断必须显式");
 }
 
@@ -488,7 +564,10 @@ fn added_symbols_are_not_seeded_and_files_map_to_modules() {
         is_binary: false,
         similarity: None,
         mapping_status: MappingStatus::NotApplicable,
-        evidence: ChangeEvidence::new(prism_changes::evidence::EvidenceSource::GitDiff, "unsupported"),
+        evidence: ChangeEvidence::new(
+            prism_changes::evidence::EvidenceSource::GitDiff,
+            "unsupported",
+        ),
     });
 
     let seeds = build_seeds(&changeset);
@@ -508,14 +587,25 @@ fn rename_prefers_after_identity() {
         vec![call("user.site", "lib.bar", true)],
     );
     let index = prism_impact::ReverseIndex::build(&g);
-    let changeset =
-        base_changeset(vec![symbol_change("lib.ts", "lib.bar", SymbolChangeType::Renamed)]);
+    let changeset = base_changeset(vec![symbol_change(
+        "lib.ts",
+        "lib.bar",
+        SymbolChangeType::Renamed,
+    )]);
     let seeds = build_seeds(&changeset);
     assert_eq!(seeds.len(), 1);
-    assert!(seeds[0].key.id.contains("lib.bar"), "after identity preferred");
+    assert!(
+        seeds[0].key.id.contains("lib.bar"),
+        "after identity preferred"
+    );
     assert!(!seeds[0].deleted_symbol);
 
-    let output = traverse(&seeds, &index, &ImpactOptions::default(), &CancellationToken::new());
+    let output = traverse(
+        &seeds,
+        &index,
+        &ImpactOptions::default(),
+        &CancellationToken::new(),
+    );
     let site = impacted(
         &output,
         NodeKind::Symbol,

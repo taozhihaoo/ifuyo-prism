@@ -8,9 +8,9 @@ use crate::model::{
     EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentSnapshot, EnvironmentStatus,
     FactScope, PathFacts, ProbeOutcome, ScanOutcome, ToolFact, ENVIRONMENT_SCHEMA_VERSION,
 };
-use crate::requirements::collect_requirements;
 use crate::requirement::match_requirements;
-use crate::tools::{discover_tool, definition, EnvironmentProfile};
+use crate::requirements::collect_requirements;
+use crate::tools::{definition, discover_tool, EnvironmentProfile};
 use prism_core::runtime::command::CommandRunner;
 use prism_core::task::CancellationToken;
 use std::path::Path;
@@ -73,7 +73,10 @@ impl EnvironmentService {
             .map(EnvironmentProfile::from_discovery)
             .unwrap_or_else(EnvironmentProfile::generic);
         let tool_names: Vec<&str> = if options.include_all_tools {
-            crate::tools::TOOL_ALLOWLIST.iter().map(|d| d.name).collect()
+            crate::tools::TOOL_ALLOWLIST
+                .iter()
+                .map(|d| d.name)
+                .collect()
         } else {
             profile.tool_names()
         };
@@ -98,7 +101,15 @@ impl EnvironmentService {
         let runtimes = crate::runtime::runtimes_from_tools(&tools);
         let sdks = crate::runtime::discover_sdks(&tools, runner.as_ref(), project_root, cancel);
         if cancel.is_cancelled() {
-            return Ok(cancelled_snapshot(project_root, host, shell, tools, runtimes, sdks, diagnostics));
+            return Ok(cancelled_snapshot(
+                project_root,
+                host,
+                shell,
+                tools,
+                runtimes,
+                sdks,
+                diagnostics,
+            ));
         }
         let package_managers = crate::runtime::discover_package_managers(&tools, project_root);
         let virtualenvs =
@@ -393,7 +404,11 @@ mod tests {
     fn scan_is_project_relevant_and_isolated() {
         let dir = temp_project("node-rust");
         std::fs::write(dir.join("package.json"), "{}").unwrap();
-        std::fs::write(dir.join("Cargo.toml"), "[package]\nname=\"x\"\nversion=\"0.1.0\"\n").unwrap();
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname=\"x\"\nversion=\"0.1.0\"\n",
+        )
+        .unwrap();
 
         let cancel = CancellationToken::new();
         let discovery = prism_project::DiscoveryService::new()
@@ -410,7 +425,11 @@ mod tests {
 
         assert_eq!(snapshot.schema_version, ENVIRONMENT_SCHEMA_VERSION);
         // §120 lazy：node + rust profile，不含 dotnet/go/docker。
-        let names: Vec<&str> = snapshot.tools.iter().map(|tool| tool.name.as_str()).collect();
+        let names: Vec<&str> = snapshot
+            .tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect();
         assert!(names.contains(&"git") && names.contains(&"node") && names.contains(&"cargo"));
         assert!(!names.contains(&"dotnet") && !names.contains(&"docker"));
         // §395：稳定排序。
@@ -443,9 +462,17 @@ mod tests {
         )
         .unwrap();
         // §122：未知项目至少 OS/arch/git，不失败。
-        let names: Vec<&str> = snapshot.tools.iter().map(|tool| tool.name.as_str()).collect();
+        let names: Vec<&str> = snapshot
+            .tools
+            .iter()
+            .map(|tool| tool.name.as_str())
+            .collect();
         assert_eq!(names, vec!["git"]);
-        assert_eq!(snapshot.variables.len(), 0, "include_variables=false ⇒ not collected");
+        assert_eq!(
+            snapshot.variables.len(),
+            0,
+            "include_variables=false ⇒ not collected"
+        );
         assert_eq!(snapshot.completeness, EnvironmentCompleteness::Partial);
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -464,7 +491,11 @@ mod tests {
             &cancel,
         )
         .unwrap();
-        assert_eq!(snapshot.scan_outcome, ScanOutcome::Cancelled, "§394 partial, no panic");
+        assert_eq!(
+            snapshot.scan_outcome,
+            ScanOutcome::Cancelled,
+            "§394 partial, no panic"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -6,8 +6,7 @@
 use crate::collectors::{collect_candidates, FactsInputs};
 use crate::model::{
     ContextDiagnostic, ContextGroup, ContextItem, ContextManifest, ContextPack, ContextRequest,
-    ContextSummary, PackStatus, SourceType, TargetResolution,
-    CONTEXT_SCHEMA_VERSION,
+    ContextSummary, PackStatus, SourceType, TargetResolution, CONTEXT_SCHEMA_VERSION,
 };
 use crate::selector::{select, InvalidBudget};
 use prism_core::task::CancellationToken;
@@ -34,11 +33,11 @@ impl ContextService {
         let classification = crate::task::classify(request.task.as_deref());
 
         // ---- 2) 目标解析（§15–§16）：显式 target 优先，其次从 task 提取 ----
-        let explicit_target = request.target.clone().or_else(|| {
-            crate::task::extract_target(request.task.as_deref())
-        });
-        let target =
-            crate::task::resolve_target(explicit_target.as_deref(), discovery, code_model);
+        let explicit_target = request
+            .target
+            .clone()
+            .or_else(|| crate::task::extract_target(request.task.as_deref()));
+        let target = crate::task::resolve_target(explicit_target.as_deref(), discovery, code_model);
 
         // ---- 3) 候选收集（§87–§89；collector 隔离，§260）----
         let mut diagnostics = Vec::new();
@@ -98,10 +97,7 @@ impl ContextService {
             TargetResolution::Ambiguous { candidates } => diagnostics.push(ContextDiagnostic {
                 kind: "target_ambiguous".to_string(),
                 subject: Some(target.raw.clone()),
-                detail: format!(
-                    "Target ambiguous — candidates: {}",
-                    candidates.join(", ")
-                ),
+                detail: format!("Target ambiguous — candidates: {}", candidates.join(", ")),
             }),
             TargetResolution::NotFound => diagnostics.push(ContextDiagnostic {
                 kind: "target_not_found".to_string(),
@@ -219,25 +215,28 @@ impl ContextService {
         if matches!(target.resolution, TargetResolution::Ambiguous { .. }) {
             risk_signals.push(crate::model::RiskSignalKind::TargetAmbiguous);
         }
-        if items
-            .iter()
-            .any(|item| item.reasons.contains(&crate::model::SelectionReason::FailedVerification))
-        {
+        if items.iter().any(|item| {
+            item.reasons
+                .contains(&crate::model::SelectionReason::FailedVerification)
+        }) {
             risk_signals.push(crate::model::RiskSignalKind::VerificationFailed);
         }
         if verification_stale == crate::model::ContextFreshness::Stale {
             risk_signals.push(crate::model::RiskSignalKind::VerificationStale);
         }
-        if items
-            .iter()
-            .any(|item| item.reasons.contains(&crate::model::SelectionReason::RequiredEnvironment))
-        {
+        if items.iter().any(|item| {
+            item.reasons
+                .contains(&crate::model::SelectionReason::RequiredEnvironment)
+        }) {
             risk_signals.push(crate::model::RiskSignalKind::EnvironmentMismatch);
         }
         if items.iter().any(|item| item.truncated) {
             risk_signals.push(crate::model::RiskSignalKind::ContextTruncated);
         }
-        if impact.map(|impact| impact.analysis_incomplete).unwrap_or(false) {
+        if impact
+            .map(|impact| impact.analysis_incomplete)
+            .unwrap_or(false)
+        {
             risk_signals.push(crate::model::RiskSignalKind::ImpactTruncated);
         }
         let health_input_pack = ContextPack {

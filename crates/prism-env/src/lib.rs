@@ -18,47 +18,53 @@ pub mod model;
 pub mod paths;
 pub mod ports;
 pub mod probe;
-pub mod requirement;
-pub mod requirements;
 pub mod render;
 pub mod report;
-pub mod service;
+pub mod requirement;
+pub mod requirements;
 pub mod runtime;
-pub mod variables;
+pub mod service;
 pub mod tools;
+pub mod variables;
 pub mod version;
 
 pub use envfiles::{collect_env_files, env_file_kind, parse_env_keys};
 pub use findings::{aggregate_status, derive_findings};
 pub use host::{collect_host, collect_resources, collect_shell};
 pub use model::{
-    Architecture, ConflictEntry, EnvironmentCapability, EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentRequirement,
-    EnvironmentSnapshot, FactScope, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
-    PackageManagerInfo, PathEntry, PathFacts, ProbeOutcome, RequirementKind, RequirementMatch,
-    PortInfo, PortProtocol, PortState, ProcessInfo, ProcessKind, RequirementOperator, ResourceFacts, RuntimeInfo, SdkInfo, ScanOutcome, ShellInfo, ShellKind,
-    EnvFileKind, EnvFileInfo, EnvKeyInfo, EnvironmentFinding, EnvironmentFindingKind,
-    EnvironmentStatus, ExpectedPort,
-    FindingCategory, FindingConfidence, SourceKind, ToolFact, ToolSource, VariableFact, VariableSource,
-    VirtualEnvInfo,
-    ENVIRONMENT_SCHEMA_VERSION, PATH_ENTRY_CAP, VARIABLE_CAP,
+    Architecture, ConflictEntry, EnvFileInfo, EnvFileKind, EnvKeyInfo, EnvironmentCapability,
+    EnvironmentCompleteness, EnvironmentDiagnostic, EnvironmentFinding, EnvironmentFindingKind,
+    EnvironmentRequirement, EnvironmentSnapshot, EnvironmentStatus, ExpectedPort, FactScope,
+    FindingCategory, FindingConfidence, HostInfo, MatchResult, OsFamily, PackageManagerAssociation,
+    PackageManagerInfo, PathEntry, PathFacts, PortInfo, PortProtocol, PortState, ProbeOutcome,
+    ProcessInfo, ProcessKind, RequirementKind, RequirementMatch, RequirementOperator,
+    ResourceFacts, RuntimeInfo, ScanOutcome, SdkInfo, ShellInfo, ShellKind, SourceKind, ToolFact,
+    ToolSource, VariableFact, VariableSource, VirtualEnvInfo, ENVIRONMENT_SCHEMA_VERSION,
+    PATH_ENTRY_CAP, VARIABLE_CAP,
 };
-pub use runtime::{
-    discover_package_managers, discover_sdks, discover_virtualenvs,
-    package_manager_field, parse_dotnet_sdks, parse_rustup_toolchains, resolve_project_local,
-    runtimes_from_tools, LOCKFILES,
-};
-pub use ports::{classify, collect_ports, collect_processes, expected_ports, parse_netstat, parse_ps, parse_ss, parse_tasklist};
 pub use paths::{collect_path_facts, normalize_path, path_facts_from_raw, path_identity};
-pub use probe::{run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe, DEFAULT_PROBE_TIMEOUT_MS};
-pub use tools::{
-    definition, discover_tool, EnvironmentProfile, ToolDefinition, TOOL_ALLOWLIST,
+pub use ports::{
+    classify, collect_ports, collect_processes, expected_ports, parse_netstat, parse_ps, parse_ss,
+    parse_tasklist,
 };
-pub use requirement::match_requirements;
-pub use requirements::{collect_requirements, package_manager_requirement, parse_version_spec, ProjectFacts, RequirementProvider};
-pub use variables::{collect_variables, is_possibly_sensitive};
+pub use probe::{
+    run_probe, version_line, ProbeOutputKind, ProbeResult, ToolProbe, DEFAULT_PROBE_TIMEOUT_MS,
+};
 pub use render::{render_text, sanitize};
 pub use report::{escape_html, render_html, render_markdown, shorten_home_paths};
+pub use requirement::match_requirements;
+pub use requirements::{
+    collect_requirements, package_manager_requirement, parse_version_spec, ProjectFacts,
+    RequirementProvider,
+};
+pub use runtime::{
+    discover_package_managers, discover_sdks, discover_virtualenvs, package_manager_field,
+    parse_dotnet_sdks, parse_rustup_toolchains, resolve_project_local, runtimes_from_tools,
+    LOCKFILES,
+};
 pub use service::{EnvironmentScanOptions, EnvironmentService};
+pub use tools::{definition, discover_tool, EnvironmentProfile, ToolDefinition, TOOL_ALLOWLIST};
+pub use variables::{collect_variables, is_possibly_sensitive};
 pub use version::{
     compare_versions, parse_version_output, parse_version_token, satisfies, ToolVersion,
 };

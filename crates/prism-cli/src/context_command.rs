@@ -67,7 +67,9 @@ pub fn run(
             return crate::EXIT_ERROR;
         }
     };
-    let graph = DependencyService::new().analyze(&discovery, &code_model).ok();
+    let graph = DependencyService::new()
+        .analyze(&discovery, &code_model)
+        .ok();
     // M5/M6（git 仓库才有；失败 ⇒ None，collectors 降级 §260）。
     let changeset = ChangeSetService::new(runner.clone())
         .build(

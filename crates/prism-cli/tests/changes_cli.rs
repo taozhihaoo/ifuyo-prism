@@ -66,11 +66,18 @@ fn temp_git_project(name: &str) -> PathBuf {
 fn changes_reports_text_summary_on_dirty_repo() {
     let dir = temp_git_project("text");
     let output = prism(&["changes", dir.to_str().unwrap()]);
-    assert!(output.status.success(), "stderr: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let text = stdout_text(&output);
     assert!(text.contains("Scope: working_tree"));
     assert!(text.contains("src/app.ts modified"));
-    assert!(text.contains("~ app modified"), "symbol line expected: {text}");
+    assert!(
+        text.contains("~ app modified"),
+        "symbol line expected: {text}"
+    );
     assert!(text.contains("module:file:src/app.ts"));
 }
 
@@ -97,7 +104,14 @@ fn changes_markdown_renders_sections() {
     let output = prism(&["changes", dir.to_str().unwrap(), "--format", "markdown"]);
     assert!(output.status.success());
     let text = stdout_text(&output);
-    for section in ["# ChangeSet", "## Change Summary", "## Files", "## Symbols", "## Modules", "## Diagnostics"] {
+    for section in [
+        "# ChangeSet",
+        "## Change Summary",
+        "## Files",
+        "## Symbols",
+        "## Modules",
+        "## Diagnostics",
+    ] {
         assert!(text.contains(section), "markdown must contain {section}");
     }
 }
@@ -145,8 +159,19 @@ fn changes_non_git_exit_6_and_missing_path_exit_3() {
 #[test]
 fn changes_invalid_revision_exit_3() {
     let dir = temp_git_project("badrev");
-    let output = prism(&["changes", dir.to_str().unwrap(), "--from", "no-such-rev", "--to", "HEAD"]);
-    assert_eq!(output.status.code(), Some(3), "invalid revision must exit 3");
+    let output = prism(&[
+        "changes",
+        dir.to_str().unwrap(),
+        "--from",
+        "no-such-rev",
+        "--to",
+        "HEAD",
+    ]);
+    assert_eq!(
+        output.status.code(),
+        Some(3),
+        "invalid revision must exit 3"
+    );
     assert!(String::from_utf8_lossy(&output.stderr).contains("invalid base revision"));
 }
 

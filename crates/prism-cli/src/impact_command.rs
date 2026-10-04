@@ -10,9 +10,7 @@ use prism_changes::{ChangeScope, ChangeSetOptions, ChangeSetService};
 use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
 use prism_graph::DependencyService;
-use prism_impact::{
-    render_markdown, render_text, ImpactAnalysisService, ImpactOptions,
-};
+use prism_impact::{render_markdown, render_text, ImpactAnalysisService, ImpactOptions};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -50,7 +48,10 @@ pub fn run(
         scope,
         from,
         to,
-        &ChangeSetOptions { max_files, ..ChangeSetOptions::default() },
+        &ChangeSetOptions {
+            max_files,
+            ..ChangeSetOptions::default()
+        },
         &cancel,
     ) {
         Ok(Some(changeset)) => changeset,

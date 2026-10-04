@@ -95,7 +95,14 @@ fn health_json_outputs_stable_contract() {
     }
     assert_eq!(value["summary"]["total_findings"], 1);
     let finding = &value["findings"][0];
-    for field in ["rule_id", "category", "severity", "confidence", "evidence", "status"] {
+    for field in [
+        "rule_id",
+        "category",
+        "severity",
+        "confidence",
+        "evidence",
+        "status",
+    ] {
         assert!(finding.get(field).is_some(), "finding field {field} (§78)");
     }
 }
@@ -103,10 +110,19 @@ fn health_json_outputs_stable_contract() {
 #[test]
 fn health_rule_filter_recomputes_summary() {
     let dir = temp_project("rule");
-    let output = prism(&["health", dir.to_str().unwrap(), "--rule", "MAINT001", "--json"]);
+    let output = prism(&[
+        "health",
+        dir.to_str().unwrap(),
+        "--rule",
+        "MAINT001",
+        "--json",
+    ]);
     assert!(output.status.success());
     let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
-    assert_eq!(value["summary"]["total_findings"], 1, "filtered summary real");
+    assert_eq!(
+        value["summary"]["total_findings"], 1,
+        "filtered summary real"
+    );
 }
 
 #[test]
@@ -134,7 +150,10 @@ fn health_markdown_and_html_render() {
     let html = prism(&["health", dir.to_str().unwrap(), "--format", "html"]);
     assert!(html.status.success());
     let text = stdout_text(&html);
-    assert!(text.contains("<!DOCTYPE html>"), "static offline HTML (§90)");
+    assert!(
+        text.contains("<!DOCTYPE html>"),
+        "static offline HTML (§90)"
+    );
     assert!(text.contains("Prism Health Report"));
 }
 
@@ -143,10 +162,18 @@ fn health_fail_on_warning_exits_nonzero_but_default_zero() {
     // §79/§80：默认 findings 不失败；--fail-on warning opt-in（需真 Warning finding）。
     let dir = temp_project_with("failon", true);
     let default = prism(&["health", dir.to_str().unwrap()]);
-    assert_eq!(default.status.code(), Some(0), "findings != failure by default");
+    assert_eq!(
+        default.status.code(),
+        Some(0),
+        "findings != failure by default"
+    );
     assert!(stdout_text(&default).contains("WARNING"));
     let fail_on = prism(&["health", dir.to_str().unwrap(), "--fail-on", "warning"]);
-    assert_eq!(fail_on.status.code(), Some(1), "--fail-on warning => non-zero");
+    assert_eq!(
+        fail_on.status.code(),
+        Some(1),
+        "--fail-on warning => non-zero"
+    );
     assert!(
         String::from_utf8_lossy(&fail_on.stderr).contains("--fail-on"),
         "stderr explains the failure"

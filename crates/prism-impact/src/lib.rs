@@ -30,4 +30,7 @@ pub use model::{
 };
 pub use render::{render_markdown, render_text};
 pub use service::ImpactAnalysisService;
-pub use traversal::{build_seeds, traverse, ImpactedAccumulator, NodeKey, ReverseEdge, ReverseIndex, Seed, TraversalOutput};
+pub use traversal::{
+    build_seeds, traverse, ImpactedAccumulator, NodeKey, ReverseEdge, ReverseIndex, Seed,
+    TraversalOutput,
+};

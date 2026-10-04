@@ -7,8 +7,8 @@
 
 use crate::model::{
     BudgetReport, ContextCandidate, ContextGroup, ContextItem, ContextScope, ContextSource,
-    ContextTarget, Priority, SelectionReason, SelectionTrace, ExcludedCandidate, ExcludedReason,
-    SourceType, TaskKind, TargetResolution,
+    ContextTarget, ExcludedCandidate, ExcludedReason, Priority, SelectionReason, SelectionTrace,
+    SourceType, TargetResolution, TaskKind,
 };
 
 /// 单次选择输出（item.content 尚未物化——懒加载在 materializer，§202）。
@@ -86,9 +86,9 @@ pub fn apply_scope(
             ContextScope::Target => match &candidate.source.path {
                 Some(path) => {
                     target_paths.is_empty()
-                        || target_paths
-                            .iter()
-                            .any(|target_path| path == target_path || path.starts_with(target_path.as_str()))
+                        || target_paths.iter().any(|target_path| {
+                            path == target_path || path.starts_with(target_path.as_str())
+                        })
                 }
                 None => matches!(
                     candidate.source.source_type,
@@ -215,7 +215,13 @@ pub fn select(
     ranked.sort_by(|(priority_a, candidate_a), (priority_b, candidate_b)| {
         priority_a
             .cmp(priority_b)
-            .then_with(|| candidate_a.source.source_type.as_str().cmp(candidate_b.source.source_type.as_str()))
+            .then_with(|| {
+                candidate_a
+                    .source
+                    .source_type
+                    .as_str()
+                    .cmp(candidate_b.source.source_type.as_str())
+            })
             .then_with(|| {
                 candidate_a
                     .source
@@ -241,7 +247,11 @@ pub fn select(
 
     for (priority, candidate) in ranked {
         if selected.len() >= budget.max_items {
-            excluded.push(excluded_candidate(&candidate, ExcludedReason::LowPriority, "max_items reached"));
+            excluded.push(excluded_candidate(
+                &candidate,
+                ExcludedReason::LowPriority,
+                "max_items reached",
+            ));
             continue;
         }
         if let Some(path) = &candidate.source.path {
@@ -319,15 +329,25 @@ pub fn select(
 /// §188–§191：按来源/理由映射信任层级（不 flatten）。
 fn trust_for(candidate: &ContextCandidate) -> crate::model::TrustLevel {
     use crate::model::TrustLevel;
-    if candidate.reasons.contains(&SelectionReason::ProjectInstruction)
-        || candidate.reasons.contains(&SelectionReason::RelevantDocumentation)
+    if candidate
+        .reasons
+        .contains(&SelectionReason::ProjectInstruction)
+        || candidate
+            .reasons
+            .contains(&SelectionReason::RelevantDocumentation)
     {
         return TrustLevel::Documentation;
     }
-    if candidate.reasons.contains(&SelectionReason::FailedVerification) {
+    if candidate
+        .reasons
+        .contains(&SelectionReason::FailedVerification)
+    {
         return TrustLevel::ObservedToolOutput;
     }
-    if candidate.reasons.contains(&SelectionReason::RequiredEnvironment) {
+    if candidate
+        .reasons
+        .contains(&SelectionReason::RequiredEnvironment)
+    {
         return TrustLevel::PrismFact;
     }
     match candidate.source.source_type {
@@ -386,7 +406,11 @@ mod tests {
         }
     }
 
-    fn candidate(source_type: SourceType, path: Option<&str>, reasons: Vec<SelectionReason>) -> ContextCandidate {
+    fn candidate(
+        source_type: SourceType,
+        path: Option<&str>,
+        reasons: Vec<SelectionReason>,
+    ) -> ContextCandidate {
         ContextCandidate {
             source: ContextSource {
                 source_type,
@@ -415,12 +439,27 @@ mod tests {
     #[test]
     fn normalize_merges_same_file_with_multiple_reasons() {
         let merged = normalize(vec![
-            candidate(SourceType::File, Some("src/a.ts"), vec![SelectionReason::ExplicitTaskTarget]),
-            candidate(SourceType::File, Some("src/a.ts"), vec![SelectionReason::DirectlyChanged]),
-            candidate(SourceType::File, Some("src/b.ts"), vec![SelectionReason::DirectlyChanged]),
+            candidate(
+                SourceType::File,
+                Some("src/a.ts"),
+                vec![SelectionReason::ExplicitTaskTarget],
+            ),
+            candidate(
+                SourceType::File,
+                Some("src/a.ts"),
+                vec![SelectionReason::DirectlyChanged],
+            ),
+            candidate(
+                SourceType::File,
+                Some("src/b.ts"),
+                vec![SelectionReason::DirectlyChanged],
+            ),
         ]);
         assert_eq!(merged.len(), 2);
-        let a = merged.iter().find(|item| item.source.path.as_deref() == Some("src/a.ts")).unwrap();
+        let a = merged
+            .iter()
+            .find(|item| item.source.path.as_deref() == Some("src/a.ts"))
+            .unwrap();
         assert!(a.reasons.contains(&SelectionReason::ExplicitTaskTarget));
         assert!(a.reasons.contains(&SelectionReason::DirectlyChanged));
     }
@@ -430,18 +469,43 @@ mod tests {
     fn priority_bands_follow_spec_rules() {
         let classification = classification(&[TaskKind::BugInvestigation]);
         assert_eq!(
-            prioritize(&candidate(SourceType::File, Some("t.ts"), vec![SelectionReason::ExplicitTaskTarget]), &classification),
+            prioritize(
+                &candidate(
+                    SourceType::File,
+                    Some("t.ts"),
+                    vec![SelectionReason::ExplicitTaskTarget]
+                ),
+                &classification
+            ),
             Priority::Critical
         );
         assert_eq!(
-            prioritize(&candidate(SourceType::ChangeSet, Some("c.ts"), vec![SelectionReason::DirectlyChanged]), &classification),
+            prioritize(
+                &candidate(
+                    SourceType::ChangeSet,
+                    Some("c.ts"),
+                    vec![SelectionReason::DirectlyChanged]
+                ),
+                &classification
+            ),
             Priority::High
         );
-        let mut impacted = candidate(SourceType::ImpactAnalysis, Some("i.ts"), vec![SelectionReason::DirectlyImpacted]);
+        let mut impacted = candidate(
+            SourceType::ImpactAnalysis,
+            Some("i.ts"),
+            vec![SelectionReason::DirectlyImpacted],
+        );
         impacted.impact_distance = Some(3);
         assert_eq!(prioritize(&impacted, &classification), Priority::Low);
         assert_eq!(
-            prioritize(&candidate(SourceType::Documentation, Some("README.md"), vec![SelectionReason::RelevantDocumentation]), &classification),
+            prioritize(
+                &candidate(
+                    SourceType::Documentation,
+                    Some("README.md"),
+                    vec![SelectionReason::RelevantDocumentation]
+                ),
+                &classification
+            ),
             Priority::Supporting
         );
     }
@@ -451,8 +515,16 @@ mod tests {
     fn budget_reserves_critical_and_records_exclusions() {
         let classification = classification(&[TaskKind::BugInvestigation]);
         let candidates = vec![
-            candidate(SourceType::File, Some("target.ts"), vec![SelectionReason::ExplicitTaskTarget]),
-            candidate(SourceType::Documentation, Some("docs/a.md"), vec![SelectionReason::RelevantDocumentation]),
+            candidate(
+                SourceType::File,
+                Some("target.ts"),
+                vec![SelectionReason::ExplicitTaskTarget],
+            ),
+            candidate(
+                SourceType::Documentation,
+                Some("docs/a.md"),
+                vec![SelectionReason::RelevantDocumentation],
+            ),
         ];
         let budget = crate::model::ContextBudget {
             max_items: 10,
@@ -478,7 +550,15 @@ mod tests {
             max_tokens_estimate: 0,
             ..crate::model::ContextBudget::default()
         };
-        let result = select(vec![candidate(SourceType::File, Some("a.ts"), vec![SelectionReason::DirectlyChanged])], &budget, &classification);
+        let result = select(
+            vec![candidate(
+                SourceType::File,
+                Some("a.ts"),
+                vec![SelectionReason::DirectlyChanged],
+            )],
+            &budget,
+            &classification,
+        );
         assert!(result.is_err(), "§200 zero budget => validation error");
     }
 
@@ -487,13 +567,35 @@ mod tests {
     fn deterministic_ordering_with_tie_breaker() {
         let classification = classification(&[TaskKind::Change]);
         let candidates = vec![
-            candidate(SourceType::Documentation, Some("z.md"), vec![SelectionReason::RelevantDocumentation]),
-            candidate(SourceType::ChangeSet, Some("a.ts"), vec![SelectionReason::DirectlyChanged]),
-            candidate(SourceType::ChangeSet, Some("b.ts"), vec![SelectionReason::DirectlyChanged]),
+            candidate(
+                SourceType::Documentation,
+                Some("z.md"),
+                vec![SelectionReason::RelevantDocumentation],
+            ),
+            candidate(
+                SourceType::ChangeSet,
+                Some("a.ts"),
+                vec![SelectionReason::DirectlyChanged],
+            ),
+            candidate(
+                SourceType::ChangeSet,
+                Some("b.ts"),
+                vec![SelectionReason::DirectlyChanged],
+            ),
         ];
-        let output = select(candidates.clone(), &crate::model::ContextBudget::default(), &classification).unwrap();
+        let output = select(
+            candidates.clone(),
+            &crate::model::ContextBudget::default(),
+            &classification,
+        )
+        .unwrap();
         let order: Vec<String> = output.selected.iter().map(|item| item.id.clone()).collect();
-        let rerun = select(candidates, &crate::model::ContextBudget::default(), &classification).unwrap();
+        let rerun = select(
+            candidates,
+            &crate::model::ContextBudget::default(),
+            &classification,
+        )
+        .unwrap();
         let rerun_order: Vec<String> = rerun.selected.iter().map(|item| item.id.clone()).collect();
         assert_eq!(order, rerun_order, "§138/§220 reproducible selection");
     }

@@ -70,7 +70,10 @@ fn impact_text_reports_affected_and_limitations() {
     let text = stdout_text(&output);
     assert!(text.contains("Changed: 1 files, 1 symbols, 1 modules"));
     assert!(text.contains("Potentially affected"));
-    assert!(text.contains("caller"), "caller classification expected: {text}");
+    assert!(
+        text.contains("caller"),
+        "caller classification expected: {text}"
+    );
     assert!(text.contains("test"), "test candidate expected: {text}");
     // §74/§131：局限不隐藏。
     assert!(text.contains("Analysis limitations"));
@@ -101,7 +104,11 @@ fn impact_is_deterministic_across_runs() {
     let first = prism(&args);
     let second = prism(&args);
     assert!(first.status.success() && second.status.success());
-    assert_eq!(stdout_text(&first), stdout_text(&second), "§113 determinism");
+    assert_eq!(
+        stdout_text(&first),
+        stdout_text(&second),
+        "§113 determinism"
+    );
 }
 
 #[test]

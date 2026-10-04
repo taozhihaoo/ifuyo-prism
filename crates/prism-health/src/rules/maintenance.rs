@@ -22,7 +22,8 @@ use std::sync::LazyLock;
 
 pub struct MaintenanceMarkerRule;
 
-static META: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
+static META: LazyLock<HealthRuleMeta> = LazyLock::new(|| {
+    HealthRuleMeta {
     id: "MAINT001",
     name: "Maintenance Marker",
     category: FindingCategory::Maintenance,
@@ -32,6 +33,7 @@ static META: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     default_enabled: true,
     threshold_meaning: None,
     needs_derived: true,
+}
 });
 
 const MARKERS: [&str; 4] = ["TODO", "FIXME", "HACK", "XXX"];
@@ -39,8 +41,10 @@ const MARKERS: [&str; 4] = ["TODO", "FIXME", "HACK", "XXX"];
 /// 扩展名 → 该语言注释行引导符（小写扩展名）。未知扩展名 ⇒ 空集（跳过）。
 fn comment_introducers(extension: Option<&str>) -> &'static [&'static str] {
     match extension {
-        Some("ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "cs" | "java" | "c" | "h"
-        | "cpp" | "cc" | "hpp" | "go" | "scss" | "css") => &["//", "/*", "*"],
+        Some(
+            "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" | "rs" | "cs" | "java" | "c" | "h" | "cpp"
+            | "cc" | "hpp" | "go" | "scss" | "css",
+        ) => &["//", "/*", "*"],
         Some("py" | "pyi" | "sh" | "bash" | "zsh" | "yaml" | "yml" | "toml") => &["#"],
         Some("sql") => &["--"],
         Some("html" | "htm" | "xml" | "vue") => &["<!--"],
@@ -113,7 +117,6 @@ impl HealthRule for MaintenanceMarkerRule {
             return Ok(result);
         };
 
-
         // §91：优先消费引擎共享内容（一次读取）；否则回退直读。
         let mut files: Vec<(String, String)> = Vec::new();
         if let Some(derived) = context.derived {
@@ -130,7 +133,9 @@ impl HealthRule for MaintenanceMarkerRule {
                 if result.status == prism_parser::ParseStatus::Skipped {
                     continue;
                 }
-                if let Ok(content) = std::fs::read_to_string(context.root.join(&result.relative_path)) {
+                if let Ok(content) =
+                    std::fs::read_to_string(context.root.join(&result.relative_path))
+                {
                     files.push((result.relative_path.clone(), content));
                 }
             }
@@ -193,10 +198,14 @@ impl HealthRule for MaintenanceMarkerRule {
                         format!("{path}:{line_number}:{column}"),
                         excerpt,
                     )
-                    .with_location(FindingLocation::new(path.clone(), line_number, column))],
+                    .with_location(FindingLocation::new(
+                        path.clone(),
+                        line_number,
+                        column,
+                    ))],
                     suggested_action: Some("Resolve or schedule the marked work.".to_string()),
                     status: FindingStatus::Active,
-            change_relation: None,
+                    change_relation: None,
                     metadata: [("marker".to_string(), marker.to_string())]
                         .into_iter()
                         .collect(),
@@ -223,8 +232,14 @@ mod tests {
     fn marker_requires_comment_line_whole_word_and_non_url() {
         let ts = comment_introducers(Some("ts"));
         // 正例：注释行整词 TODO。
-        assert_eq!(marker_occurrence("// TODO: extract helper", ts), Some(("TODO", 4)));
-        assert_eq!(marker_occurrence("/* FIXME later */", ts), Some(("FIXME", 4)));
+        assert_eq!(
+            marker_occurrence("// TODO: extract helper", ts),
+            Some(("TODO", 4))
+        );
+        assert_eq!(
+            marker_occurrence("/* FIXME later */", ts),
+            Some(("FIXME", 4))
+        );
         // 尾注释（行中引导符）同样命中：
         assert_eq!(
             marker_occurrence("return 1; // FIXME later", ts),

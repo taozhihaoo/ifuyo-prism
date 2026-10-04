@@ -149,7 +149,10 @@ fn revision_range_changeset_between_commits() {
     let fixture = Fixture::new("revision-range");
     fixture.write("src/a.ts", "export const one = 1;\n");
     fixture.commit_all("c1");
-    fixture.write("src/a.ts", "export const one = 111;\nexport const two = 2;\n");
+    fixture.write(
+        "src/a.ts",
+        "export const one = 111;\nexport const two = 2;\n",
+    );
     fixture.commit_all("c2");
 
     let (service, cancel) = fixture.service();
@@ -166,9 +169,15 @@ fn revision_range_changeset_between_commits() {
         .expect("changeset expected");
 
     assert_eq!(changeset.scope, ChangeScope::RevisionRange);
-    assert!(changeset.base.as_deref().is_some_and(|base| base.len() == 40));
+    assert!(changeset
+        .base
+        .as_deref()
+        .is_some_and(|base| base.len() == 40));
     assert_eq!(changeset.files.len(), 1);
-    assert_eq!(changeset.files[0].change_type, prism_changes::FileChangeType::Modified);
+    assert_eq!(
+        changeset.files[0].change_type,
+        prism_changes::FileChangeType::Modified
+    );
     // one = Modified；two = Added（新符号出现在变更行内）。
     assert!(changeset
         .symbols
@@ -185,7 +194,10 @@ fn untracked_file_included_in_working_tree_scope() {
     let fixture = Fixture::new("untracked");
     fixture.write("src/keep.ts", "export const keep = 1;\n");
     fixture.commit_all("base");
-    fixture.write("src/fresh.ts", "export function fresh() {\n  return 9;\n}\n");
+    fixture.write(
+        "src/fresh.ts",
+        "export function fresh() {\n  return 9;\n}\n",
+    );
 
     let (service, cancel) = fixture.service();
     let changeset = service

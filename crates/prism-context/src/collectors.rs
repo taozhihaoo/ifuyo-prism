@@ -5,8 +5,8 @@
 //! 任一 collector 失败不影响其余（§260——collectors 本身不返回错误）。
 
 use crate::model::{
-    ContextCandidate, ContextGroup, ContextScope, ContextSource, ContextTarget,
-    SelectionReason, SourceType, TargetResolution,
+    ContextCandidate, ContextGroup, ContextScope, ContextSource, ContextTarget, SelectionReason,
+    SourceType, TargetResolution,
 };
 use prism_core::task::CancellationToken;
 
@@ -155,7 +155,10 @@ fn change_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
         let Some(path) = file.new_path.as_ref().or(file.old_path.as_ref()) else {
             continue;
         };
-        let reasons = vec![SelectionReason::DirectlyChanged, SelectionReason::CurrentDiff];
+        let reasons = vec![
+            SelectionReason::DirectlyChanged,
+            SelectionReason::CurrentDiff,
+        ];
         out.push(candidate(
             SourceType::ChangeSet,
             file.id.clone(),
@@ -189,7 +192,10 @@ fn change_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
             group: ContextGroup::CurrentChange,
             title: format!("Changed symbol: {}", symbol.name),
             reasons: vec![SelectionReason::DirectlyChanged],
-            evidence: vec![format!("change_type={:?} confidence={:?}", symbol.change_type, symbol.confidence)],
+            evidence: vec![format!(
+                "change_type={:?} confidence={:?}",
+                symbol.change_type, symbol.confidence
+            )],
             impact_distance: None,
             change_state: Some(format!("{:?}", symbol.change_type)),
             language: None,
@@ -245,7 +251,11 @@ fn impact_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
     let mut out = Vec::new();
     for item in &impact.impacted_items {
         let reasons = vec![SelectionReason::DirectlyImpacted];
-        let path = if item.path.is_empty() { None } else { Some(item.path.clone()) };
+        let path = if item.path.is_empty() {
+            None
+        } else {
+            Some(item.path.clone())
+        };
         out.push(ContextCandidate {
             source: ContextSource {
                 source_type: SourceType::ImpactAnalysis,
@@ -330,7 +340,10 @@ fn health_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
             group: ContextGroup::Health,
             title: format!("{}: {}", finding.rule_id, finding.title),
             reasons: vec![SelectionReason::HealthFinding],
-            evidence: vec![format!("severity={:?} at {} L{}", finding.severity, finding_path, finding.location.line)],
+            evidence: vec![format!(
+                "severity={:?} at {} L{}",
+                finding.severity, finding_path, finding.location.line
+            )],
             impact_distance: None,
             change_state: Some(format!("{:?}", finding.change_relation)),
             language: None,
@@ -450,7 +463,11 @@ fn documentation_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
     };
     let instruction_names = ["AGENTS.md", "CLAUDE.md"];
     let doc_priorities = [
-        "CONTRIBUTING.md", "BUILD.md", "DEVELOPMENT.md", "ARCHITECTURE.md", "README.md",
+        "CONTRIBUTING.md",
+        "BUILD.md",
+        "DEVELOPMENT.md",
+        "ARCHITECTURE.md",
+        "README.md",
     ];
     let mut out = Vec::new();
     for file in &discovery.files {
@@ -464,7 +481,14 @@ fn documentation_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
             continue;
         }
         let mut reasons = Vec::new();
-        let mut evidence = vec![format!("detected as {}", if is_instruction { "instruction" } else { "documentation" })];
+        let mut evidence = vec![format!(
+            "detected as {}",
+            if is_instruction {
+                "instruction"
+            } else {
+                "documentation"
+            }
+        )];
         if is_instruction {
             reasons.push(SelectionReason::ProjectInstruction);
         } else {
@@ -473,7 +497,9 @@ fn documentation_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
         // §59/§60：目标目录下的 instruction 更具体（specificity evidence）。
         if let Some(dir) = path.rsplit_once('/').map(|(dir, _)| dir.to_string()) {
             if target_dirs.contains(&dir) {
-                evidence.push(format!("path-scoped to target directory {dir} (more specific)"));
+                evidence.push(format!(
+                    "path-scoped to target directory {dir} (more specific)"
+                ));
             }
         }
         // §57/§103：instruction 冲突不择一——selector 保留全部来源（evidence 注明）。
@@ -484,7 +510,11 @@ fn documentation_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
             SourceType::Documentation,
             format!("doc:{path}"),
             Some(path.to_string()),
-            if is_instruction { "project instructions" } else { "documentation" },
+            if is_instruction {
+                "project instructions"
+            } else {
+                "documentation"
+            },
             ContextGroup::Documentation,
             format!("Doc: {path}"),
             reasons,
@@ -507,7 +537,9 @@ fn architecture_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
     )];
     let cycle_count = graph.cycles.len();
     if cycle_count > 0 {
-        evidence.push(format!("{cycle_count} dependency cycle(s) detected (M3 fact)"));
+        evidence.push(format!(
+            "{cycle_count} dependency cycle(s) detected (M3 fact)"
+        ));
     }
     vec![candidate(
         SourceType::ArchitectureNode,
@@ -541,17 +573,18 @@ fn project_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
         vec![SelectionReason::TaskMatch],
         vec![
             format!("root={}", discovery.project.root_path.to_string_lossy()),
-            format!(
-                "entry_points={}",
-                discovery.entry_points.len()
-            ),
+            format!("entry_points={}", discovery.entry_points.len()),
         ],
     )]
 }
 
 fn relevant_paths_from(inputs: &FactsInputs) -> Vec<String> {
     let mut paths = Vec::new();
-    if let TargetResolution::Resolved { paths: target_paths, .. } = &inputs.target.resolution {
+    if let TargetResolution::Resolved {
+        paths: target_paths,
+        ..
+    } = &inputs.target.resolution
+    {
         paths.extend(target_paths.iter().cloned());
     }
     if let Some(changeset) = inputs.changeset {
@@ -568,7 +601,11 @@ fn relevant_paths_from(inputs: &FactsInputs) -> Vec<String> {
 
 /// §107/§207：输出 excerpt——错误区域优先，有界（不做全文搬运）。
 fn excerpt_from_output(stderr: &str, stdout: &str) -> String {
-    let combined = if stderr.trim().is_empty() { stdout } else { stderr };
+    let combined = if stderr.trim().is_empty() {
+        stdout
+    } else {
+        stderr
+    };
     let lines: Vec<&str> = combined
         .lines()
         .filter(|line| {

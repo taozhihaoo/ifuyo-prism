@@ -61,9 +61,7 @@ fn large_output_is_truncated_with_flag() {
         run.stdout.len()
     );
     assert!(
-        run.diagnostics
-            .iter()
-            .any(|d| d.kind == "output_truncated"),
+        run.diagnostics.iter().any(|d| d.kind == "output_truncated"),
         "truncation diagnostic expected"
     );
     // 进程本身正常完成（非 timeout/failed 判定混淆——ping exit 0）。
@@ -94,10 +92,7 @@ fn timeout_reports_timed_out_and_terminates_process() {
 
     assert_eq!(runs[0].state, CheckState::TimedOut);
     assert!(
-        runs[0]
-            .diagnostics
-            .iter()
-            .any(|d| d.kind == "timeout"),
+        runs[0].diagnostics.iter().any(|d| d.kind == "timeout"),
         "timeout diagnostic expected"
     );
 }

@@ -3,9 +3,9 @@
 
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService};
 use prism_core::config::HealthConfig;
+use prism_core::severity::Severity;
 use prism_core::task::CancellationToken;
 use prism_graph::DependencyService;
-use prism_core::severity::Severity;
 use prism_health::{analyze, HealthContext, HealthOptions, HealthRuleRegistry};
 use std::path::PathBuf;
 use std::process::Command;
@@ -63,7 +63,12 @@ impl Fixture {
     fn analyze(&self, config: &HealthConfig) -> prism_health::HealthAnalysis {
         let cancel = CancellationToken::new();
         let discovery = prism_project::DiscoveryService::new()
-            .discover(&self.root, prism_project::ScanOptions::default(), &cancel, |_| {})
+            .discover(
+                &self.root,
+                prism_project::ScanOptions::default(),
+                &cancel,
+                |_| {},
+            )
             .expect("discovery");
         let model = CodeAnalysisService::new()
             .analyze(&discovery, CodeAnalysisOptions::default(), &cancel, |_| {})
@@ -109,7 +114,10 @@ fn arch001_detects_canonical_cycles_not_acyclic_pairs() {
     let fixture = Fixture::new("arch-cycle");
     fixture.write("src/a.ts", A_TS);
     fixture.write("src/b.ts", B_TS);
-    fixture.write("src/solo.ts", "export function solo(): number { return 1; }\n");
+    fixture.write(
+        "src/solo.ts",
+        "export function solo(): number { return 1; }\n",
+    );
     fixture.commit_all("base");
 
     let analysis = fixture.analyze(&HealthConfig::default());
@@ -126,10 +134,7 @@ fn arch001_detects_canonical_cycles_not_acyclic_pairs() {
         "cycle members are a.ts/b.ts: {members:?}"
     );
     assert!(
-        cycles[0]
-            .evidence
-            .iter()
-            .all(|e| !e.detail.is_empty()),
+        cycles[0].evidence.iter().all(|e| !e.detail.is_empty()),
         "cycle evidence present (§243)"
     );
     // ARCH002/003 不因小项目误报（阈值默认 15/20）。
@@ -226,13 +231,27 @@ fn code_rules_report_complexity_size_nesting_with_thresholds() {
             .iter()
             .any(|f| f.rule_id == "CODE001" && f.location.relative_path == "src/complex.ts"),
         "complexity finding expected: {:?}",
-        analysis.findings.iter().map(|f| &f.rule_id).collect::<Vec<_>>()
+        analysis
+            .findings
+            .iter()
+            .map(|f| &f.rule_id)
+            .collect::<Vec<_>>()
     );
     // large：行数 250+ > 200 ⇒ CODE002；嵌套 6 > 5 ⇒ CODE004。
-    assert!(analysis.findings.iter().any(|f| f.rule_id == "CODE002" && f.location.relative_path == "src/large.ts"));
-    assert!(analysis.findings.iter().any(|f| f.rule_id == "CODE004" && f.location.relative_path == "src/large.ts"));
+    assert!(analysis
+        .findings
+        .iter()
+        .any(|f| f.rule_id == "CODE002" && f.location.relative_path == "src/large.ts"));
+    assert!(analysis
+        .findings
+        .iter()
+        .any(|f| f.rule_id == "CODE004" && f.location.relative_path == "src/large.ts"));
     // evidence 携带 value/threshold（§218）。
-    let code002 = analysis.findings.iter().find(|f| f.rule_id == "CODE002").unwrap();
+    let code002 = analysis
+        .findings
+        .iter()
+        .find(|f| f.rule_id == "CODE002")
+        .unwrap();
     assert!(code002.metadata["value"].parse::<u64>().unwrap() > 200);
     assert_eq!(code002.metadata["threshold"], "200");
 
@@ -258,7 +277,10 @@ fn sec_rules_redact_and_skip_placeholders() {
         "src/config.ts",
         "export const config = {\n  api_key: \"sk-live-0123456789abcdef\",\n  placeholder: \"example-password-123456\",\n};\n",
     );
-    fixture.write("keys/dev.pem", "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n");
+    fixture.write(
+        "keys/dev.pem",
+        "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----\n",
+    );
     fixture.commit_all("base");
 
     let analysis = fixture.analyze(&HealthConfig::default());
@@ -267,9 +289,15 @@ fn sec_rules_redact_and_skip_placeholders() {
         .iter()
         .filter(|f| f.rule_id == "SEC001")
         .collect();
-    assert_eq!(sec001.len(), 1, "placeholder skipped, real assignment found");
+    assert_eq!(
+        sec001.len(),
+        1,
+        "placeholder skipped, real assignment found"
+    );
     assert!(
-        !serde_json::to_string(&analysis).unwrap().contains("sk-live"),
+        !serde_json::to_string(&analysis)
+            .unwrap()
+            .contains("sk-live"),
         "secret value must never appear in output (§46/§244)"
     );
     assert!(
@@ -315,7 +343,11 @@ fn doc_rules_detect_command_and_path_drift() {
         .filter(|f| f.rule_id == "DOC001")
         .collect();
     assert_eq!(doc001.len(), 1, "only 'build' is missing: {doc001:?}");
-    assert!(doc001[0].id.as_str().contains("build"), "{:?}", doc001[0].id);
+    assert!(
+        doc001[0].id.as_str().contains("build"),
+        "{:?}",
+        doc001[0].id
+    );
     let doc002: Vec<_> = analysis
         .findings
         .iter()
@@ -329,9 +361,15 @@ fn doc_rules_detect_command_and_path_drift() {
 fn generated_and_binary_files_stay_silent() {
     // §158/§159：generated 不产生 code findings；二进制不崩溃不伪造。
     let fixture = Fixture::new("gen-bin");
-    fixture.write("src/handwritten.ts", "// TODO: real work\nexport const a = 1;\n");
+    fixture.write(
+        "src/handwritten.ts",
+        "// TODO: real work\nexport const a = 1;\n",
+    );
     // dist 产物（M1 分类 Generated ⇒ M2 Skipped ⇒ 不扫描）。
-    fixture.write("dist/bundle.ts", "// TODO generated marker\nexport const b = 2;\n");
+    fixture.write(
+        "dist/bundle.ts",
+        "// TODO generated marker\nexport const b = 2;\n",
+    );
     fixture.write("assets/logo.png", "PNGDATA\r\n\x1a\nTODO-in-binary");
     fixture.commit_all("base");
 

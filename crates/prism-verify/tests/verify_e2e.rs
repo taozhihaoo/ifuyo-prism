@@ -3,9 +3,9 @@
 use prism_core::config::{VerifyCheckConfig, VerifyConfig};
 use prism_core::task::CancellationToken;
 use prism_verify::{
-    build_plan, discover_checks, execute_plan_with, execute_plan_without_prereqs, run_verification, CheckKind,
-    CheckSpec, CheckSource, CheckState, FakeCommandRunner, FakeResponse, OverallConclusion,
-    WritePolicy,
+    build_plan, discover_checks, execute_plan_with, execute_plan_without_prereqs, run_verification,
+    CheckKind, CheckSource, CheckSpec, CheckState, FakeCommandRunner, FakeResponse,
+    OverallConclusion, WritePolicy,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -38,7 +38,13 @@ fn node_project_root() -> PathBuf {
     dir
 }
 
-fn spec(id: &str, kind: CheckKind, program: &str, required: bool, depends_on: &[&str]) -> CheckSpec {
+fn spec(
+    id: &str,
+    kind: CheckKind,
+    program: &str,
+    required: bool,
+    depends_on: &[&str],
+) -> CheckSpec {
     CheckSpec {
         id: id.to_string(),
         kind,
@@ -113,11 +119,19 @@ fn build_failure_blocks_dependent_test() {
     let mut runner = FakeCommandRunner::new();
     runner.script(
         "failing",
-        FakeResponse::Output { exit_code: 1, stdout: String::new(), stderr: "boom".to_string() },
+        FakeResponse::Output {
+            exit_code: 1,
+            stdout: String::new(),
+            stderr: "boom".to_string(),
+        },
     );
     runner.script(
         "passing",
-        FakeResponse::Output { exit_code: 0, stdout: "ok".to_string(), stderr: String::new() },
+        FakeResponse::Output {
+            exit_code: 0,
+            stdout: "ok".to_string(),
+            stderr: String::new(),
+        },
     );
 
     let runs = execute_plan_without_prereqs(
@@ -132,7 +146,10 @@ fn build_failure_blocks_dependent_test() {
     assert_eq!(runs.len(), 2);
     assert_eq!(runs[0].state, CheckState::Failed);
     assert_eq!(runs[1].state, CheckState::Blocked);
-    assert!(runs[1].diagnostics.iter().any(|d| d.kind == "prerequisite_failed"));
+    assert!(runs[1]
+        .diagnostics
+        .iter()
+        .any(|d| d.kind == "prerequisite_failed"));
 }
 
 // ---------- §71/§72/§75：required 语义 ----------
@@ -146,11 +163,19 @@ fn required_failure_makes_conclusion_fail() {
     let mut runner = FakeCommandRunner::new();
     runner.script(
         "passing",
-        FakeResponse::Output { exit_code: 0, stdout: String::new(), stderr: String::new() },
+        FakeResponse::Output {
+            exit_code: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+        },
     );
     runner.script(
         "failing",
-        FakeResponse::Output { exit_code: 2, stdout: String::new(), stderr: String::new() },
+        FakeResponse::Output {
+            exit_code: 2,
+            stdout: String::new(),
+            stderr: String::new(),
+        },
     );
 
     let dir = PathBuf::from(".");
@@ -177,7 +202,13 @@ fn optional_unavailable_keeps_partial_not_fail() {
     // §73：optional Unavailable ⇒ 不把整体变 Failed。
     let specs = vec![
         spec("lint", CheckKind::Lint, "passing", false, &[]),
-        spec("typecheck", CheckKind::Typecheck, "missing-tool", false, &[]),
+        spec(
+            "typecheck",
+            CheckKind::Typecheck,
+            "missing-tool",
+            false,
+            &[],
+        ),
     ];
     let mut runner = FakeCommandRunner::new();
     runner.script(
@@ -214,8 +245,22 @@ fn convention_build_failure_blocks_same_toolchain_only() {
         spec("cargo-test", CheckKind::Test, "cargo", false, &[]),
     ];
     let mut runner = FakeCommandRunner::new();
-    runner.script("npm", FakeResponse::Output { exit_code: 0, stdout: String::new(), stderr: String::new() });
-    runner.script("cargo", FakeResponse::Output { exit_code: 101, stdout: String::new(), stderr: String::new() });
+    runner.script(
+        "npm",
+        FakeResponse::Output {
+            exit_code: 0,
+            stdout: String::new(),
+            stderr: String::new(),
+        },
+    );
+    runner.script(
+        "cargo",
+        FakeResponse::Output {
+            exit_code: 101,
+            stdout: String::new(),
+            stderr: String::new(),
+        },
+    );
     let dir = PathBuf::from(".");
     let report = run_verification(
         &specs,
@@ -239,9 +284,17 @@ fn convention_build_failure_blocks_same_toolchain_only() {
             .unwrap()
     };
     assert_eq!(state_of("cargo-build"), CheckState::Failed);
-    assert_eq!(state_of("cargo-test"), CheckState::Blocked, "same-toolchain build failure must block (§27)");
+    assert_eq!(
+        state_of("cargo-test"),
+        CheckState::Blocked,
+        "same-toolchain build failure must block (§27)"
+    );
     assert_eq!(state_of("npm-build"), CheckState::Passed);
-    assert_eq!(state_of("npm-test"), CheckState::Passed, "npm test must not gate on cargo build");
+    assert_eq!(
+        state_of("npm-test"),
+        CheckState::Passed,
+        "npm test must not gate on cargo build"
+    );
 }
 
 // ---------- §87/§85：WritePolicy 默认拒绝 ----------
@@ -273,7 +326,10 @@ fn arbitrary_write_skipped_by_default() {
 #[test]
 fn dry_run_never_spawns_commands() {
     let dir = node_project_root();
-    let options = prism_verify::VerifyOptions { dry_run: true, ..Default::default() };
+    let options = prism_verify::VerifyOptions {
+        dry_run: true,
+        ..Default::default()
+    };
     let runner = FakeCommandRunner::new();
     let specs = discover_checks(&dir, &config_default());
     let report = run_verification(
@@ -291,7 +347,10 @@ fn dry_run_never_spawns_commands() {
     .unwrap();
     assert_eq!(report.runs.len(), 0, "dry-run: no executions");
     assert_eq!(report.conclusion, OverallConclusion::NotRun);
-    assert!(runner.calls().is_empty(), "dry-run must not spawn any process");
+    assert!(
+        runner.calls().is_empty(),
+        "dry-run must not spawn any process"
+    );
 }
 
 fn config_default() -> VerifyConfig {
@@ -323,7 +382,11 @@ fn polyglot_discovery_assigns_unique_ecosystem_ids() {
         "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n",
     )
     .unwrap();
-    std::fs::write(dir.join("demo.csproj"), "<Project Sdk=\"Microsoft.NET.Sdk\" />").unwrap();
+    std::fs::write(
+        dir.join("demo.csproj"),
+        "<Project Sdk=\"Microsoft.NET.Sdk\" />",
+    )
+    .unwrap();
 
     let specs = discover_checks(&dir, &config_default());
     let ids: Vec<&str> = specs.iter().map(|s| s.id.as_str()).collect();
@@ -348,7 +411,12 @@ fn polyglot_discovery_assigns_unique_ecosystem_ids() {
     assert_eq!(ids.len(), sorted.len(), "duplicate check ids: {ids:?}");
 
     // 约定依赖限同一 toolchain：cargo-test → cargo-build（不是 npm build）。
-    let plan = build_plan(&dir, &config_default(), &prism_verify::VerifyOptions::default()).unwrap();
+    let plan = build_plan(
+        &dir,
+        &config_default(),
+        &prism_verify::VerifyOptions::default(),
+    )
+    .unwrap();
     let cargo_test = plan
         .checks
         .iter()
@@ -405,7 +473,10 @@ fn failed_command_output_and_args_are_redacted() {
     let run = &runs[0];
     assert_eq!(run.state, CheckState::Failed);
     assert!(run.stdout.contains("[REDACTED]"), "stdout redacted");
-    assert!(!run.stdout.contains("supersecret123"), "secret value absent");
+    assert!(
+        !run.stdout.contains("supersecret123"),
+        "secret value absent"
+    );
     assert!(
         !run.command_display.contains("abc123"),
         "args redacted (§173)"

@@ -8,16 +8,20 @@ use prism_core::config::PrismConfig;
 use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::CancellationToken;
 use prism_git::GitService;
-use prism_verify::{compare_with_local, discover_checks, evaluate_release, CheckKind, inspect_github_actions};
+use prism_verify::{
+    compare_with_local, discover_checks, evaluate_release, inspect_github_actions, CheckKind,
+};
 use std::path::Path;
 use std::sync::Arc;
 
 fn load_config(path: &Path) -> Result<PrismConfig, i32> {
     let config_path = path.join(PrismConfig::config_file_name());
-    PrismConfig::load(&config_path).map(|(config, _)| config).map_err(|err| {
-        eprintln!("prism: config invalid: {err}");
-        crate::EXIT_ERROR
-    })
+    PrismConfig::load(&config_path)
+        .map(|(config, _)| config)
+        .map_err(|err| {
+            eprintln!("prism: config invalid: {err}");
+            crate::EXIT_ERROR
+        })
 }
 
 /// `prism verify checks <path>`（§55）：列出验证入口 + source。
@@ -42,7 +46,11 @@ pub fn run_checks(path: &Path) -> i32 {
             spec.id,
             spec.kind,
             spec.name,
-            if spec.required { "required" } else { "optional" },
+            if spec.required {
+                "required"
+            } else {
+                "optional"
+            },
             spec.detected_from
         );
         let _ = spec.program.len();
@@ -70,10 +78,7 @@ pub fn run_ci(path: &Path) -> i32 {
     );
     println!("CI commands (inspection only — never executed by Prism):\n");
     for check in &inspection.checks {
-        println!(
-            "  [{}] {}  ({})",
-            check.job, check.command, check.location
-        );
+        println!("  [{}] {}  ({})", check.job, check.command, check.location);
     }
 
     let specs = discover_checks(path, &config.verify);
@@ -146,10 +151,7 @@ pub fn run_release(path: &Path) -> i32 {
 
     println!("Release verification: {}\n", report.conclusion);
     for check in &report.checks {
-        println!(
-            "{:<24} {:>8}  {}",
-            check.title, check.state, check.detail
-        );
+        println!("{:<24} {:>8}  {}", check.title, check.state, check.detail);
     }
     if report.conclusion == "FAIL" {
         crate::EXIT_ERROR

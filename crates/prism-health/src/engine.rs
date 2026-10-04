@@ -8,9 +8,7 @@
 //! - 截断必须显式 Truncated（§223/§224）
 //! - 取消语义：Err(Cancelled)，绝不伪装 "0 findings"（§102）
 
-use crate::model::{
-    Finding, FindingStatus, HealthDiagnostic, RuleResult, HEALTH_SCHEMA_VERSION,
-};
+use crate::model::{Finding, FindingStatus, HealthDiagnostic, RuleResult, HEALTH_SCHEMA_VERSION};
 use crate::registry::HealthRuleRegistry;
 use prism_core::config::HealthConfig;
 use prism_core::task::CancellationToken;
@@ -113,7 +111,9 @@ pub fn analyze(
     // ---- §91-§94：任一启用规则需要派生事实 ⇒ 构建一次共享 ----
     let any_needs_derived = registry.rules().any(|rule| {
         let meta = rule.meta();
-        config.is_rule_enabled(meta.id, meta.default_enabled).unwrap_or(meta.default_enabled)
+        config
+            .is_rule_enabled(meta.id, meta.default_enabled)
+            .unwrap_or(meta.default_enabled)
             && !options.disabled_rules.iter().any(|id| id == meta.id)
             || options.enabled_rules.iter().any(|id| id == meta.id)
     });
@@ -214,7 +214,9 @@ pub fn analyze(
     // ---- §98 dedup：确定性 id 重复 = 同一事实，保留首条 ----
     let mut deduped: BTreeMap<String, Finding> = BTreeMap::new();
     for finding in collected {
-        deduped.entry(finding.id.as_str().to_string()).or_insert(finding);
+        deduped
+            .entry(finding.id.as_str().to_string())
+            .or_insert(finding);
     }
     let mut findings: Vec<Finding> = deduped.into_values().collect();
 
@@ -238,7 +240,9 @@ pub fn analyze(
         .iter()
         .flat_map(|change_set| {
             change_set.files.iter().map(|file| {
-                file.new_path.clone().unwrap_or_else(|| file.old_path.clone().unwrap_or_default())
+                file.new_path
+                    .clone()
+                    .unwrap_or_else(|| file.old_path.clone().unwrap_or_default())
             })
         })
         .collect();
@@ -316,7 +320,8 @@ pub fn analyze(
     // ---- §10 summary（事实计数；M4 与 score 无缘）----
     let summary = crate::model::HealthSummary::from_findings(findings.iter());
 
-    diagnostics.sort_by(|a, b| (&a.kind, &a.subject, &a.detail).cmp(&(&b.kind, &b.subject, &b.detail)));
+    diagnostics
+        .sort_by(|a, b| (&a.kind, &a.subject, &a.detail).cmp(&(&b.kind, &b.subject, &b.detail)));
 
     Ok(HealthAnalysis {
         schema_version: HEALTH_SCHEMA_VERSION,
@@ -369,15 +374,16 @@ fn sort_findings(findings: &mut [Finding]) {
 
 /// 引擎用到的去重可见集合（测试辅助；保持 §98 语义单一来源）。
 pub fn unique_rule_ids(findings: &[Finding]) -> BTreeSet<&str> {
-    findings.iter().map(|finding| finding.rule_id.as_str()).collect()
+    findings
+        .iter()
+        .map(|finding| finding.rule_id.as_str())
+        .collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{
-        Evidence, FindingCategory, FindingExplanation, FindingLocation,
-    };
+    use crate::model::{Evidence, FindingCategory, FindingExplanation, FindingLocation};
     use crate::registry::{HealthRule, HealthRuleMeta, HealthRuleRegistry};
     use prism_core::severity::{Confidence, Severity};
     use std::sync::LazyLock;
@@ -485,7 +491,9 @@ mod tests {
             _config: &prism_core::config::HealthRuleConfig,
             _cancel: &CancellationToken,
         ) -> prism_core::PrismResult<RuleResult> {
-            Err(PrismError::Internal { message: "rule B exploded".to_string() })
+            Err(PrismError::Internal {
+                message: "rule B exploded".to_string(),
+            })
         }
     }
 
@@ -541,7 +549,6 @@ mod tests {
         analyze(registry, config, &context, options, cancel)
     }
 
-
     #[test]
     fn disabled_rules_are_not_detected_and_others_continue() {
         // §162 规则隔离：禁用 A 不影响 C；C 默认禁用 ⇒ disabled 列表。
@@ -558,7 +565,13 @@ mod tests {
             .collect(),
             ..HealthConfig::default()
         };
-        let analysis = run(&registry(), &config, &HealthOptions::default(), &CancellationToken::new()).unwrap();
+        let analysis = run(
+            &registry(),
+            &config,
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         assert!(analysis.findings.iter().all(|f| f.rule_id != "TEST001"));
         assert!(!analysis.checked_rules.contains(&"TEST003".to_string()));
         assert!(analysis.disabled_rules.contains(&"TEST001".to_string()));
@@ -592,7 +605,13 @@ mod tests {
     #[test]
     fn rule_failure_is_partial_and_others_survive() {
         // §99/§163：B 失败 ⇒ 诊断 + failed_rules + Partial；A 照常产出。
-        let analysis = run(&registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new()).unwrap();
+        let analysis = run(
+            &registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         assert_eq!(analysis.failed_rules, vec!["TEST002".to_string()]);
         assert_eq!(
             analysis.analysis_completeness,
@@ -617,7 +636,11 @@ mod tests {
             prism_core::config::HealthRuleConfig::default(),
         );
         let analysis = run(&registry(), &config, &options, &CancellationToken::new()).unwrap();
-        let a_count = analysis.findings.iter().filter(|f| f.rule_id == "TEST001").count();
+        let a_count = analysis
+            .findings
+            .iter()
+            .filter(|f| f.rule_id == "TEST001")
+            .count();
         assert_eq!(a_count, 1);
         assert_eq!(
             analysis.analysis_completeness,
@@ -629,7 +652,13 @@ mod tests {
     #[test]
     fn suppression_marks_findings_without_hiding_them() {
         // §67/§164：suppressed ≠ not detected——仍检出、状态变 Suppressed。
-        let analysis = run(&registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new()).unwrap();
+        let analysis = run(
+            &registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         let target = analysis
             .findings
             .iter()
@@ -639,7 +668,13 @@ mod tests {
             suppressed_findings: vec![target.id.as_str().to_string()],
             ..HealthConfig::default()
         };
-        let suppressed = run(&registry(), &config, &HealthOptions::default(), &CancellationToken::new()).unwrap();
+        let suppressed = run(
+            &registry(),
+            &config,
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         let suppressed_finding = suppressed
             .findings
             .iter()
@@ -654,8 +689,13 @@ mod tests {
         // §95/§161：三次运行 ids/顺序/summary 完全一致。
         let outputs: Vec<String> = (0..3)
             .map(|_| {
-                run(&registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new())
-                    .unwrap()
+                run(
+                    &registry(),
+                    &HealthConfig::default(),
+                    &HealthOptions::default(),
+                    &CancellationToken::new(),
+                )
+                .unwrap()
             })
             .map(|analysis| serde_json::to_string(&analysis).unwrap())
             .collect();
@@ -695,7 +735,13 @@ mod tests {
             }
         }
         registry.register(Box::new(RuleHigh));
-        let analysis = run(&registry, &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new()).unwrap();
+        let analysis = run(
+            &registry,
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         let severities: Vec<Severity> = analysis.findings.iter().map(|f| f.severity).collect();
         let mut sorted = severities.clone();
         sorted.sort_by(|a, b| b.cmp(a));
@@ -707,7 +753,12 @@ mod tests {
         // §102：取消 ⇒ Err(Cancelled)，绝不伪装 0 findings。
         let cancel = CancellationToken::new();
         cancel.cancel();
-        let result = run(&registry(), &HealthConfig::default(), &HealthOptions::default(), &cancel);
+        let result = run(
+            &registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &cancel,
+        );
         assert!(matches!(result, Err(PrismError::Cancelled)));
     }
 
@@ -722,14 +773,17 @@ mod tests {
                 ..Default::default()
             },
         );
-        let analysis = run(&registry(), &config, &HealthOptions::default(), &CancellationToken::new()).unwrap();
-        assert!(
-            analysis
-                .diagnostics
-                .iter()
-                .any(|d| d.kind == "config_unknown_option"
-                    && d.subject.as_deref() == Some("TEST001"))
-        );
+        let analysis = run(
+            &registry(),
+            &config,
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        assert!(analysis
+            .diagnostics
+            .iter()
+            .any(|d| d.kind == "config_unknown_option" && d.subject.as_deref() == Some("TEST001")));
     }
 
     // ---- §103 合成大项目安全：数千 findings / 多文件规模 ----
@@ -786,18 +840,32 @@ mod tests {
     fn large_synthetic_project_completes_deterministically() {
         // §103：数千 findings / 多文件规模 —— no crash、确定性、有界时间。
         let started = std::time::Instant::now();
-        let first = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new())
-            .expect("bulk run must succeed");
+        let first = run(
+            &bulk_registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .expect("bulk run must succeed");
         let elapsed = started.elapsed();
         // 有界时间（宽松上限；本地 debug 构建实测毫秒级，防 CI 抖动给 60s）。
         assert!(
             elapsed < std::time::Duration::from_secs(60),
             "bulk analysis took too long: {elapsed:?}"
         );
-        assert_eq!(first.findings.len(), 5000, "every synthetic finding present");
+        assert_eq!(
+            first.findings.len(),
+            5000,
+            "every synthetic finding present"
+        );
         // §95/§161：确定性——再次运行输出逐字节一致。
-        let second = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &CancellationToken::new())
-            .unwrap();
+        let second = run(
+            &bulk_registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &CancellationToken::new(),
+        )
+        .unwrap();
         assert_eq!(
             serde_json::to_string(&first).unwrap(),
             serde_json::to_string(&second).unwrap(),
@@ -834,16 +902,23 @@ mod tests {
             max_findings: Some(500),
             ..HealthOptions::default()
         };
-        let analysis = run(&bulk_registry(), &HealthConfig::default(), &options, &CancellationToken::new()).unwrap();
+        let analysis = run(
+            &bulk_registry(),
+            &HealthConfig::default(),
+            &options,
+            &CancellationToken::new(),
+        )
+        .unwrap();
         assert_eq!(analysis.findings.len(), 500);
-        assert_eq!(analysis.analysis_completeness, prism_core::PrismCompleteness::Truncated);
-        assert_eq!(analysis.stats.findings_truncated, 4500);
-        assert!(
-            analysis
-                .diagnostics
-                .iter()
-                .any(|d| d.kind == "findings_truncated" && d.detail.contains("of at least 5000"))
+        assert_eq!(
+            analysis.analysis_completeness,
+            prism_core::PrismCompleteness::Truncated
         );
+        assert_eq!(analysis.stats.findings_truncated, 4500);
+        assert!(analysis
+            .diagnostics
+            .iter()
+            .any(|d| d.kind == "findings_truncated" && d.detail.contains("of at least 5000")));
     }
 
     #[test]
@@ -851,7 +926,12 @@ mod tests {
         // §102/§160：协作取消在规则内生效 ⇒ Err(Cancelled)，无部分输出伪装。
         let cancel = CancellationToken::new();
         cancel.cancel();
-        let result = run(&bulk_registry(), &HealthConfig::default(), &HealthOptions::default(), &cancel);
+        let result = run(
+            &bulk_registry(),
+            &HealthConfig::default(),
+            &HealthOptions::default(),
+            &cancel,
+        );
         assert!(matches!(result, Err(PrismError::Cancelled)));
     }
 }

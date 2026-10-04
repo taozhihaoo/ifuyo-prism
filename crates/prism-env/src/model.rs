@@ -252,8 +252,6 @@ pub struct ResourceFacts {
     pub disk_path: Option<String>,
 }
 
-
-
 /// 环境变量事实（§54：name + present + classification + source；无值）。
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VariableFact {

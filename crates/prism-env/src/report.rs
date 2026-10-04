@@ -133,11 +133,7 @@ pub fn render_markdown(snapshot: &EnvironmentSnapshot) -> String {
         let mut satisfied = 0usize;
         let mut unsatisfied = 0usize;
         let mut unknown = 0usize;
-        for (requirement, matched) in snapshot
-            .requirements
-            .iter()
-            .zip(snapshot.matches.iter())
-        {
+        for (requirement, matched) in snapshot.requirements.iter().zip(snapshot.matches.iter()) {
             let expected = if requirement.expected.is_empty() {
                 requirement.operator.as_str().to_string()
             } else {
@@ -265,7 +261,11 @@ pub fn render_markdown(snapshot: &EnvironmentSnapshot) -> String {
         snapshot.paths.entries.len(),
         snapshot.paths.duplicates.len(),
         snapshot.paths.missing.len(),
-        if snapshot.paths.truncated { ", truncated" } else { "" }
+        if snapshot.paths.truncated {
+            ", truncated"
+        } else {
+            ""
+        }
     ));
     out
 }
@@ -279,9 +279,7 @@ pub fn render_html(snapshot: &EnvironmentSnapshot) -> String {
             rows,
             "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>",
             escape_html(&tool.name),
-            escape_html(&privacy(
-                tool.raw_version.as_deref().unwrap_or("not found"),
-            )),
+            escape_html(&privacy(tool.raw_version.as_deref().unwrap_or("not found"),)),
             escape_html(&format!("{:?}", tool.probe)),
             escape_html(tool.path.as_deref().unwrap_or("-")),
         )
@@ -350,7 +348,7 @@ mod tests {
     use super::*;
     use crate::model::{
         Architecture, EnvironmentFinding, EnvironmentFindingKind, EnvironmentStatus, HostInfo,
-        OsFamily, PathFacts, ShellInfo, ShellKind, ToolFact, ToolSource, ProbeOutcome,
+        OsFamily, PathFacts, ProbeOutcome, ShellInfo, ShellKind, ToolFact, ToolSource,
         ENVIRONMENT_SCHEMA_VERSION,
     };
 
@@ -371,7 +369,11 @@ mod tests {
                 locale: None,
                 timezone: None,
             },
-            shell: ShellInfo { kind: ShellKind::Cmd, executable: None, version: None },
+            shell: ShellInfo {
+                kind: ShellKind::Cmd,
+                executable: None,
+                version: None,
+            },
             paths: PathFacts {
                 scope: crate::model::FactScope::Process,
                 entries: vec![],

@@ -2,9 +2,7 @@
 //!
 //! 只渲染已有事实；不确定性显式呈现，不隐藏（§131）。
 
-use crate::model::{
-    ImpactAnalysis, ImpactCompleteness, ImpactKind, ImpactReason, ImpactableNode,
-};
+use crate::model::{ImpactAnalysis, ImpactCompleteness, ImpactKind, ImpactReason, ImpactableNode};
 use std::collections::BTreeMap;
 
 fn completeness_label(completeness: ImpactCompleteness) -> &'static str {
@@ -147,7 +145,10 @@ pub fn render_markdown(analysis: &ImpactAnalysis) -> String {
             ));
         }
         if items.len() > 50 {
-            out.push_str(&format!("- … {} more (see JSON for full list)\n", items.len() - 50));
+            out.push_str(&format!(
+                "- … {} more (see JSON for full list)\n",
+                items.len() - 50
+            ));
         }
         out.push('\n');
     }

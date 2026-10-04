@@ -11,7 +11,7 @@
 
 use crate::model::{CheckRun, CheckSpec, CheckState, WritePolicy};
 use crate::redact::command_display;
-use prism_core::runtime::command::{CommandSpec, CommandRunner};
+use prism_core::runtime::command::{CommandRunner, CommandSpec};
 use prism_core::{PrismError, PrismResult};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -84,8 +84,10 @@ pub fn execute_check_with_prereqs(
     let workdir = project_root.join(&working_directory);
     if enforce_prerequisites && !crate::tool::executable_exists(&spec.program, &workdir) {
         run.state = CheckState::Unavailable;
-        run.reason =
-            Some(format!("Required executable '{}' was not found.", spec.program));
+        run.reason = Some(format!(
+            "Required executable '{}' was not found.",
+            spec.program
+        ));
         run.diagnostics.push(verify_diagnostic(
             "program_not_found",
             run.reason.clone().unwrap_or_default(),
@@ -138,11 +140,9 @@ pub fn execute_check_with_prereqs(
             // §278/§279：失败时保守解析已打印输出为结构化诊断；
             // 只增补 diagnostics，绝不改变 state/exit code（§288-§291）。
             if run.state == CheckState::Failed {
-                for parsed in crate::parsers::parse_failure_output(
-                    &spec.program,
-                    &run.stdout,
-                    &run.stderr,
-                ) {
+                for parsed in
+                    crate::parsers::parse_failure_output(&spec.program, &run.stdout, &run.stderr)
+                {
                     run.diagnostics.push(verify_diagnostic(
                         "parsed_failure",
                         crate::parsers::format_tool_diagnostic(&parsed),
@@ -177,8 +177,10 @@ pub fn execute_check_with_prereqs(
             let kind = if message.contains("os error 2") || message.contains("not found") {
                 // §20：工具不存在 ⇒ Unavailable，不是 Failed。
                 run.state = CheckState::Unavailable;
-                run.reason =
-                    Some(format!("Required executable '{}' was not found.", spec.program));
+                run.reason = Some(format!(
+                    "Required executable '{}' was not found.",
+                    spec.program
+                ));
                 "program_not_found"
             } else if message.contains("os error 5") || message.contains("permission") {
                 run.state = CheckState::Error;
@@ -240,7 +242,15 @@ pub fn execute_plan_without_prereqs(
     git: Option<&prism_git::GitService>,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
-    execute_plan_inner(plan, runner, project_root, max_concurrency, false, git, cancel)
+    execute_plan_inner(
+        plan,
+        runner,
+        project_root,
+        max_concurrency,
+        false,
+        git,
+        cancel,
+    )
 }
 
 /// 有界并发执行（§29–§30）：按拓扑层分组，层间顺序（依赖语义），
@@ -253,7 +263,15 @@ pub fn execute_plan_with(
     max_concurrency: usize,
     cancel: &prism_core::task::CancellationToken,
 ) -> PrismResult<Vec<CheckRun>> {
-    execute_plan_inner(plan, runner, project_root, max_concurrency, true, None, cancel)
+    execute_plan_inner(
+        plan,
+        runner,
+        project_root,
+        max_concurrency,
+        true,
+        None,
+        cancel,
+    )
 }
 
 /// 带 M4 Git 副作用观察的执行（§167/§198）：每层前后各取一次 GitStatus，
@@ -276,7 +294,6 @@ pub fn execute_plan_observed(
         cancel,
     )
 }
-
 
 pub(crate) fn execute_plan_inner(
     plan: &[CheckSpec],
@@ -364,15 +381,15 @@ pub(crate) fn execute_plan_inner(
                 .map(|deps| {
                     deps.iter().any(|dep| {
                         placed.contains(dep)
-                            && outcomes.get(dep).is_some_and(|state| *state != CheckState::Passed)
+                            && outcomes
+                                .get(dep)
+                                .is_some_and(|state| *state != CheckState::Passed)
                     })
                 })
                 .unwrap_or(false);
             if blocked {
-                let failed_deps: Vec<String> = dependencies
-                    .get(&spec.id)
-                    .cloned()
-                    .unwrap_or_default();
+                let failed_deps: Vec<String> =
+                    dependencies.get(&spec.id).cloned().unwrap_or_default();
                 let mut run = cancelled_run(spec, "prerequisite failed/unavailable");
                 run.state = CheckState::Blocked;
                 run.diagnostics.push(verify_diagnostic(

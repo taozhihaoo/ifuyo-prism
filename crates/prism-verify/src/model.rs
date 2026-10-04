@@ -324,12 +324,9 @@ pub struct VerifyOptions {
     pub fail_on_unavailable: bool,
 }
 
-
-
 /// check 策略（§74：第一版保持简单）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub struct CheckPolicy {
     /// conclusion 判定基于 required 集（§72）。
     pub required_only_for_fail: bool,
 }
-

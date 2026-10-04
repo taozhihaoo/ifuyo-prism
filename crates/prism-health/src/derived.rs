@@ -61,10 +61,7 @@ impl DerivedFacts {
                 if result.status == prism_parser::ParseStatus::Skipped {
                     continue; // Generated 策略跳过 ⇒ 不读内容（§118/§49）
                 }
-                wanted.insert(
-                    result.relative_path.clone(),
-                    result.language,
-                );
+                wanted.insert(result.relative_path.clone(), result.language);
             }
         }
         if let Some(discovery) = discovery {
@@ -74,7 +71,9 @@ impl DerivedFacts {
                 // 报告时以 [REDACTED] 与 confidence 约束噪声；非 UTF-8 与
                 // 超大文件在读取防线被跳过。CODE/MAINT 规则仍只消费代码模型。
                 if file.classification.kind != prism_project::FileKind::Generated {
-                    wanted.entry(file.relative_path.clone()).or_insert(file.language);
+                    wanted
+                        .entry(file.relative_path.clone())
+                        .or_insert(file.language);
                 }
             }
         }
@@ -104,7 +103,10 @@ impl DerivedFacts {
                 if dependency.resolution != prism_graph::ResolutionStatus::Resolved {
                     continue;
                 }
-                *facts.fan_out.entry(dependency.source_id.as_str().to_string()).or_insert(0) += 1;
+                *facts
+                    .fan_out
+                    .entry(dependency.source_id.as_str().to_string())
+                    .or_insert(0) += 1;
                 if let Some(target) = &dependency.target_id {
                     *facts.fan_in.entry(target.as_str().to_string()).or_insert(0) += 1;
                 }
@@ -146,10 +148,7 @@ impl DerivedFacts {
                     continue;
                 }
                 let body = &lines[start..end];
-                let branch_count = body
-                    .iter()
-                    .map(|line| count_branches(line, language))
-                    .sum();
+                let branch_count = body.iter().map(|line| count_branches(line, language)).sum();
                 let max_brace_nesting = max_brace_nesting(body);
                 metrics.insert(
                     symbol.id.as_str().to_string(),
@@ -242,11 +241,26 @@ mod tests {
 
     #[test]
     fn branch_counting_is_word_boundary_and_language_aware() {
-        assert_eq!(count_branches("if (a && b) { return 1; }", Some(Language::TypeScript)), 2);
-        assert_eq!(count_branches("verify(x)", Some(Language::TypeScript)), 0, "整词匹配");
+        assert_eq!(
+            count_branches("if (a && b) { return 1; }", Some(Language::TypeScript)),
+            2
+        );
+        assert_eq!(
+            count_branches("verify(x)", Some(Language::TypeScript)),
+            0,
+            "整词匹配"
+        );
         assert_eq!(count_branches("if x and y:", Some(Language::Python)), 2);
-        assert_eq!(count_branches("match x:", Some(Language::TypeScript)), 0, "match 非 TS 关键词");
-        assert_eq!(count_branches("anything", None), 0, "未知语言不计（NotApplicable）");
+        assert_eq!(
+            count_branches("match x:", Some(Language::TypeScript)),
+            0,
+            "match 非 TS 关键词"
+        );
+        assert_eq!(
+            count_branches("anything", None),
+            0,
+            "未知语言不计（NotApplicable）"
+        );
     }
 
     #[test]

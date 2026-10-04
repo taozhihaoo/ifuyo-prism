@@ -6,7 +6,7 @@
 
 use crate::evidence::ChangeEvidence;
 use crate::model::MappingStatus;
-use prism_graph::{ModuleKind, ModuleId};
+use prism_graph::{ModuleId, ModuleKind};
 use serde::{Deserialize, Serialize};
 
 /// 模块变更类型。模块生命周期只由模块事实决定（§31）。
@@ -57,7 +57,10 @@ mod tests {
             changed_files: vec!["src/a.ts".to_string()],
             changed_symbol_count: 2,
             mapping_status: MappingStatus::Mapped,
-            evidence: ChangeEvidence::new(crate::evidence::EvidenceSource::ModuleFacts, "file module of changed file"),
+            evidence: ChangeEvidence::new(
+                crate::evidence::EvidenceSource::ModuleFacts,
+                "file module of changed file",
+            ),
         };
         let json = serde_json::to_value(&change).unwrap();
         assert_eq!(json["id"], "mc:module:file:src/a.ts");

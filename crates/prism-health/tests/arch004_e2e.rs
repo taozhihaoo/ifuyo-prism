@@ -116,10 +116,9 @@ fn forbidden_dependency_violation_reported_with_dual_evidence() {
     assert_eq!(finding.severity, prism_core::Severity::Warning);
     // §28 双证据：observed + configured restriction。
     assert!(
-        finding
-            .evidence
-            .iter()
-            .any(|e| e.detail.contains("observed relationship: src/ui/page.ts -> src/database/db.ts")),
+        finding.evidence.iter().any(|e| e
+            .detail
+            .contains("observed relationship: src/ui/page.ts -> src/database/db.ts")),
         "observed relationship evidence expected"
     );
     assert!(

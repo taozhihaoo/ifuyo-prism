@@ -4,9 +4,7 @@
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService};
 use prism_core::config::{HealthConfig, HealthRuleConfig};
 use prism_core::task::CancellationToken;
-use prism_health::{
-    analyze, FindingStatus, HealthContext, HealthOptions, HealthRuleRegistry,
-};
+use prism_health::{analyze, FindingStatus, HealthContext, HealthOptions, HealthRuleRegistry};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -59,10 +57,19 @@ impl Fixture {
         Self::git(&self.root, &["commit", "-m", message]);
     }
 
-    fn analyze(&self, config: &HealthConfig, options: &HealthOptions) -> prism_health::HealthAnalysis {
+    fn analyze(
+        &self,
+        config: &HealthConfig,
+        options: &HealthOptions,
+    ) -> prism_health::HealthAnalysis {
         let cancel = CancellationToken::new();
         let discovery = prism_project::DiscoveryService::new()
-            .discover(&self.root, prism_project::ScanOptions::default(), &cancel, |_| {})
+            .discover(
+                &self.root,
+                prism_project::ScanOptions::default(),
+                &cancel,
+                |_| {},
+            )
             .expect("discovery");
         let model = CodeAnalysisService::new()
             .analyze(&discovery, CodeAnalysisOptions::default(), &cancel, |_| {})
@@ -79,8 +86,14 @@ impl Fixture {
             derived: None,
             health_config: &HealthConfig::default(),
         };
-        analyze(&HealthRuleRegistry::with_builtins(), config, &context, options, &cancel)
-            .expect("health analysis")
+        analyze(
+            &HealthRuleRegistry::with_builtins(),
+            config,
+            &context,
+            options,
+            &cancel,
+        )
+        .expect("health analysis")
     }
 }
 
@@ -101,7 +114,10 @@ fn maint_rule_finds_markers_and_avoids_false_positives() {
     // 不支持语言：词法规则不扫描（未知扩展名整行跳过，§117）。
     fixture.write("data.xyz", "// TODO in unknown language\n");
     // 解析失败文件：文件级规则仍运行（§116/§157）。
-    fixture.write("src/broken.ts", "// FIXME broken marker\nexport function broken() {\n  return (((\n");
+    fixture.write(
+        "src/broken.ts",
+        "// FIXME broken marker\nexport function broken() {\n  return (((\n",
+    );
     fixture.commit_all("base");
 
     let analysis = fixture.analyze(&HealthConfig::default(), &HealthOptions::default());
@@ -117,20 +133,19 @@ fn maint_rule_finds_markers_and_avoids_false_positives() {
     assert_eq!(markers.iter().filter(|m| **m == "FIXME").count(), 2);
 
     // 全部 Info/High（词法精确匹配），id 稳定含行号。
-    assert!(
-        analysis
-            .findings
-            .iter()
-            .all(|f| f.rule_id != "MAINT001" || f.id.as_str().starts_with("finding:MAINT001:src/"))
-    );
+    assert!(analysis
+        .findings
+        .iter()
+        .all(|f| f.rule_id != "MAINT001" || f.id.as_str().starts_with("finding:MAINT001:src/")));
     // 状态默认 Active；无诊断噪音（§208）。
-    assert!(
-        analysis
-            .findings
-            .iter()
-            .all(|f| f.status == FindingStatus::Active)
+    assert!(analysis
+        .findings
+        .iter()
+        .all(|f| f.status == FindingStatus::Active));
+    assert_eq!(
+        analysis.analysis_completeness,
+        prism_core::PrismCompleteness::Complete
     );
-    assert_eq!(analysis.analysis_completeness, prism_core::PrismCompleteness::Complete);
     assert!(analysis.checked_rules.contains(&"MAINT001".to_string()));
 
     // §161 确定性：再次运行输出一致。

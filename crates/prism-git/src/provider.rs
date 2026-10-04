@@ -509,19 +509,23 @@ impl GitProvider for CliGitProvider {
         if size_output.exit_code != Some(0) {
             return blob_failure("cat-file -s", &size_output);
         }
-        let size: u64 = size_output.stdout.trim().parse().map_err(|_| {
-            GitError::MalformedGitOutput {
-                command: "git cat-file -s".to_string(),
-                detail: format!("non-numeric size output: {:?}", size_output.stdout),
-            }
-        })?;
+        let size: u64 =
+            size_output
+                .stdout
+                .trim()
+                .parse()
+                .map_err(|_| GitError::MalformedGitOutput {
+                    command: "git cat-file -s".to_string(),
+                    detail: format!("non-numeric size output: {:?}", size_output.stdout),
+                })?;
         if size > max_bytes {
             return Ok(RevisionBlob::TooLarge { size_bytes: size });
         }
 
-        let blob_output = self
-            .runner
-            .run(&self.spec(root, &["cat-file", "blob", &object]), Some(cancel))?;
+        let blob_output = self.runner.run(
+            &self.spec(root, &["cat-file", "blob", &object]),
+            Some(cancel),
+        )?;
         if blob_output.exit_code != Some(0) {
             return blob_failure("cat-file blob", &blob_output);
         }
@@ -540,8 +544,10 @@ fn to_refs(args: &[String]) -> Vec<&str> {
 }
 
 /// cat-file 失败：路径缺失是正常事实（Missing），其余按命令失败上抛。
-fn blob_failure(command: &str, output: &prism_core::runtime::command::CommandOutput) ->
-    GitResult<RevisionBlob> {
+fn blob_failure(
+    command: &str,
+    output: &prism_core::runtime::command::CommandOutput,
+) -> GitResult<RevisionBlob> {
     let stderr = output.stderr.to_lowercase();
     let exit_code = output.exit_code;
     if stderr.contains("not a valid object name")

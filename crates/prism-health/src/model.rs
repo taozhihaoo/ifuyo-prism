@@ -271,9 +271,7 @@ mod tests {
             explanation: FindingExplanation {
                 what: "A TODO marker was detected in a comment.".to_string(),
                 evidence_summary: "line 3: // TODO: extract helper".to_string(),
-                why_it_matters: Some(
-                    "Marker comments often track unfinished work.".to_string(),
-                ),
+                why_it_matters: Some("Marker comments often track unfinished work.".to_string()),
             },
             location: FindingLocation::new("src/a.ts", 3, 5),
             related_locations: vec![],
@@ -311,8 +309,14 @@ mod tests {
         assert_eq!(json["severity"], "info");
         assert_eq!(json["confidence"], "high");
         assert_eq!(json["location"]["relative_path"], "src/a.ts");
-        assert_eq!(json["explanation"]["what"], "A TODO marker was detected in a comment.");
-        assert!(json.get("source_content").is_none(), "§14: no source in findings");
+        assert_eq!(
+            json["explanation"]["what"],
+            "A TODO marker was detected in a comment."
+        );
+        assert!(
+            json.get("source_content").is_none(),
+            "§14: no source in findings"
+        );
     }
 
     #[test]

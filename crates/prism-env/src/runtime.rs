@@ -302,7 +302,9 @@ fn venv_interpreter(dir: &Path) -> Option<std::path::PathBuf> {
         [vec!["bin", "python"], vec!["Scripts", "python"]]
     };
     for parts in candidates {
-        let candidate: std::path::PathBuf = parts.iter().fold(dir.to_path_buf(), |base, part| base.join(part));
+        let candidate: std::path::PathBuf = parts
+            .iter()
+            .fold(dir.to_path_buf(), |base, part| base.join(part));
         if candidate.is_file() {
             return Some(candidate);
         }
@@ -326,7 +328,9 @@ fn probe_venv_version(
     match run_probe(&probe, runner, working_directory, cancel) {
         ProbeResult::Output { text, .. } => {
             let raw = crate::probe::version_line(&text, "");
-            let version = raw.as_deref().and_then(crate::version::parse_version_output);
+            let version = raw
+                .as_deref()
+                .and_then(crate::version::parse_version_output);
             (version, raw)
         }
         _ => (None, None),
@@ -339,8 +343,12 @@ pub fn resolve_project_local(name: &str, project_root: &Path) -> Option<std::pat
     let mut candidates: Vec<std::path::PathBuf> = Vec::new();
     let bin_dirs = [
         project_root.join("node_modules").join(".bin"),
-        project_root.join(".venv").join(if cfg!(windows) { "Scripts" } else { "bin" }),
-        project_root.join("venv").join(if cfg!(windows) { "Scripts" } else { "bin" }),
+        project_root
+            .join(".venv")
+            .join(if cfg!(windows) { "Scripts" } else { "bin" }),
+        project_root
+            .join("venv")
+            .join(if cfg!(windows) { "Scripts" } else { "bin" }),
     ];
     for dir in bin_dirs {
         candidates.push(dir.join(name));
@@ -379,7 +387,10 @@ mod tests {
         assert_eq!(sdks[0].source, ToolSource::VersionManager);
         // 非语义化名字 ⇒ raw only，不猜（§29）。
         assert!(sdks[1].version.is_none());
-        assert_eq!(sdks[1].raw_version.as_deref(), Some("stable-x86_64-pc-windows-msvc"));
+        assert_eq!(
+            sdks[1].raw_version.as_deref(),
+            Some("stable-x86_64-pc-windows-msvc")
+        );
     }
 
     #[test]
@@ -449,7 +460,11 @@ mod tests {
             "package.json packageManager field"
         );
         assert_eq!(
-            pnpm.project_association.as_ref().unwrap().required_version.as_deref(),
+            pnpm.project_association
+                .as_ref()
+                .unwrap()
+                .required_version
+                .as_deref(),
             Some("9.0.0")
         );
         let _ = std::fs::remove_dir_all(&dir);
@@ -468,7 +483,11 @@ mod tests {
         let scripts = if cfg!(windows) { "Scripts" } else { "bin" };
         let bin = dir.join(".venv").join(scripts);
         std::fs::create_dir_all(&bin).unwrap();
-        let interpreter_name = if cfg!(windows) { "python.exe" } else { "python" };
+        let interpreter_name = if cfg!(windows) {
+            "python.exe"
+        } else {
+            "python"
+        };
         let interpreter = bin.join(interpreter_name);
         std::fs::write(&interpreter, "").unwrap(); // 探测会失败 ⇒ version None，§157 语义
         let cancel = CancellationToken::new();
@@ -478,7 +497,10 @@ mod tests {
         assert_eq!(venvs[0].kind, "venv");
         assert!(venvs[0].interpreter.is_some());
         assert!(!venvs[0].active, "not activated in test process");
-        assert!(venvs[0].version.is_none(), "fake interpreter ⇒ version unknown");
+        assert!(
+            venvs[0].version.is_none(),
+            "fake interpreter ⇒ version unknown"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -495,7 +517,11 @@ mod tests {
         let scripts = if cfg!(windows) { "Scripts" } else { "bin" };
         let bin = dir.join(".venv").join(scripts);
         std::fs::create_dir_all(&bin).unwrap();
-        let tool_name = if cfg!(windows) { "pytest.exe" } else { "pytest" };
+        let tool_name = if cfg!(windows) {
+            "pytest.exe"
+        } else {
+            "pytest"
+        };
         std::fs::write(bin.join(tool_name), "").unwrap();
         assert!(resolve_project_local("pytest", &dir).is_some());
         assert!(resolve_project_local("eslint", &dir).is_none());

@@ -32,9 +32,8 @@ pub fn db_path_from_env(value: &str) -> PathBuf {
 /// 平台 app-data 目录（§21：Windows AppData\Roaming；Unix XDG data home）。
 fn app_data_dir() -> PathBuf {
     if cfg!(windows) {
-        let base = std::env::var("APPDATA").unwrap_or_else(|_| {
-            std::env::var("USERPROFILE").unwrap_or_else(|_| ".".to_string())
-        });
+        let base = std::env::var("APPDATA")
+            .unwrap_or_else(|_| std::env::var("USERPROFILE").unwrap_or_else(|_| ".".to_string()));
         PathBuf::from(base)
     } else {
         std::env::var("XDG_DATA_HOME")

@@ -154,9 +154,8 @@ const MIGRATIONS: &[(&str, &str)] = &[(
             freshness TEXT NOT NULL,
             data_json TEXT NOT NULL,
             PRIMARY KEY (snapshot_id, domain)
-        );"
-    ),
-];
+        );",
+)];
 
 fn migrate(connection: &Connection) -> Result<(), StoreError> {
     connection
@@ -234,8 +233,8 @@ impl SqliteSnapshotStore {
 
     /// 内存库（§202 crash-safety / §217 可重复测试；不落盘）。
     pub fn open_in_memory() -> Result<Self, StoreError> {
-        let connection = Connection::open_in_memory()
-            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let connection =
+            Connection::open_in_memory().map_err(|err| StoreError::Unavailable(err.to_string()))?;
         migrate(&connection)?;
         Ok(SqliteSnapshotStore {
             connection: Mutex::new(connection),
@@ -291,7 +290,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query([canonical_root])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(ProjectRecord {
                 id: row.get(0)?,
                 display_name: row.get(1)?,
@@ -318,7 +320,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query([id])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(ProjectRecord {
                 id: row.get(0)?,
                 display_name: row.get(1)?,
@@ -350,7 +355,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query(rusqlite::params![project_id, state_fingerprint])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(row_to_snapshot_checked(row)?));
         }
         Ok(None)
@@ -430,7 +438,10 @@ impl SnapshotStore for SqliteSnapshotStore {
             .query([project_id])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
         let mut out = Vec::new();
-        while let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        while let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             out.push(row_to_snapshot(row)?);
         }
         Ok(out)
@@ -449,7 +460,10 @@ impl SnapshotStore for SqliteSnapshotStore {
         let mut rows = statement
             .query([id])
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
-        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+        if let Some(row) = rows
+            .next()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?
+        {
             return Ok(Some(row_to_snapshot(row)?));
         }
         Ok(None)
@@ -500,10 +514,7 @@ impl SnapshotStore for InMemorySnapshotStore {
             .inner
             .lock()
             .map_err(|_| StoreError::Unavailable("lock".into()))?;
-        let existing_id = inner
-            .projects_by_root
-            .get(&project.canonical_root)
-            .cloned();
+        let existing_id = inner.projects_by_root.get(&project.canonical_root).cloned();
         if let Some(existing_id) = existing_id {
             if let Some(existing) = inner.projects.get_mut(&existing_id) {
                 existing.display_name = project.display_name.clone();
@@ -555,8 +566,7 @@ impl SnapshotStore for InMemorySnapshotStore {
             .snapshots
             .values()
             .find(|snapshot| {
-                snapshot.project_id == project_id
-                    && snapshot.state_fingerprint == state_fingerprint
+                snapshot.project_id == project_id && snapshot.state_fingerprint == state_fingerprint
             })
             .cloned())
     }
@@ -570,7 +580,9 @@ impl SnapshotStore for InMemorySnapshotStore {
             .inner
             .lock()
             .map_err(|_| StoreError::Unavailable("lock".into()))?;
-        inner.snapshots.insert(snapshot.id.clone(), snapshot.clone());
+        inner
+            .snapshots
+            .insert(snapshot.id.clone(), snapshot.clone());
         inner.domains.insert(snapshot.id.clone(), domains.to_vec());
         Ok(())
     }

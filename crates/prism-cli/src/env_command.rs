@@ -23,11 +23,7 @@ pub fn run(
 }
 
 /// §237/§238 子命令：按节输出。
-pub fn run_section(
-    section: Section,
-    path: &Path,
-    json: bool,
-) -> i32 {
+pub fn run_section(section: Section, path: &Path, json: bool) -> i32 {
     scan_and_report(path, json, false, false, None, section)
 }
 
@@ -71,19 +67,15 @@ fn scan_and_report(
         include_all_tools: all_tools,
         ..Default::default()
     };
-    let mut snapshot = match EnvironmentService::scan(
-        path,
-        discovery.as_ref(),
-        &options,
-        runner.clone(),
-        &cancel,
-    ) {
-        Ok(snapshot) => snapshot,
-        Err(err) => {
-            eprintln!("prism: environment scan failed: {err}");
-            return crate::EXIT_ERROR;
-        }
-    };
+    let mut snapshot =
+        match EnvironmentService::scan(path, discovery.as_ref(), &options, runner.clone(), &cancel)
+        {
+            Ok(snapshot) => snapshot,
+            Err(err) => {
+                eprintln!("prism: environment scan failed: {err}");
+                return crate::EXIT_ERROR;
+            }
+        };
     snapshot.project_id = project.id.as_str().to_string();
 
     let wants_json = json || format == Some(crate::cli::HealthFormatArg::Json);
@@ -104,9 +96,7 @@ fn scan_and_report(
         }
     }
     if section == Section::Full && unsatisfied > 0 {
-        eprintln!(
-            "prism: {unsatisfied} environment requirement(s) unsatisfied"
-        );
+        eprintln!("prism: {unsatisfied} environment requirement(s) unsatisfied");
         return crate::EXIT_ERROR;
     }
     if section == Section::Full && strict && unknown > 0 {
@@ -117,7 +107,6 @@ fn scan_and_report(
     }
     crate::EXIT_OK
 }
-
 
 /// 分节/全量输出（§237/§239：stdout 只有数据）。
 fn report(
@@ -170,10 +159,7 @@ fn report(
         },
         Section::Requirements => {
             println!("Requirements ({} total)", snapshot.requirements.len());
-            for (requirement, matched) in snapshot
-                .requirements
-                .iter()
-                .zip(snapshot.matches.iter())
+            for (requirement, matched) in snapshot.requirements.iter().zip(snapshot.matches.iter())
             {
                 println!(
                     "  {:<16} {} {}  =>  {:<12} [{}]",

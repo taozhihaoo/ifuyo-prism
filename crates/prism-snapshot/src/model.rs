@@ -169,8 +169,7 @@ pub fn canonicalize(value: &serde_json::Value) -> serde_json::Value {
         serde_json::Value::Array(items) => {
             // Value 未实现 Ord：以 canonical 字符串为排序键（等价于对
             // canonical 形态排序，稳定性一致）。
-            let mut canonical: Vec<serde_json::Value> =
-                items.iter().map(canonicalize).collect();
+            let mut canonical: Vec<serde_json::Value> = items.iter().map(canonicalize).collect();
             canonical.sort_by_key(|value| value.to_string());
             serde_json::Value::Array(canonical)
         }

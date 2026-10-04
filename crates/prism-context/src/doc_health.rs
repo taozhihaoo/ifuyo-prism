@@ -64,7 +64,9 @@ pub fn extract_documented_commands(document: &str, content: &str) -> Vec<Documen
 pub fn extract_documented_paths(content: &str) -> Vec<String> {
     let mut out = Vec::new();
     for line in content.lines() {
-        for token in line.split(|c: char| !c.is_ascii_alphanumeric() && c != '/' && c != '.' && c != '_' && c != '-') {
+        for token in line.split(|c: char| {
+            !c.is_ascii_alphanumeric() && c != '/' && c != '.' && c != '_' && c != '-'
+        }) {
             let token = token.trim_matches('.');
             if token.len() < 4 || !token.contains('/') {
                 continue;
@@ -126,7 +128,10 @@ pub fn command_drift(
         .collect();
     for command in documented {
         let normalized = normalize_command(&command.program, &command.args);
-        if normalized_checks.iter().any(|(program, args)| *program == normalized.0 && *args == normalized.1) {
+        if normalized_checks
+            .iter()
+            .any(|(program, args)| *program == normalized.0 && *args == normalized.1)
+        {
             facts.push(format!(
                 "matched: {} {} ({}:{})",
                 command.program,
@@ -232,16 +237,26 @@ mod tests {
     fn command_extraction_and_normalization() {
         let content = "# Demo\n\n```bash\nnpm test\n```\n\n```sh\n$ cargo build --release\n```\n\nrandom text curl http://x\n";
         let commands = extract_documented_commands("README.md", content);
-        assert_eq!(commands.len(), 2, "curl 不在允许清单（§178 保守）: {commands:?}");
+        assert_eq!(
+            commands.len(),
+            2,
+            "curl 不在允许清单（§178 保守）: {commands:?}"
+        );
         assert_eq!(commands[0].line, 4);
         // §181：npm test ≡ npm run test。
         assert_eq!(
             normalize_command("npm", &["test".to_string()]),
-            ("npm".to_string(), vec!["run".to_string(), "test".to_string()])
+            (
+                "npm".to_string(),
+                vec!["run".to_string(), "test".to_string()]
+            )
         );
         assert_eq!(
             normalize_command("npm", &["run".to_string(), "test".to_string()]),
-            ("npm".to_string(), vec!["run".to_string(), "test".to_string()])
+            (
+                "npm".to_string(),
+                vec!["run".to_string(), "test".to_string()]
+            )
         );
     }
 
@@ -270,7 +285,10 @@ mod tests {
         let facts = command_drift(&documented, &checks);
         assert_eq!(facts.len(), 1);
         assert!(facts[0].starts_with("drift:"), "§65 command drift");
-        assert!(facts[0].contains("not automatically wrong"), "§69 不证明 README 错");
+        assert!(
+            facts[0].contains("not automatically wrong"),
+            "§69 不证明 README 错"
+        );
     }
 
     // §404：path exists / path missing。

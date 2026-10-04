@@ -125,7 +125,10 @@ impl StdCommandRunner {
     /// 在独立线程读取一个管道，避免子进程因缓冲区塞满而阻塞。
     /// 超过 `max_bytes` 只保留前 `max_bytes` 字节（head 保留策略），
     /// 由 `output_truncated` 标记（§201/§202：绝不静默截断）。
-    fn drain(pipe: impl Read + Send + 'static, max_bytes: usize) -> (mpsc::Receiver<String>, mpsc::Receiver<bool>) {
+    fn drain(
+        pipe: impl Read + Send + 'static,
+        max_bytes: usize,
+    ) -> (mpsc::Receiver<String>, mpsc::Receiver<bool>) {
         let (text_sender, text_receiver) = mpsc::channel();
         let (flag_sender, flag_receiver) = mpsc::channel();
         std::thread::spawn(move || {
@@ -205,11 +208,15 @@ impl CommandRunner for StdCommandRunner {
         let started = Instant::now();
         let deadline = started + Duration::from_millis(spec.timeout_ms);
         let mut child = Self::spawn(spec)?;
-        let max_bytes = spec.max_output_bytes.unwrap_or(Self::DEFAULT_MAX_OUTPUT_BYTES);
+        let max_bytes = spec
+            .max_output_bytes
+            .unwrap_or(Self::DEFAULT_MAX_OUTPUT_BYTES);
 
         // 静态保证已设置为 piped，expect 属于“明确不可达分支”。
-        let (stdout_rx, stdout_truncated) = Self::drain(child.stdout.take().expect("stdout was piped"), max_bytes);
-        let (stderr_rx, stderr_truncated) = Self::drain(child.stderr.take().expect("stderr was piped"), max_bytes);
+        let (stdout_rx, stdout_truncated) =
+            Self::drain(child.stdout.take().expect("stdout was piped"), max_bytes);
+        let (stderr_rx, stderr_truncated) =
+            Self::drain(child.stderr.take().expect("stderr was piped"), max_bytes);
 
         loop {
             if cancel.is_some_and(|token| token.is_cancelled()) {
@@ -218,7 +225,14 @@ impl CommandRunner for StdCommandRunner {
             }
             match child.try_wait()? {
                 Some(_status) => {
-                    return Self::finish(&mut child, stdout_rx, stderr_rx, stdout_truncated, stderr_truncated, started);
+                    return Self::finish(
+                        &mut child,
+                        stdout_rx,
+                        stderr_rx,
+                        stdout_truncated,
+                        stderr_truncated,
+                        started,
+                    );
                 }
                 None if Instant::now() >= deadline => {
                     Self::terminate(&mut child);

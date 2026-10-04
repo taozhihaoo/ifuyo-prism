@@ -61,14 +61,17 @@ mod tests {
 
     #[test]
     fn evidence_keeps_file_link_and_ranges() {
-        let evidence = ChangeEvidence::new(EvidenceSource::SymbolRangeOverlap, "hunk lines 31-34 overlap Foo.bar")
-            .with_file("fc:src/a.ts")
-            .with_ranges(vec![crate::model::ChangedRange {
-                old_start: Some(31),
-                old_lines: 4,
-                new_start: Some(31),
-                new_lines: 4,
-            }]);
+        let evidence = ChangeEvidence::new(
+            EvidenceSource::SymbolRangeOverlap,
+            "hunk lines 31-34 overlap Foo.bar",
+        )
+        .with_file("fc:src/a.ts")
+        .with_ranges(vec![crate::model::ChangedRange {
+            old_start: Some(31),
+            old_lines: 4,
+            new_start: Some(31),
+            new_lines: 4,
+        }]);
         let json = serde_json::to_value(&evidence).unwrap();
         assert_eq!(json["source"], "symbol_range_overlap");
         assert_eq!(json["file_change_id"], "fc:src/a.ts");

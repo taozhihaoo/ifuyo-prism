@@ -7,8 +7,8 @@ use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::CancellationToken;
 use prism_graph::DependencyService;
 use prism_impact::{
-    ImpactAnalysisService, ImpactCompleteness, ImpactKind, ImpactOptions, ImpactReason,
-    NodeKind, RiskSignalKind,
+    ImpactAnalysisService, ImpactCompleteness, ImpactKind, ImpactOptions, ImpactReason, NodeKind,
+    RiskSignalKind,
 };
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -85,7 +85,12 @@ impl Fixture {
             .expect("changeset")
             .expect("git repo");
         let discovery = prism_project::DiscoveryService::new()
-            .discover(&self.root, prism_project::ScanOptions::default(), &cancel, |_| {})
+            .discover(
+                &self.root,
+                prism_project::ScanOptions::default(),
+                &cancel,
+                |_| {},
+            )
             .expect("discovery");
         let model = CodeAnalysisService::new()
             .analyze(&discovery, CodeAnalysisOptions::default(), &cancel, |_| {})
@@ -148,18 +153,20 @@ fn main_scenario_body_change_propagates_to_callers_and_tests() {
         .find(|item| item.node_kind == NodeKind::FileModule && item.path == "checkout.test.ts")
         .expect("test module expected");
     assert_eq!(test_module.distance, 2);
-    assert!(test_module.impact_kinds.contains(&ImpactKind::TestCandidate));
-    assert!(test_module.reasons.contains(&ImpactReason::TransitiveDependency));
+    assert!(test_module
+        .impact_kinds
+        .contains(&ImpactKind::TestCandidate));
+    assert!(test_module
+        .reasons
+        .contains(&ImpactReason::TransitiveDependency));
 
     // 汇总与信号（§38/§40）：事实计数 + 跨模块事实信号，无总分。
     assert!(analysis.summary.direct_impacted_symbols >= 1);
     assert!(analysis.summary.potentially_affected_tests >= 1);
-    assert!(
-        analysis
-            .risk_signals
-            .iter()
-            .any(|signal| signal.kind == RiskSignalKind::CrossModuleImpact)
-    );
+    assert!(analysis
+        .risk_signals
+        .iter()
+        .any(|signal| signal.kind == RiskSignalKind::CrossModuleImpact));
     assert!(
         !analysis
             .risk_signals
@@ -211,13 +218,10 @@ fn deleted_symbol_reports_stale_callers() {
         "DeletedReferencedSymbol signal expected (§130)"
     );
     assert!(
-        analysis
-            .diagnostics
-            .iter()
-            .any(|d| matches!(
-                d.kind,
-                prism_impact::ImpactDiagnosticKind::UnresolvedRelationship
-            )),
+        analysis.diagnostics.iter().any(|d| matches!(
+            d.kind,
+            prism_impact::ImpactDiagnosticKind::UnresolvedRelationship
+        )),
         "unresolved relationship must be visible (§44/§131)"
     );
 }

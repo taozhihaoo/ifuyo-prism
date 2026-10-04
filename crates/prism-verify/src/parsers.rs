@@ -116,14 +116,19 @@ pub fn parse_dotnet_line(line: &str) -> Option<ToolDiagnostic> {
     let coords = &line[open + 1..close];
     let mut parts = coords.split(',');
     let line_no = parts.next()?.trim().parse::<u32>().ok()?;
-    let column = parts.next().and_then(|c| c.trim().parse::<u32>().ok()).unwrap_or(1);
+    let column = parts
+        .next()
+        .and_then(|c| c.trim().parse::<u32>().ok())
+        .unwrap_or(1);
     let remainder = &line[close + 3..];
     let (severity, code_and_message) = remainder.split_once(' ')?;
     let severity = severity.trim_end_matches(':');
     if severity != "error" && severity != "warning" {
         return None;
     }
-    let (code, message) = code_and_message.split_once(": ").unwrap_or(("", code_and_message));
+    let (code, message) = code_and_message
+        .split_once(": ")
+        .unwrap_or(("", code_and_message));
     Some(ToolDiagnostic {
         source: "dotnet".to_string(),
         code: code.to_string(),
@@ -331,15 +336,17 @@ mod tests {
     fn junit_parse_conservative_on_malformed() {
         let outcome = parse_junit("this is not xml at all");
         assert!(outcome.parser_error.is_some());
-        assert!(outcome.diagnostics.is_empty(), "§288: no panic, no fake data");
+        assert!(
+            outcome.diagnostics.is_empty(),
+            "§288: no panic, no fake data"
+        );
     }
 
     #[test]
     fn dotnet_error_line_parsed_with_location() {
-        let diagnostic = parse_dotnet_line(
-            "src/foo.cs(42,13): error CS0103: The name 'x' does not exist",
-        )
-        .expect("should parse");
+        let diagnostic =
+            parse_dotnet_line("src/foo.cs(42,13): error CS0103: The name 'x' does not exist")
+                .expect("should parse");
         assert_eq!(diagnostic.severity, "error");
         assert_eq!(diagnostic.code, "CS0103");
         assert_eq!(diagnostic.location.as_deref(), Some("src/foo.cs:42:13"));
@@ -423,8 +430,7 @@ mod tests {
     #[test]
     fn sarif_sniff_only_when_output_looks_like_sarif() {
         // SARIF JSON 打印在 stdout ⇒ 提取诊断，与 program 无关。
-        let diagnostics =
-            parse_failure_output("some-sarif-tool", SARIF_SAMPLE, "");
+        let diagnostics = parse_failure_output("some-sarif-tool", SARIF_SAMPLE, "");
         assert_eq!(diagnostics.len(), 3);
         assert_eq!(diagnostics[0].code, "CS0103");
 

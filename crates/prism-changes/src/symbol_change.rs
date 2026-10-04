@@ -72,11 +72,7 @@ pub struct SymbolChange {
 impl SymbolChange {
     /// 对外排序键：(path, name, change_type) —— 确定性输出（§63）。
     pub fn sort_key(&self) -> (&str, &str, SymbolChangeType) {
-        (
-            self.path.as_str(),
-            self.name.as_str(),
-            self.change_type,
-        )
+        (self.path.as_str(), self.name.as_str(), self.change_type)
     }
 
     /// LineRange 从 SourceRange（end 独占）取展示区间：两端含入。
@@ -114,12 +110,30 @@ mod tests {
     fn line_range_respects_exclusive_end() {
         // end 指向下一行第 1 列 ⇒ 最后一行不含。
         let r = SymbolChange::line_range(20, 46, 1);
-        assert_eq!(r, LineRange { start_line: 20, end_line: 45 });
+        assert_eq!(
+            r,
+            LineRange {
+                start_line: 20,
+                end_line: 45
+            }
+        );
         // end 与 start 同行（单行符号）不收缩。
         let single = SymbolChange::line_range(7, 8, 1);
-        assert_eq!(single, LineRange { start_line: 7, end_line: 7 });
+        assert_eq!(
+            single,
+            LineRange {
+                start_line: 7,
+                end_line: 7
+            }
+        );
         // end.column > 1 ⇒ end 行包含。
         let wide = SymbolChange::line_range(20, 45, 12);
-        assert_eq!(wide, LineRange { start_line: 20, end_line: 45 });
+        assert_eq!(
+            wide,
+            LineRange {
+                start_line: 20,
+                end_line: 45
+            }
+        );
     }
 }

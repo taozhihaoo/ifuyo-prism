@@ -37,8 +37,12 @@ impl Fixture {
         git(&["init", "-b", "main"]);
         git(&["config", "user.name", "Prism Test"]);
         git(&["config", "user.email", "test@prism.local"]);
-        std::fs::write(root.join("base.txt"), "base
-").unwrap();
+        std::fs::write(
+            root.join("base.txt"),
+            "base
+",
+        )
+        .unwrap();
         git(&["add", "-A"]);
         git(&["commit", "-m", "base"]);
         Fixture { root }
@@ -79,15 +83,8 @@ fn side_effects_recorded_from_git_status_diff() {
     let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
     let git = GitService::new(runner.clone());
 
-    let runs = execute_plan_observed(
-        &specs,
-        runner.clone(),
-        &fixture.root,
-        2,
-        &git,
-        &cancel,
-    )
-    .unwrap();
+    let runs =
+        execute_plan_observed(&specs, runner.clone(), &fixture.root, 2, &git, &cancel).unwrap();
 
     assert_eq!(runs.len(), 1);
     assert_eq!(runs[0].state, CheckState::Passed);

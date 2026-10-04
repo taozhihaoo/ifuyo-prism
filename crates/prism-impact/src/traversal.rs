@@ -15,7 +15,7 @@ use crate::model::{
     ImpactConfidence, ImpactKind, ImpactOptions, ImpactPath, ImpactReason, NodeKind, PathHop,
     RelationKind,
 };
-use prism_changes::{ChangeSet, MatchConfidence, MappingStatus, FileChangeType, SymbolChangeType};
+use prism_changes::{ChangeSet, FileChangeType, MappingStatus, MatchConfidence, SymbolChangeType};
 use prism_core::task::CancellationToken;
 use prism_graph::{DependencyGraphResult, DependencyKind, ResolutionStatus};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
@@ -181,11 +181,17 @@ pub struct NodeKey {
 
 impl NodeKey {
     pub fn module(id: &str) -> Self {
-        NodeKey { kind: NodeKind::FileModule, id: id.to_string() }
+        NodeKey {
+            kind: NodeKind::FileModule,
+            id: id.to_string(),
+        }
     }
 
     pub fn symbol(id: &str) -> Self {
-        NodeKey { kind: NodeKind::Symbol, id: id.to_string() }
+        NodeKey {
+            kind: NodeKind::Symbol,
+            id: id.to_string(),
+        }
     }
 
     pub fn state_key(&self) -> String {
@@ -412,12 +418,22 @@ pub fn traverse(
         let mut expansions: Vec<ReverseEdge> = Vec::new();
         match node.kind {
             NodeKind::FileModule | NodeKind::Package | NodeKind::Namespace | NodeKind::Project => {
-                expansions
-                    .extend(index.module_dependents.get(&node.id).cloned().unwrap_or_default());
+                expansions.extend(
+                    index
+                        .module_dependents
+                        .get(&node.id)
+                        .cloned()
+                        .unwrap_or_default(),
+                );
             }
             NodeKind::Symbol => {
-                expansions
-                    .extend(index.callers_by_symbol.get(&node.id).cloned().unwrap_or_default());
+                expansions.extend(
+                    index
+                        .callers_by_symbol
+                        .get(&node.id)
+                        .cloned()
+                        .unwrap_or_default(),
+                );
                 if deleted_symbol_ids.contains(&node.id) {
                     expansions.extend(deleted_symbol_callers(&node.id, seeds, index));
                 }
@@ -509,7 +525,10 @@ pub fn traverse(
         if state.reasons.contains(&ImpactReason::TransitiveCall) {
             kinds.insert(ImpactKind::TransitiveCaller);
         }
-        if state.reasons.contains(&ImpactReason::DependsOnChangedModule) {
+        if state
+            .reasons
+            .contains(&ImpactReason::DependsOnChangedModule)
+        {
             kinds.insert(ImpactKind::ModuleConsumer);
         }
         if state.reasons.contains(&ImpactReason::TransitiveDependency) {
@@ -617,11 +636,7 @@ fn edges_of_seed<'a>(seed: &Seed, index: &'a ReverseIndex) -> Vec<&'a ReverseEdg
 }
 
 /// 已删除符号的名字级调用者（§20）：精确限定名 HighConfidence；同名 Probable。
-fn deleted_symbol_callers(
-    node_id: &str,
-    seeds: &[Seed],
-    index: &ReverseIndex,
-) -> Vec<ReverseEdge> {
+fn deleted_symbol_callers(node_id: &str, seeds: &[Seed], index: &ReverseIndex) -> Vec<ReverseEdge> {
     let Some(seed) = seeds
         .iter()
         .find(|seed| seed.deleted_symbol && seed.key.id == node_id)
@@ -644,7 +659,10 @@ fn deleted_symbol_callers(
             }
         }
     };
-    collect(seed.before_qualified.as_ref(), ImpactConfidence::HighConfidence);
+    collect(
+        seed.before_qualified.as_ref(),
+        ImpactConfidence::HighConfidence,
+    );
     collect(seed.before_name.as_ref(), ImpactConfidence::Probable);
     edges
 }
@@ -696,7 +714,9 @@ fn display_for(key: &NodeKey, index: &ReverseIndex) -> (String, String) {
 
 /// state_key（"kind:id"）解码回 NodeKey。
 fn decode_state_key(state_key: &str) -> NodeKey {
-    let (kind, id) = state_key.split_once(':').unwrap_or(("file_module", state_key));
+    let (kind, id) = state_key
+        .split_once(':')
+        .unwrap_or(("file_module", state_key));
     let kind = match kind {
         "symbol" => NodeKind::Symbol,
         "package" => NodeKind::Package,
@@ -706,5 +726,8 @@ fn decode_state_key(state_key: &str) -> NodeKey {
         "documentation" => NodeKind::Documentation,
         _ => NodeKind::FileModule,
     };
-    NodeKey { kind, id: id.to_string() }
+    NodeKey {
+        kind,
+        id: id.to_string(),
+    }
 }

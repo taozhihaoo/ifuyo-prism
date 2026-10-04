@@ -6,8 +6,8 @@
 use prism_core::config::PrismConfig;
 use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
-use prism_verify::{discover_checks, render_html, render_text, CheckState};
 use prism_git::GitService;
+use prism_verify::{discover_checks, render_html, render_text, CheckState};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -114,9 +114,7 @@ pub fn run(
     if failed {
         return crate::EXIT_ERROR;
     }
-    if fail_on_unavailable
-        && (report.counts.unavailable > 0 || report.counts.blocked > 0)
-    {
+    if fail_on_unavailable && (report.counts.unavailable > 0 || report.counts.blocked > 0) {
         eprintln!(
             "prism: --fail-on-unavailable: {} unavailable / {} blocked",
             report.counts.unavailable, report.counts.blocked

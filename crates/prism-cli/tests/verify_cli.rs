@@ -71,7 +71,10 @@ fn verify_dry_run_shows_plan_without_execution() {
     assert!(text.contains("Verify Plan"));
     assert!(text.contains("npm run build"), "build check planned");
     assert!(text.contains("npm test"), "test check planned");
-    assert!(text.contains("package.json scripts.build"), "§236 provenance");
+    assert!(
+        text.contains("package.json scripts.build"),
+        "§236 provenance"
+    );
     assert!(!text.contains("deploy"), "§23: unknown script not invented");
     assert!(text.contains("No commands executed."));
 }
@@ -89,7 +92,10 @@ fn verify_json_outputs_stable_contract() {
     );
     let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     for field in ["plan", "runs", "conclusion", "counts", "completeness"] {
-        assert!(value.get(field).is_some(), "schema field {field} (§200-style)");
+        assert!(
+            value.get(field).is_some(),
+            "schema field {field} (§200-style)"
+        );
     }
     assert!(value["plan"]["checks"].as_array().unwrap().len() == 3);
 }

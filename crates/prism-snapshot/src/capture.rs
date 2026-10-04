@@ -53,9 +53,7 @@ pub fn resolve_project_identity(
         // §9：last_seen 更新。
         let mut seen = existing.clone();
         seen.last_seen_at = now.to_string();
-        store
-            .upsert_project(&seen)
-            .map_err(prism_store_error)?;
+        store.upsert_project(&seen).map_err(prism_store_error)?;
         return Ok(existing);
     }
     let record = ProjectRecord {
@@ -125,15 +123,33 @@ impl SnapshotCaptureService {
             Some(status) if status.repository.is_some() => {
                 let dirty = !status.entries.is_empty();
                 let revision = status.head.as_ref().and_then(|head| head.commit_id.clone());
-                let branch = status.head.as_ref().and_then(|head| head.branch_name.clone());
+                let branch = status
+                    .head
+                    .as_ref()
+                    .and_then(|head| head.branch_name.clone());
                 let _ = &branch;
                 if dirty {
-                    (SnapshotBasis::WorkingTree, revision, branch, "dirty".to_string())
+                    (
+                        SnapshotBasis::WorkingTree,
+                        revision,
+                        branch,
+                        "dirty".to_string(),
+                    )
                 } else {
-                    (SnapshotBasis::GitRevision, revision, branch, "clean".to_string())
+                    (
+                        SnapshotBasis::GitRevision,
+                        revision,
+                        branch,
+                        "clean".to_string(),
+                    )
                 }
             }
-            _ => (SnapshotBasis::WorkingTree, None, None, "non_git".to_string()),
+            _ => (
+                SnapshotBasis::WorkingTree,
+                None,
+                None,
+                "non_git".to_string(),
+            ),
         };
 
         // ---- M1 structure facts（规范化：文件计数 + 语言 + 目录）----
@@ -141,7 +157,12 @@ impl SnapshotCaptureService {
             serde_json::Value::Null
         } else {
             prism_project::DiscoveryService::new()
-                .discover(project_root, prism_project::ScanOptions::default(), cancel, |_| {})
+                .discover(
+                    project_root,
+                    prism_project::ScanOptions::default(),
+                    cancel,
+                    |_| {},
+                )
                 .ok()
                 .map(|discovery| {
                     serde_json::json!({
@@ -169,17 +190,29 @@ impl SnapshotCaptureService {
         for domain in DOMAINS {
             let (status, data, freshness) = match domain {
                 "structure" => match &structure_data {
-                    serde_json::Value::Null => (DomainStatus::Unavailable, serde_json::Value::Null, DomainFreshness::Unknown),
+                    serde_json::Value::Null => (
+                        DomainStatus::Unavailable,
+                        serde_json::Value::Null,
+                        DomainFreshness::Unknown,
+                    ),
                     value => {
                         if let Some(total) = value.get("total_files").and_then(|v| v.as_u64()) {
                             counts.insert("files".to_string(), total);
                         }
-                        (DomainStatus::Available, value.clone(), DomainFreshness::Fresh)
+                        (
+                            DomainStatus::Available,
+                            value.clone(),
+                            DomainFreshness::Fresh,
+                        )
                     }
                 },
                 "git" => {
                     if !options.include_git || status.is_none() {
-                        (DomainStatus::NotApplicable, serde_json::json!({ "present": false }), DomainFreshness::Unknown)
+                        (
+                            DomainStatus::NotApplicable,
+                            serde_json::json!({ "present": false }),
+                            DomainFreshness::Unknown,
+                        )
                     } else {
                         let git_data = serde_json::json!({
                             "basis": basis.as_str(),
@@ -191,8 +224,16 @@ impl SnapshotCaptureService {
                     }
                 }
                 other => match facts.data.get(other) {
-                    Some(value) => (DomainStatus::Available, value.clone(), DomainFreshness::Fresh),
-                    None => (DomainStatus::NotCaptured, serde_json::Value::Null, DomainFreshness::Unknown),
+                    Some(value) => (
+                        DomainStatus::Available,
+                        value.clone(),
+                        DomainFreshness::Fresh,
+                    ),
+                    None => (
+                        DomainStatus::NotCaptured,
+                        serde_json::Value::Null,
+                        DomainFreshness::Unknown,
+                    ),
                 },
             };
             let content_fingerprint = if data.is_null() {
@@ -200,14 +241,21 @@ impl SnapshotCaptureService {
             } else {
                 Some(fingerprint_value(&data))
             };
-            fingerprints.insert(domain.to_string(), fingerprint_value(&serde_json::json!({
-                "status": status.as_str(),
-                "content": data,
-            })));
+            fingerprints.insert(
+                domain.to_string(),
+                fingerprint_value(&serde_json::json!({
+                    "status": status.as_str(),
+                    "content": data,
+                })),
+            );
             limitations.push(format!(
                 "domain {domain}: {} ({})",
                 status.as_str(),
-                if data.is_null() { "no facts" } else { "facts captured" }
+                if data.is_null() {
+                    "no facts"
+                } else {
+                    "facts captured"
+                }
             ));
             domain_rows.push(DomainRow {
                 snapshot_id: String::new(), // insert 时由 service 填
@@ -253,7 +301,9 @@ impl SnapshotCaptureService {
                         .iter()
                         .map(|domain| format!("{}: {}", domain.domain, domain.status.as_str()))
                         .collect(),
-                    warnings: vec!["Snapshot unchanged; existing snapshot returned (§17).".to_string()],
+                    warnings: vec![
+                        "Snapshot unchanged; existing snapshot returned (§17).".to_string()
+                    ],
                     limitations,
                     persisted: true,
                 });
@@ -348,7 +398,10 @@ impl SnapshotCaptureService {
         else {
             return Ok(Vec::new());
         };
-        let records = self.store.list_snapshots(&project.id).map_err(prism_store_error)?;
+        let records = self
+            .store
+            .list_snapshots(&project.id)
+            .map_err(prism_store_error)?;
         Ok(records
             .into_iter()
             .map(|record| snapshot_from_record(record, &project))
@@ -357,7 +410,11 @@ impl SnapshotCaptureService {
 
     /// §105：取单条。
     pub fn get(&self, snapshot_id: &str) -> prism_core::PrismResult<Option<ProjectSnapshot>> {
-        let Some(record) = self.store.get_snapshot(snapshot_id).map_err(prism_store_error)? else {
+        let Some(record) = self
+            .store
+            .get_snapshot(snapshot_id)
+            .map_err(prism_store_error)?
+        else {
             return Ok(None);
         };
         let identity = self
@@ -474,8 +531,11 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         for index in 0..file_count {
-            std::fs::write(dir.join(format!("file-{index}.txt")), format!("content {index}"))
-                .unwrap();
+            std::fs::write(
+                dir.join(format!("file-{index}.txt")),
+                format!("content {index}"),
+            )
+            .unwrap();
         }
         dir
     }
@@ -489,13 +549,23 @@ mod tests {
         let cancel = CancellationToken::new();
 
         let first = service
-            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .capture(
+                &dir,
+                &DomainFacts::default(),
+                &SnapshotCaptureOptions::default(),
+                &cancel,
+            )
             .unwrap();
         assert!(first.created);
         assert!(!first.deduplicated);
 
         let second = service
-            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .capture(
+                &dir,
+                &DomainFacts::default(),
+                &SnapshotCaptureOptions::default(),
+                &cancel,
+            )
             .unwrap();
         assert!(!second.created, "§17: unchanged state must deduplicate");
         assert!(second.deduplicated);
@@ -506,12 +576,18 @@ mod tests {
             .capture(
                 &dir,
                 &DomainFacts::default(),
-                &SnapshotCaptureOptions { force: true, ..Default::default() },
+                &SnapshotCaptureOptions {
+                    force: true,
+                    ..Default::default()
+                },
                 &cancel,
             )
             .unwrap();
         assert!(forced.created);
-        assert_ne!(forced.snapshot_id, first.snapshot_id, "§18 observation vs snapshot");
+        assert_ne!(
+            forced.snapshot_id, first.snapshot_id,
+            "§18 observation vs snapshot"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -524,9 +600,13 @@ mod tests {
         let cancel = CancellationToken::new();
         let options = SnapshotCaptureOptions::default();
 
-        let first = service.capture(&dir, &DomainFacts::default(), &options, &cancel).unwrap();
+        let first = service
+            .capture(&dir, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
         std::fs::write(dir.join("new-file.ts"), "export {};").unwrap();
-        let second = service.capture(&dir, &DomainFacts::default(), &options, &cancel).unwrap();
+        let second = service
+            .capture(&dir, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
 
         assert!(first.created);
         assert!(second.created);
@@ -553,12 +633,19 @@ mod tests {
         let cancel = CancellationToken::new();
         let options = SnapshotCaptureOptions::default();
 
-        let snapshot_a = service.capture(&dir_a, &DomainFacts::default(), &options, &cancel).unwrap();
-        let snapshot_b = service.capture(&dir_b, &DomainFacts::default(), &options, &cancel).unwrap();
+        let snapshot_a = service
+            .capture(&dir_a, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
+        let snapshot_b = service
+            .capture(&dir_b, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
 
         assert_ne!(snapshot_a.snapshot_id, snapshot_b.snapshot_id);
         // A 的 history 不含 B；删 A 不影响 B（§199）。
-        let project_a = store.get_project_by_root(&dir_a.to_string_lossy()).unwrap().unwrap();
+        let project_a = store
+            .get_project_by_root(&dir_a.to_string_lossy())
+            .unwrap()
+            .unwrap();
         let deleted = store.delete_project_history(&project_a.id).unwrap();
         assert_eq!(deleted, 1);
         let b_history = service.list(&dir_b).unwrap();
@@ -590,15 +677,27 @@ mod tests {
         let service = SnapshotCaptureService::new(store);
         let cancel = CancellationToken::new();
         let result = service
-            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .capture(
+                &dir,
+                &DomainFacts::default(),
+                &SnapshotCaptureOptions::default(),
+                &cancel,
+            )
             .unwrap();
 
         let head_after = run_git(&["rev-parse", "HEAD"]);
         let status_after = run_git(&["status", "--porcelain"]);
         assert_eq!(head_before, head_after, "§114: HEAD unchanged");
         assert_eq!(status_before, status_after, "§114: status unchanged");
-        let snapshot = service.get(result.snapshot_id.as_str()).unwrap().expect("snapshot persisted");
-        assert_eq!(snapshot.basis, SnapshotBasis::GitRevision, "clean repo => GitRevision basis");
+        let snapshot = service
+            .get(result.snapshot_id.as_str())
+            .unwrap()
+            .expect("snapshot persisted");
+        assert_eq!(
+            snapshot.basis,
+            SnapshotBasis::GitRevision,
+            "clean repo => GitRevision basis"
+        );
         assert_eq!(result.status, CaptureStatus::Created);
         let _ = std::fs::remove_dir_all(&dir);
     }

@@ -128,7 +128,11 @@ pub fn compare_with_local(inspection: &CIInspection, local_ids: &[String]) -> Ve
             .last()
             .unwrap_or("")
             .to_string();
-        if local.iter().any(|id| id == &last || check.command.contains(last.as_str())) && !shared.contains(&last) {
+        if local
+            .iter()
+            .any(|id| id == &last || check.command.contains(last.as_str()))
+            && !shared.contains(&last)
+        {
             shared.push(last.clone());
         } else if !shared.contains(&last) && !ci_only.contains(&last) {
             ci_only.push(last);
@@ -174,10 +178,9 @@ mod tests {
         let inspection = inspect_github_actions(&dir);
         assert_eq!(inspection.provider, "github_actions");
         assert_eq!(inspection.checks.len(), 3);
-        assert!(inspection
-            .checks
-            .iter()
-            .any(|c| c.job == "test" && c.command == "npm run lint" && c.location.ends_with("ci.yml:6")));
+        assert!(inspection.checks.iter().any(|c| c.job == "test"
+            && c.command == "npm run lint"
+            && c.location.ends_with("ci.yml:6")));
         assert!(inspection
             .checks
             .iter()

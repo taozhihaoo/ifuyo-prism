@@ -15,13 +15,13 @@
 mod changes_command;
 mod cli;
 mod context_command;
-mod snapshot_command;
 mod env_command;
+mod git_command;
 mod health_command;
+mod impact_command;
+mod snapshot_command;
 mod verify_command;
 mod verify_subcommands;
-mod impact_command;
-mod git_command;
 
 use clap::{CommandFactory, Parser};
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
@@ -111,7 +111,14 @@ fn run() -> i32 {
             to,
             format,
             max_files,
-        }) => changes_command::run(&path, staged, from.as_deref(), to.as_deref(), format, max_files),
+        }) => changes_command::run(
+            &path,
+            staged,
+            from.as_deref(),
+            to.as_deref(),
+            format,
+            max_files,
+        ),
         Some(cli::Command::Health {
             path,
             json,
@@ -123,9 +130,7 @@ fn run() -> i32 {
             max_files,
             command,
         }) => match command {
-            Some(cli::HealthCommand::Rules { json }) => {
-                health_command::run_rules(&path, json)
-            }
+            Some(cli::HealthCommand::Rules { json }) => health_command::run_rules(&path, json),
             None => health_command::run_analyze(
                 &path,
                 if json {
@@ -153,12 +158,14 @@ fn run() -> i32 {
             Some(cli::VerifyCommand::Checks { path: sub_path, .. }) => {
                 verify_subcommands::run_checks(&sub_path)
             }
-            Some(cli::VerifyCommand::Ci { path: sub_path, json: _ }) => {
-                verify_subcommands::run_ci(&sub_path)
-            }
-            Some(cli::VerifyCommand::Release { path: sub_path, json: _ }) => {
-                verify_subcommands::run_release(&sub_path)
-            }
+            Some(cli::VerifyCommand::Ci {
+                path: sub_path,
+                json: _,
+            }) => verify_subcommands::run_ci(&sub_path),
+            Some(cli::VerifyCommand::Release {
+                path: sub_path,
+                json: _,
+            }) => verify_subcommands::run_release(&sub_path),
             None => verify_command::run(
                 &path,
                 if json {
@@ -181,18 +188,22 @@ fn run() -> i32 {
             format,
             command,
         }) => match command {
-            Some(cli::EnvCommand::Requirements { path: sub, json: sub_json }) => {
-                env_command::run_section(env_command::Section::Requirements, &sub, sub_json)
-            }
-            Some(cli::EnvCommand::Tools { path: sub, json: sub_json }) => {
-                env_command::run_section(env_command::Section::Tools, &sub, sub_json)
-            }
-            Some(cli::EnvCommand::Ports { path: sub, json: sub_json }) => {
-                env_command::run_section(env_command::Section::Ports, &sub, sub_json)
-            }
-            Some(cli::EnvCommand::Processes { path: sub, json: sub_json }) => {
-                env_command::run_section(env_command::Section::Processes, &sub, sub_json)
-            }
+            Some(cli::EnvCommand::Requirements {
+                path: sub,
+                json: sub_json,
+            }) => env_command::run_section(env_command::Section::Requirements, &sub, sub_json),
+            Some(cli::EnvCommand::Tools {
+                path: sub,
+                json: sub_json,
+            }) => env_command::run_section(env_command::Section::Tools, &sub, sub_json),
+            Some(cli::EnvCommand::Ports {
+                path: sub,
+                json: sub_json,
+            }) => env_command::run_section(env_command::Section::Ports, &sub, sub_json),
+            Some(cli::EnvCommand::Processes {
+                path: sub,
+                json: sub_json,
+            }) => env_command::run_section(env_command::Section::Processes, &sub, sub_json),
             None => env_command::run(&path, json, strict, all_tools, refresh, format),
         },
         Some(cli::Command::Snapshot {
@@ -201,11 +212,9 @@ fn run() -> i32 {
             note,
             json,
         }) => snapshot_command::run_capture(&path, force, note, json),
-        Some(cli::Command::History {
-            path,
-            json,
-            limit,
-        }) => snapshot_command::run_history(&path, json, limit),
+        Some(cli::Command::History { path, json, limit }) => {
+            snapshot_command::run_history(&path, json, limit)
+        }
         Some(cli::Command::Context {
             path,
             task,

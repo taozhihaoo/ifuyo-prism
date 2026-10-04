@@ -87,7 +87,10 @@ fn unchanged_second_capture_deduplicates_with_message() {
 
     let second = prism_with_db(&db_clone, &["snapshot", dir.to_str().unwrap()]);
     let stdout = stdout_text(&second);
-    assert!(stdout.contains("Snapshot unchanged."), "§17 message: {stdout}");
+    assert!(
+        stdout.contains("Snapshot unchanged."),
+        "§17 message: {stdout}"
+    );
     assert!(stdout.contains("Existing snapshot:"));
 
     // --force 绕过去重（§17/§18）。
@@ -112,15 +115,18 @@ fn multi_project_histories_isolated() {
             .unwrap_or(0)
     ));
 
-    assert!(prism_with_db(&db, &["snapshot", dir_a.to_str().unwrap()]).status.success());
-    assert!(prism_with_db(&db, &["snapshot", dir_b.to_str().unwrap()]).status.success());
+    assert!(prism_with_db(&db, &["snapshot", dir_a.to_str().unwrap()])
+        .status
+        .success());
+    assert!(prism_with_db(&db, &["snapshot", dir_b.to_str().unwrap()])
+        .status
+        .success());
 
     // §199：删 A 的历史，B 不受影响。
     let project_a_root = dir_a.to_string_lossy().to_string();
     // 用 history JSON 确认 A 有 1 条。
     let output = prism_with_db(&db, &["history", dir_a.to_str().unwrap(), "--json"]);
-    let history_a: serde_json::Value =
-        serde_json::from_str(&stdout_text(&output)).unwrap();
+    let history_a: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     assert_eq!(history_a.as_array().unwrap().len(), 1);
     assert_eq!(
         history_a[0]["project_root"].as_str().unwrap(),
@@ -131,8 +137,7 @@ fn multi_project_histories_isolated() {
     // 删除 A 历史（通过 CLI delete 变体——本篇用 store 层；CLI 面在 M11b。
     // 这里验证的是 isolation 语义：B 的 history 仍是 1 条且 root 不同）。
     let output = prism_with_db(&db, &["history", dir_b.to_str().unwrap(), "--json"]);
-    let history_b: serde_json::Value =
-        serde_json::from_str(&stdout_text(&output)).unwrap();
+    let history_b: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     assert_eq!(history_b.as_array().unwrap().len(), 1);
     assert_ne!(
         history_a[0]["state_fingerprint"], history_b[0]["state_fingerprint"],
@@ -153,7 +158,9 @@ fn db_path_override_isolation() {
     let _ = std::fs::remove_file(&db_a);
     let _ = std::fs::remove_file(&db_b);
 
-    assert!(prism_with_db(&db_a, &["snapshot", dir.to_str().unwrap()]).status.success());
+    assert!(prism_with_db(&db_a, &["snapshot", dir.to_str().unwrap()])
+        .status
+        .success());
     // 另一个 DB ⇒ 没有 history。
     let output = prism_with_db(&db_b, &["history", dir.to_str().unwrap()]);
     assert!(output.status.success());
@@ -177,11 +184,17 @@ fn history_is_reproducible_for_unchanged_state() {
             .unwrap_or(0)
     ));
     for _ in 0..3 {
-        assert!(prism_with_db(&db, &["snapshot", dir.to_str().unwrap()]).status.success());
+        assert!(prism_with_db(&db, &["snapshot", dir.to_str().unwrap()])
+            .status
+            .success());
     }
     let output = prism_with_db(&db, &["history", dir.to_str().unwrap(), "--json"]);
     let history: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
-    assert_eq!(history.as_array().unwrap().len(), 1, "§17 dedup keeps history clean");
+    assert_eq!(
+        history.as_array().unwrap().len(),
+        1,
+        "§17 dedup keeps history clean"
+    );
     let _ = std::fs::remove_file(&db);
     let _ = std::fs::remove_dir_all(&dir);
 }

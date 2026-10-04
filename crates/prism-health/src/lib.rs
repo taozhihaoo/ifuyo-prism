@@ -21,7 +21,9 @@ pub mod render;
 pub mod rules;
 
 pub use derived::{DerivedFacts, SymbolMetrics};
-pub use engine::{analyze, HealthAnalysis, HealthContext, HealthEngineStats, HealthOptions, HealthScope};
+pub use engine::{
+    analyze, HealthAnalysis, HealthContext, HealthEngineStats, HealthOptions, HealthScope,
+};
 pub use model::{
     ChangeRelation, Evidence, EvidenceKind, Finding, FindingCategory, FindingExplanation,
     FindingId, FindingLocation, FindingStatus, HealthDiagnostic, HealthSummary, RuleResult,

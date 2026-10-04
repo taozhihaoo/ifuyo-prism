@@ -146,7 +146,12 @@ pub struct ChangeSet {
 
 impl ChangeSet {
     /// 确定性身份（§6）。同一 Git 状态 + 同一 scope ⇒ 同一 id。
-    pub fn derive_id(repository: Option<&str>, base: &str, target: &str, scope: ChangeScope) -> String {
+    pub fn derive_id(
+        repository: Option<&str>,
+        base: &str,
+        target: &str,
+        scope: ChangeScope,
+    ) -> String {
         format!(
             "changeset:{}#{}#{}#{}",
             repository.unwrap_or("unknown"),
@@ -163,8 +168,18 @@ mod tests {
 
     #[test]
     fn identity_is_deterministic_and_path_free() {
-        let a = ChangeSet::derive_id(Some("prism"), "abc123", "worktree", ChangeScope::WorkingTree);
-        let b = ChangeSet::derive_id(Some("prism"), "abc123", "worktree", ChangeScope::WorkingTree);
+        let a = ChangeSet::derive_id(
+            Some("prism"),
+            "abc123",
+            "worktree",
+            ChangeScope::WorkingTree,
+        );
+        let b = ChangeSet::derive_id(
+            Some("prism"),
+            "abc123",
+            "worktree",
+            ChangeScope::WorkingTree,
+        );
         assert_eq!(a, b);
         assert!(a.starts_with("changeset:prism#abc123#worktree#working_tree"));
         assert!(!a.contains('\\'), "no absolute paths in identity");

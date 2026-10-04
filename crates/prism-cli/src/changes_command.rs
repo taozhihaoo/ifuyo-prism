@@ -3,7 +3,9 @@
 //! 退出码沿用 M0/M4 契约：6 = 非 Git 项目；3 = 无效 revision；
 //! 4 = 取消；1 = 其他失败。
 
-use prism_changes::{render_markdown, render_text, ChangeScope, ChangeSetOptions, ChangeSetService};
+use prism_changes::{
+    render_markdown, render_text, ChangeScope, ChangeSetOptions, ChangeSetService,
+};
 use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
 use std::path::Path;
@@ -19,10 +21,7 @@ pub fn run(
 ) -> i32 {
     // 路径不存在 = 输入无效（与 scan/inspect 契约一致）。
     if !path.exists() {
-        eprintln!(
-            "prism: path does not exist: {}",
-            path.to_string_lossy()
-        );
+        eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
     }
     let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
@@ -43,14 +42,15 @@ pub fn run(
     match service.build(path, scope, from, to, &options, &cancel) {
         Ok(Some(changeset)) => {
             match format {
-                crate::cli::ChangesFormatArg::Json => match serde_json::to_string_pretty(&changeset)
-                {
-                    Ok(text) => println!("{text}"),
-                    Err(err) => {
-                        eprintln!("prism: failed to serialize changeset: {err}");
-                        return crate::EXIT_ERROR;
+                crate::cli::ChangesFormatArg::Json => {
+                    match serde_json::to_string_pretty(&changeset) {
+                        Ok(text) => println!("{text}"),
+                        Err(err) => {
+                            eprintln!("prism: failed to serialize changeset: {err}");
+                            return crate::EXIT_ERROR;
+                        }
                     }
-                },
+                }
                 crate::cli::ChangesFormatArg::Text => print!("{}", render_text(&changeset)),
                 crate::cli::ChangesFormatArg::Markdown => print!("{}", render_markdown(&changeset)),
             }

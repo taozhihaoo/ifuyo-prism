@@ -201,7 +201,10 @@ pub fn evaluate(pack: &ContextPack, inputs: &HealthInputs) -> ContextHealth {
         {
             if let Some(path) = &item.source.path {
                 let name = path.rsplit('/').next().unwrap_or(path).to_string();
-                instruction_roots.entry(name).or_default().push(path.clone());
+                instruction_roots
+                    .entry(name)
+                    .or_default()
+                    .push(path.clone());
             }
         }
     }
@@ -247,10 +250,7 @@ pub fn evaluate(pack: &ContextPack, inputs: &HealthInputs) -> ContextHealth {
         "available"
     };
     let docs_str = if inputs.docs_count > 0 {
-        if findings
-            .iter()
-            .any(|finding| finding.rule_id == "CTX011")
-        {
+        if findings.iter().any(|finding| finding.rule_id == "CTX011") {
             "conflicts"
         } else {
             "covered"
@@ -277,9 +277,7 @@ pub fn evaluate(pack: &ContextPack, inputs: &HealthInputs) -> ContextHealth {
         .contains(&crate::model::RiskSignalKind::DocumentationConflict);
     let status = if has_conflict {
         ContextHealthStatus::Conflict
-    } else if critical_truncated
-        || pack.manifest.status == crate::model::PackStatus::Incomplete
-    {
+    } else if critical_truncated || pack.manifest.status == crate::model::PackStatus::Incomplete {
         ContextHealthStatus::Incomplete
     } else if findings
         .iter()

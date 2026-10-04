@@ -40,7 +40,11 @@ fn redact_line(line: &str) -> String {
             let after_key = &lower[pos + fragment.len()..];
             let trimmed = after_key.trim_start();
             if trimmed.starts_with('=') || trimmed.starts_with(':') {
-                return format!("{}{} [REDACTED]", &line[..pos + fragment.len()], &trimmed[..1]);
+                return format!(
+                    "{}{} [REDACTED]",
+                    &line[..pos + fragment.len()],
+                    &trimmed[..1]
+                );
             }
         }
     }
@@ -86,10 +90,7 @@ mod tests {
 
     #[test]
     fn redacts_key_value_lines() {
-        assert_eq!(
-            redact_text("NPM_TOKEN=eyJhbGciOi"),
-            "NPM_TOKEN= [REDACTED]"
-        );
+        assert_eq!(redact_text("NPM_TOKEN=eyJhbGciOi"), "NPM_TOKEN= [REDACTED]");
         assert_eq!(
             redact_text("MY_PASSWORD: hunter22019"),
             "MY_PASSWORD: [REDACTED]"

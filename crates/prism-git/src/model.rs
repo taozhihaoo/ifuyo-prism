@@ -292,13 +292,9 @@ pub struct GitDiff {
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum RevisionBlob {
     /// UTF-8 文本，字节长度已与 blob 大小核对一致。
-    Text {
-        content: String,
-    },
+    Text { content: String },
     /// 超过调用方字节上限（未读取内容）。
-    TooLarge {
-        size_bytes: u64,
-    },
+    TooLarge { size_bytes: u64 },
     /// 非 UTF-8（或读取失真）：内容不可靠，显式不可用而非空内容。
     EncodingUnsupported,
     /// 该 revision 中不存在此路径。

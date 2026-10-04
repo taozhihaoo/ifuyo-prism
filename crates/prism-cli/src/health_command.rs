@@ -11,8 +11,7 @@ use prism_core::runtime::command::{CommandRunner, StdCommandRunner};
 use prism_core::task::CancellationToken;
 use prism_graph::DependencyService;
 use prism_health::{
-    render_html, render_markdown, render_text, HealthOptions, HealthRuleRegistry,
-    HealthScope,
+    render_html, render_markdown, render_text, HealthOptions, HealthRuleRegistry, HealthScope,
 };
 use std::path::Path;
 use std::sync::Arc;
@@ -139,7 +138,10 @@ pub fn run_analyze(
                 ChangeScope::WorkingTree,
                 None,
                 None,
-                &ChangeSetOptions { max_files, ..ChangeSetOptions::default() },
+                &ChangeSetOptions {
+                    max_files,
+                    ..ChangeSetOptions::default()
+                },
                 &cancel,
             )
             .ok()
@@ -169,8 +171,15 @@ pub fn run_analyze(
         }
     };
 
-    let scope = if changed { HealthScope::ImpactedItems } else { HealthScope::FullProject };
-    let options = HealthOptions { scope, ..HealthOptions::default() };
+    let scope = if changed {
+        HealthScope::ImpactedItems
+    } else {
+        HealthScope::FullProject
+    };
+    let options = HealthOptions {
+        scope,
+        ..HealthOptions::default()
+    };
     let context = prism_health::HealthContext {
         project: &discovery.project,
         code_model: Some(&model),
@@ -192,7 +201,9 @@ pub fn run_analyze(
     ) {
         Ok(mut analysis) => {
             if let Some(rule_id) = rule {
-                analysis.findings.retain(|finding| finding.rule_id == rule_id);
+                analysis
+                    .findings
+                    .retain(|finding| finding.rule_id == rule_id);
             }
             if let Some(category) = category {
                 analysis.findings.retain(|finding| {
@@ -200,8 +211,7 @@ pub fn run_analyze(
                 });
             }
             // 过滤后 summary 重算（§10 计数保持真实）。
-            analysis.summary =
-                prism_health::HealthSummary::from_findings(analysis.findings.iter());
+            analysis.summary = prism_health::HealthSummary::from_findings(analysis.findings.iter());
             match format {
                 crate::cli::HealthFormatArg::Json => {
                     match serde_json::to_string_pretty(&analysis) {

@@ -38,7 +38,9 @@ fn path_matches(path: &str, needle: &str) -> bool {
     if needle.is_empty() {
         return false;
     }
-    normalized.to_ascii_lowercase().contains(&needle.to_ascii_lowercase())
+    normalized
+        .to_ascii_lowercase()
+        .contains(&needle.to_ascii_lowercase())
 }
 
 impl HealthRule for ForbiddenDependencyRule {
@@ -80,15 +82,11 @@ impl HealthRule for ForbiddenDependencyRule {
                 continue;
             };
             for (from, to) in &forbidden {
-                if !path_matches(&dependency.source_path, from)
-                    || !path_matches(target_path, to)
-                {
+                if !path_matches(&dependency.source_path, from) || !path_matches(target_path, to) {
                     continue;
                 }
-                let stable_key = format!(
-                    "{}#{}#{}#{}",
-                    dependency.source_path, target_path, from, to
-                );
+                let stable_key =
+                    format!("{}#{}#{}#{}", dependency.source_path, target_path, from, to);
                 result.findings.push(Finding {
                     id: Finding::derive_id("ARCH004", &stable_key),
                     rule_id: "ARCH004".to_string(),

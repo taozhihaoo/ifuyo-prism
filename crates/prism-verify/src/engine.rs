@@ -24,10 +24,7 @@ pub fn build_plan(
 }
 
 /// --check 选择（§147/§148）：unknown id 显式报错。
-fn select_specs(
-    specs: &[CheckSpec],
-    options: &VerifyOptions,
-) -> PrismResult<Vec<CheckSpec>> {
+fn select_specs(specs: &[CheckSpec], options: &VerifyOptions) -> PrismResult<Vec<CheckSpec>> {
     match &options.selected {
         None => Ok(specs.to_vec()),
         Some(selected) => {

@@ -34,7 +34,9 @@ fn category_label(category: FindingCategory) -> &'static str {
 fn completeness_label(completeness: prism_core::PrismCompleteness) -> &'static str {
     match completeness {
         prism_core::PrismCompleteness::Complete => "complete",
-        prism_core::PrismCompleteness::Partial => "partial (some rules failed or inputs unavailable)",
+        prism_core::PrismCompleteness::Partial => {
+            "partial (some rules failed or inputs unavailable)"
+        }
         prism_core::PrismCompleteness::Truncated => "truncated (limits reached)",
         prism_core::PrismCompleteness::Failed => "failed",
     }
@@ -66,12 +68,14 @@ fn finding_block(out: &mut String, finding: &Finding) {
     let _ = writeln!(out, "  What: {}", finding.explanation.what);
     let _ = writeln!(out, "  Evidence: {}", finding.explanation.evidence_summary);
     if let Some(why) = &finding.explanation.why_it_matters {
-        let _ = writeln!(out,  "  Why it matters: {why}");
+        let _ = writeln!(out, "  Why it matters: {why}");
     }
     let _ = writeln!(
         out,
         "  Confidence: {}",
-        format!("{:?}", finding.confidence).to_ascii_lowercase().trim_matches('"')
+        format!("{:?}", finding.confidence)
+            .to_ascii_lowercase()
+            .trim_matches('"')
     );
     out.push('\n');
 }
@@ -125,7 +129,11 @@ pub fn render_markdown(analysis: &HealthAnalysis) -> String {
     out.push_str("# Prism Health Report\n\n");
     let _ = writeln!(out, "- Project: `{}`", analysis.project_name);
     let _ = writeln!(out, "- Scope: `{:?}`", analysis.scope);
-    let _ = writeln!(out, "- Completeness: **{}**", completeness_label(analysis.analysis_completeness));
+    let _ = writeln!(
+        out,
+        "- Completeness: **{}**",
+        completeness_label(analysis.analysis_completeness)
+    );
     let _ = writeln!(out, "- Findings: {}", summary.total_findings);
     let _ = writeln!(
         out,
@@ -149,12 +157,7 @@ pub fn render_markdown(analysis: &HealthAnalysis) -> String {
     for (category, findings) in &by_category {
         let _ = writeln!(out, "## {} ({})\n", cap(category), findings.len());
         for finding in findings {
-            let _ = writeln!(
-                out,
-                "### {} — {}\n",
-                finding.rule_id,
-                finding.title
-            );
+            let _ = writeln!(out, "### {} — {}\n", finding.rule_id, finding.title);
             let _ = writeln!(
                 out,
                 "- Location: `{}:{}`",
@@ -276,9 +279,7 @@ fn html_escape(value: &str) -> String {
 
 impl HealthAnalysis {
     /// 诊断列表（渲染辅助；避免渲染层直接触碰内部字段命名漂移）。
-    pub fn riskless_diagnostics(
-        &self,
-    ) -> &[crate::model::HealthDiagnostic] {
+    pub fn riskless_diagnostics(&self) -> &[crate::model::HealthDiagnostic] {
         &self.diagnostics
     }
 }

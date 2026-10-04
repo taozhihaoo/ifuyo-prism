@@ -57,7 +57,8 @@ impl FileModel {
 pub fn parse_succeeded(status: prism_parser::ParseStatus) -> bool {
     matches!(
         status,
-        prism_parser::ParseStatus::Successful | prism_parser::ParseStatus::SuccessfulWithDiagnostics
+        prism_parser::ParseStatus::Successful
+            | prism_parser::ParseStatus::SuccessfulWithDiagnostics
     )
 }
 
@@ -139,7 +140,11 @@ pub struct GitRevisionSource {
 
 impl GitRevisionSource {
     /// `revision` 为任意 rev 表达式；index 侧传 ":0"。
-    pub fn new(runner: Arc<dyn prism_core::CommandRunner>, root: impl Into<PathBuf>, revision: impl Into<String>) -> Self {
+    pub fn new(
+        runner: Arc<dyn prism_core::CommandRunner>,
+        root: impl Into<PathBuf>,
+        revision: impl Into<String>,
+    ) -> Self {
         GitRevisionSource {
             service: GitService::with_provider(Arc::new(CliGitProvider::new(runner))),
             root: root.into(),
@@ -206,7 +211,12 @@ pub fn build_side_model(
                             break;
                         }
                         results.push(build_file_model(
-                            &classifier, &registry, &path, source, max_bytes, cancel,
+                            &classifier,
+                            &registry,
+                            &path,
+                            source,
+                            max_bytes,
+                            cancel,
                         ));
                     }
                     results

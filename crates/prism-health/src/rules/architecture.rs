@@ -26,7 +26,10 @@ fn module_paths(graph: &prism_graph::DependencyGraphResult) -> BTreeMap<String, 
         .map(|module| {
             (
                 module.id.as_str().to_string(),
-                module.path.clone().unwrap_or_else(|| module.id.as_str().to_string()),
+                module
+                    .path
+                    .clone()
+                    .unwrap_or_else(|| module.id.as_str().to_string()),
             )
         })
         .collect()
@@ -50,7 +53,10 @@ fn fan_finding(
     paths: &BTreeMap<String, String>,
     threshold_meaning: &str,
 ) -> Finding {
-    let path = paths.get(module_id).cloned().unwrap_or_else(|| module_id.to_string());
+    let path = paths
+        .get(module_id)
+        .cloned()
+        .unwrap_or_else(|| module_id.to_string());
     Finding {
         id: Finding::derive_id(rule_id, module_id),
         rule_id: rule_id.to_string(),
@@ -130,11 +136,7 @@ impl HealthRule for CircularDependencyRule {
             if cycle.nodes.len() < 2 {
                 continue;
             }
-            let members: Vec<String> = cycle
-                .nodes
-                .iter()
-                .map(|id| module_name(id))
-                .collect();
+            let members: Vec<String> = cycle.nodes.iter().map(|id| module_name(id)).collect();
             let path = paths
                 .get(&cycle.nodes[0])
                 .cloned()
@@ -146,7 +148,10 @@ impl HealthRule for CircularDependencyRule {
                     Evidence::new(
                         EvidenceKind::Relationship,
                         node.clone(),
-                        format!("{} participates in the detected dependency cycle", module_name(node)),
+                        format!(
+                            "{} participates in the detected dependency cycle",
+                            module_name(node)
+                        ),
                     )
                 })
                 .collect();
@@ -200,7 +205,8 @@ static ARCH002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "ARCH002",
     name: "Excessive Module Fan-out",
     category: FindingCategory::Architecture,
-    description: "Module fan-out (resolved outgoing dependencies) exceeds the configured threshold.",
+    description:
+        "Module fan-out (resolved outgoing dependencies) exceeds the configured threshold.",
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: Some("module fan-out (resolved outgoing dependencies) threshold"),
@@ -305,7 +311,10 @@ fn evaluate_fan(
                 *count,
                 threshold,
                 &paths,
-                META_FAN_MEANING.get(direction).copied().unwrap_or(direction),
+                META_FAN_MEANING
+                    .get(direction)
+                    .copied()
+                    .unwrap_or(direction),
             ));
         }
     }

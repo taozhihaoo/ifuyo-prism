@@ -57,7 +57,9 @@ impl HealthRuleRegistry {
         registry.register(Box::new(crate::rules::architecture::CircularDependencyRule));
         registry.register(Box::new(crate::rules::architecture::FanOutRule));
         registry.register(Box::new(crate::rules::architecture::FanInRule));
-        registry.register(Box::new(crate::rules::forbidden_dependency::ForbiddenDependencyRule));
+        registry.register(Box::new(
+            crate::rules::forbidden_dependency::ForbiddenDependencyRule,
+        ));
         registry.register(Box::new(crate::rules::dependency::UnresolvedDependencyRule));
         registry.register(Box::new(crate::rules::dependency::AmbiguousDependencyRule));
         registry.register(Box::new(crate::rules::code::HighComplexityRule));
@@ -105,7 +107,11 @@ impl std::fmt::Debug for HealthRuleRegistry {
         f.debug_struct("HealthRuleRegistry")
             .field(
                 "rule_ids",
-                &self.rules.iter().map(|rule| rule.meta().id).collect::<Vec<_>>(),
+                &self
+                    .rules
+                    .iter()
+                    .map(|rule| rule.meta().id)
+                    .collect::<Vec<_>>(),
             )
             .finish()
     }

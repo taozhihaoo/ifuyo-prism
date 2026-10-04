@@ -266,11 +266,20 @@ fn discovered_write_policy(kind: CheckKind) -> WritePolicy {
 /// Node 包管理器探测（lockfile 优先，§235 项目原生配置）。
 fn package_manager(root: &Path) -> PackageManager {
     if root.join("pnpm-lock.yaml").is_file() {
-        PackageManager { program: "pnpm", run_prefix: vec!["run"] }
+        PackageManager {
+            program: "pnpm",
+            run_prefix: vec!["run"],
+        }
     } else if root.join("yarn.lock").is_file() {
-        PackageManager { program: "yarn", run_prefix: vec![] }
+        PackageManager {
+            program: "yarn",
+            run_prefix: vec![],
+        }
     } else {
-        PackageManager { program: "npm", run_prefix: vec!["run"] }
+        PackageManager {
+            program: "npm",
+            run_prefix: vec!["run"],
+        }
     }
 }
 
@@ -282,8 +291,11 @@ struct PackageManager {
 impl PackageManager {
     /// `npm test` 特例：test script 直接 `npm test`；其余 `npm run <name>`。
     fn run_args(&self, script: &str) -> Vec<String> {
-        let mut args: Vec<String> =
-            self.run_prefix.iter().map(|value| value.to_string()).collect();
+        let mut args: Vec<String> = self
+            .run_prefix
+            .iter()
+            .map(|value| value.to_string())
+            .collect();
         if self.program == "npm" {
             if script == "test" {
                 args.clear();
@@ -308,10 +320,7 @@ fn script_kind(name: &str) -> Option<(CheckKind, CheckConfidence)> {
     if lower == "lint" || lower.starts_with("lint") {
         return Some((CheckKind::Lint, CheckConfidence::Exact));
     }
-    if lower == "typecheck"
-        || lower.starts_with("typecheck")
-        || lower == "tsc"
-        || lower == "check"
+    if lower == "typecheck" || lower.starts_with("typecheck") || lower == "tsc" || lower == "check"
     {
         return Some((CheckKind::Typecheck, CheckConfidence::Exact));
     }

@@ -167,7 +167,11 @@ pub fn derive_findings(snapshot: &EnvironmentSnapshot) -> Vec<EnvironmentFinding
             message: format!(
                 "PATH contains {} duplicate entr{}.",
                 snapshot.paths.duplicates.len(),
-                if snapshot.paths.duplicates.len() == 1 { "y" } else { "ies" }
+                if snapshot.paths.duplicates.len() == 1 {
+                    "y"
+                } else {
+                    "ies"
+                }
             ),
             evidence: snapshot
                 .paths
@@ -189,7 +193,11 @@ pub fn derive_findings(snapshot: &EnvironmentSnapshot) -> Vec<EnvironmentFinding
             message: format!(
                 "PATH contains {} nonexistent director{}.",
                 snapshot.paths.missing.len(),
-                if snapshot.paths.missing.len() == 1 { "y" } else { "ies" }
+                if snapshot.paths.missing.len() == 1 {
+                    "y"
+                } else {
+                    "ies"
+                }
             ),
             evidence: snapshot
                 .paths
@@ -266,10 +274,12 @@ pub fn derive_findings(snapshot: &EnvironmentSnapshot) -> Vec<EnvironmentFinding
 
     // ---- §59 Git + env 集成：敏感环境文件被跟踪（事实；M7 可据此产生 Health finding）----
     for file in &snapshot.env_files {
-        if file.kind == crate::model::EnvFileKind::SecretCandidate
-            && file.tracked == Some(true)
-        {
-            let sensitive = file.keys.iter().filter(|key| key.possibly_sensitive).count();
+        if file.kind == crate::model::EnvFileKind::SecretCandidate && file.tracked == Some(true) {
+            let sensitive = file
+                .keys
+                .iter()
+                .filter(|key| key.possibly_sensitive)
+                .count();
             findings.push(EnvironmentFinding {
                 id: format!("envf:sensitive_file_tracked:{}", file.path),
                 kind: EnvironmentFindingKind::SensitiveFileTracked,
@@ -369,11 +379,15 @@ mod tests {
     use super::*;
     use crate::model::{
         Architecture, EnvironmentCompleteness, EnvironmentDiagnostic, HostInfo, OsFamily,
-        PathFacts, RequirementMatch, ResourceFacts,
-        ScanOutcome, ShellInfo, ShellKind, ENVIRONMENT_SCHEMA_VERSION,
+        PathFacts, RequirementMatch, ResourceFacts, ScanOutcome, ShellInfo, ShellKind,
+        ENVIRONMENT_SCHEMA_VERSION,
     };
 
-    fn requirement(id: &str, subject: &str, kind: RequirementKind) -> crate::model::EnvironmentRequirement {
+    fn requirement(
+        id: &str,
+        subject: &str,
+        kind: RequirementKind,
+    ) -> crate::model::EnvironmentRequirement {
         crate::model::EnvironmentRequirement {
             id: id.to_string(),
             kind,
@@ -405,7 +419,11 @@ mod tests {
                 locale: None,
                 timezone: None,
             },
-            shell: ShellInfo { kind: ShellKind::Unknown, executable: None, version: None },
+            shell: ShellInfo {
+                kind: ShellKind::Unknown,
+                executable: None,
+                version: None,
+            },
             paths: PathFacts {
                 scope: crate::model::FactScope::Process,
                 entries: vec![],
@@ -439,9 +457,11 @@ mod tests {
     #[test]
     fn version_mismatch_finding_from_unsatisfied_match() {
         let mut snapshot = snapshot();
-        snapshot
-            .requirements
-            .push(requirement("req:test:node", "node", RequirementKind::Runtime));
+        snapshot.requirements.push(requirement(
+            "req:test:node",
+            "node",
+            RequirementKind::Runtime,
+        ));
         snapshot.matches.push(RequirementMatch {
             requirement_id: "req:test:node".to_string(),
             subject: "node".to_string(),
@@ -453,28 +473,33 @@ mod tests {
         assert_eq!(findings[0].kind, EnvironmentFindingKind::VersionMismatch);
         assert_eq!(findings[0].severity, Severity::Warning);
         assert_eq!(findings[0].confidence, FindingConfidence::Exact);
-        assert_eq!(aggregate_status(&snapshot, &findings), EnvironmentStatus::Unsatisfied);
+        assert_eq!(
+            aggregate_status(&snapshot, &findings),
+            EnvironmentStatus::Unsatisfied
+        );
     }
 
     // §131：pnpm missing ⇒ MissingPackageManager + suggestion（不自动安装）。
     #[test]
     fn missing_package_manager_has_suggestion_only() {
         let mut snapshot = snapshot();
-        snapshot
-            .requirements
-            .push(requirement(
-                "req:test:pnpm",
-                "pnpm",
-                RequirementKind::PackageManager,
-            ));
+        snapshot.requirements.push(requirement(
+            "req:test:pnpm",
+            "pnpm",
+            RequirementKind::PackageManager,
+        ));
         snapshot.matches.push(RequirementMatch {
             requirement_id: "req:test:pnpm".to_string(),
             subject: "pnpm".to_string(),
             result: MatchResult::Unsatisfied,
-            evidence: "actual: pnpm not found on this machine (lookup confirmed absence)".to_string(),
+            evidence: "actual: pnpm not found on this machine (lookup confirmed absence)"
+                .to_string(),
         });
         let findings = derive_findings(&snapshot);
-        assert_eq!(findings[0].kind, EnvironmentFindingKind::MissingPackageManager);
+        assert_eq!(
+            findings[0].kind,
+            EnvironmentFindingKind::MissingPackageManager
+        );
         let suggestion = findings[0].suggestion.as_deref().unwrap();
         assert!(suggestion.contains("no auto-install"));
     }
@@ -484,7 +509,10 @@ mod tests {
     fn status_aggregation_is_deterministic() {
         let mut snapshot = snapshot();
         let findings = derive_findings(&snapshot);
-        assert_eq!(aggregate_status(&snapshot, &findings), EnvironmentStatus::Satisfied);
+        assert_eq!(
+            aggregate_status(&snapshot, &findings),
+            EnvironmentStatus::Satisfied
+        );
 
         snapshot.matches.push(RequirementMatch {
             requirement_id: "r1".to_string(),
@@ -492,7 +520,10 @@ mod tests {
             result: MatchResult::Unknown,
             evidence: String::new(),
         });
-        assert_eq!(aggregate_status(&snapshot, &findings), EnvironmentStatus::Unknown);
+        assert_eq!(
+            aggregate_status(&snapshot, &findings),
+            EnvironmentStatus::Unknown
+        );
     }
 
     // §136/§352：结构上无分数。
@@ -528,8 +559,19 @@ mod tests {
             .filter(|finding| finding.kind == EnvironmentFindingKind::PathIssue)
             .collect();
         assert_eq!(path_findings.len(), 2);
-        assert_eq!(path_findings[0].severity, Severity::Info, "duplicates informational");
-        assert_eq!(path_findings[1].severity, Severity::Warning, "missing dirs warning");
-        assert_eq!(aggregate_status(&snapshot, &findings), EnvironmentStatus::Attention);
+        assert_eq!(
+            path_findings[0].severity,
+            Severity::Info,
+            "duplicates informational"
+        );
+        assert_eq!(
+            path_findings[1].severity,
+            Severity::Warning,
+            "missing dirs warning"
+        );
+        assert_eq!(
+            aggregate_status(&snapshot, &findings),
+            EnvironmentStatus::Attention
+        );
     }
 }

@@ -17,12 +17,27 @@ use prism_core::PrismError;
 use std::sync::LazyLock;
 
 const KEY_NAMES: [&str; 10] = [
-    "password", "passwd", "secret", "token", "api_key", "apikey", "access_key",
-    "client_secret", "auth_token", "private_token",
+    "password",
+    "passwd",
+    "secret",
+    "token",
+    "api_key",
+    "apikey",
+    "access_key",
+    "client_secret",
+    "auth_token",
+    "private_token",
 ];
 const PLACEHOLDERS: [&str; 9] = [
-    "example", "test", "dummy", "sample", "placeholder", "changeme", "change-me",
-    "your_", "xxxx",
+    "example",
+    "test",
+    "dummy",
+    "sample",
+    "placeholder",
+    "changeme",
+    "change-me",
+    "your_",
+    "xxxx",
 ];
 const MIN_VALUE_LEN: usize = 12;
 
@@ -138,7 +153,8 @@ fn scan_contents(
     Ok(())
 }
 
-static SEC001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
+static SEC001: LazyLock<HealthRuleMeta> = LazyLock::new(|| {
+    HealthRuleMeta {
     id: "SEC001",
     name: "Possible Hard-coded Secret",
     category: FindingCategory::Security,
@@ -147,6 +163,7 @@ static SEC001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     default_enabled: true,
     threshold_meaning: None,
     needs_derived: true,
+}
 });
 
 static SEC002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
@@ -253,7 +270,10 @@ mod tests {
         let export_line = "export const api_key = \"sk-live-0123456789abcdef\";";
         let probe = credential_line(export_line);
         eprintln!("PROBE export_line -> {probe:?}");
-        assert!(probe.is_some(), "export-prefixed assignment must match: {probe:?}");
+        assert!(
+            probe.is_some(),
+            "export-prefixed assignment must match: {probe:?}"
+        );
         assert!(credential_line("api_key = \"supersecret12345678\"").is_some());
         assert!(credential_line("client_secret: verylongsecretvalue12345").is_some());
         // 占位符（§48/§110）。

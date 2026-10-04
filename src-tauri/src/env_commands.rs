@@ -4,10 +4,10 @@
 //! 扫描异步执行（§302 task 状态轮询），取消复用 CancellationToken（§303）。
 
 use crate::state::{lock_session, AppState};
+use prism_core::config::PrismConfig;
 use prism_core::error::PrismErrorDto;
 use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::TaskState;
-use prism_core::config::PrismConfig;
 use std::sync::Arc;
 use tauri::State;
 
@@ -18,7 +18,10 @@ fn env_root(state: &State<'_, AppState>) -> Result<std::path::PathBuf, PrismErro
         .as_ref()
         .map(|project| project.root_path.clone())
         .ok_or_else(|| {
-            PrismErrorDto::new("invalid_input", "no project opened; call open_project first")
+            PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            )
         })
 }
 
@@ -39,9 +42,8 @@ pub fn start_environment_scan(
 ) -> Result<String, PrismErrorDto> {
     let root = env_root(&state)?;
     let config_path = root.join(PrismConfig::config_file_name());
-    let (config, _loaded) = PrismConfig::load(&config_path).map_err(|err| {
-        PrismErrorDto::new("config", format!("config invalid: {err}"))
-    })?;
+    let (config, _loaded) = PrismConfig::load(&config_path)
+        .map_err(|err| PrismErrorDto::new("config", format!("config invalid: {err}")))?;
     let _ = config; // env 配置节留给 M9b+ 扩展；加载保证非法配置显式失败。
     let (root, token, session_arc) = {
         let mut session = lock_session(&state.session);
@@ -63,7 +65,12 @@ pub fn start_environment_scan(
         let execute = || -> prism_core::PrismResult<prism_env::EnvironmentSnapshot> {
             let cancel = token.clone();
             let discovery = prism_project::DiscoveryService::new()
-                .discover(&root, prism_project::ScanOptions::default(), &cancel, |_| {})
+                .discover(
+                    &root,
+                    prism_project::ScanOptions::default(),
+                    &cancel,
+                    |_| {},
+                )
                 .ok();
             let project = prism_project::Project::from_root(&root)?;
             let runner: Arc<dyn prism_core::CommandRunner> = Arc::new(StdCommandRunner::new());

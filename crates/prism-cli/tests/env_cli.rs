@@ -36,7 +36,10 @@ fn env_json_is_machine_readable_and_complete() {
     std::fs::write(dir.join("package.json"), r#"{ "name": "demo" }"#).unwrap();
 
     let output = prism(&["env", dir.to_str().unwrap(), "--json"]);
-    assert!(output.status.success(), "satisfied/unknown must exit 0 (§242)");
+    assert!(
+        output.status.success(),
+        "satisfied/unknown must exit 0 (§242)"
+    );
     // §295：机器模式 stdout 只有数据。
     let value: serde_json::Value =
         serde_json::from_str(&stdout_text(&output)).expect("stdout must be pure JSON");
@@ -49,7 +52,10 @@ fn env_json_is_machine_readable_and_complete() {
         .iter()
         .map(|tool| tool["name"].as_str().unwrap())
         .collect();
-    assert!(names.contains(&"git") && names.contains(&"node"), "node profile: {names:?}");
+    assert!(
+        names.contains(&"git") && names.contains(&"node"),
+        "node profile: {names:?}"
+    );
     // §54：变量无值字段。
     for variable in value["variables"].as_array().unwrap() {
         assert!(variable.get("value").is_none());
@@ -70,8 +76,14 @@ fn env_text_mode_matches_cli_contract() {
     assert!(stdout.contains("Environment"));
     assert!(stdout.contains("OS"));
     assert!(stdout.contains("Tools"));
-    assert!(stdout.contains("Snapshot"), "snapshot id + captured_at 末尾呈现");
-    assert!(stdout.contains("does not guarantee reproducibility"), "§291");
+    assert!(
+        stdout.contains("Snapshot"),
+        "snapshot id + captured_at 末尾呈现"
+    );
+    assert!(
+        stdout.contains("does not guarantee reproducibility"),
+        "§291"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -90,7 +102,10 @@ fn env_all_tools_probes_beyond_profile() {
         .iter()
         .map(|tool| tool["name"].as_str().unwrap())
         .collect();
-    assert!(names.contains(&"dotnet") && names.contains(&"python"), "{names:?}");
+    assert!(
+        names.contains(&"dotnet") && names.contains(&"python"),
+        "{names:?}"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -122,8 +137,14 @@ fn env_unsatisfied_requirement_fails_and_strict_treats_unknown_as_failure() {
     assert_eq!(output.status.code(), Some(1), "§240 unsatisfied ⇒ 1");
     let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
     let matches = value["matches"].as_array().unwrap();
-    assert!(!matches.is_empty(), "packageManager requirement must be matched");
-    assert_eq!(matches[0]["result"], "unsatisfied", "lookup confirmed absence (§105)");
+    assert!(
+        !matches.is_empty(),
+        "packageManager requirement must be matched"
+    );
+    assert_eq!(
+        matches[0]["result"], "unsatisfied",
+        "lookup confirmed absence (§105)"
+    );
 
     // §241：--strict 下 Unknown 也算失败（unit 级 Unknown 语义见 requirement.rs）。
     let strict = Command::new(bin)

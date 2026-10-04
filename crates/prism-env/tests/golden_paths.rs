@@ -85,14 +85,22 @@ fn full_chain_on_node_project_produces_coherent_facts() {
 #[test]
 fn conflicting_sources_yield_conflict_status() {
     let dir = temp_project("golden5");
-    std::fs::write(dir.join("package.json"), r#"{ "engines": { "node": ">=22" } }"#).unwrap();
+    std::fs::write(
+        dir.join("package.json"),
+        r#"{ "engines": { "node": ">=22" } }"#,
+    )
+    .unwrap();
     std::fs::write(dir.join(".nvmrc"), "18\n").unwrap();
 
     let snapshot = scan(&dir);
     assert_eq!(snapshot.conflicts.len(), 1);
     assert_eq!(snapshot.conflicts[0].subject, "node");
     assert_eq!(snapshot.conflicts[0].entries.len(), 2);
-    assert_eq!(snapshot.status, prism_env::EnvironmentStatus::Conflict, "§358");
+    assert_eq!(
+        snapshot.status,
+        prism_env::EnvironmentStatus::Conflict,
+        "§358"
+    );
     let node_matches: Vec<_> = snapshot
         .matches
         .iter()
@@ -154,11 +162,10 @@ fn container_project_reports_docker_fact() {
         .iter()
         .find(|matched| matched.subject == "docker")
         .expect("docker match");
-    let has_missing_finding = snapshot
-        .findings
-        .iter()
-        .any(|finding| finding.kind == prism_env::EnvironmentFindingKind::ToolMissing
-            && finding.subject == "docker");
+    let has_missing_finding = snapshot.findings.iter().any(|finding| {
+        finding.kind == prism_env::EnvironmentFindingKind::ToolMissing
+            && finding.subject == "docker"
+    });
     assert_eq!(
         has_missing_finding,
         matched.result == MatchResult::Unsatisfied,

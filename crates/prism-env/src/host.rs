@@ -2,9 +2,7 @@
 //!
 //! 全部只读（§176 read-only probes）；采不到的即 None（§307 Unsupported ≠ Failed）。
 
-use crate::model::{
-    Architecture, HostInfo, OsFamily, ResourceFacts, ShellInfo, ShellKind,
-};
+use crate::model::{Architecture, HostInfo, OsFamily, ResourceFacts, ShellInfo, ShellKind};
 use std::path::Path;
 
 /// 采集 host 事实（§14：最小化身份信息——只取 hostname，username 不采集）。
@@ -156,7 +154,8 @@ fn windows_resources(project_root: &Path) -> (Option<u64>, (Option<u64>, Option<
         .encode_utf16()
         .collect();
     wide.push(0);
-    let disk_ok = unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut free_to_caller, &mut total, &mut free) };
+    let disk_ok =
+        unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut free_to_caller, &mut total, &mut free) };
     let disk_free = (disk_ok != 0).then_some(free);
     let disk_path = Some(project_root.to_string_lossy().to_string());
     (memory_total, (disk_free, disk_path))
@@ -235,7 +234,10 @@ mod tests {
         assert!(!host.architecture.as_str().is_empty());
         assert!(host.username.is_none(), "§14: v1 does not collect username");
         #[cfg(windows)]
-        assert!(host.os_version.is_some(), "windows registry version available");
+        assert!(
+            host.os_version.is_some(),
+            "windows registry version available"
+        );
     }
 
     #[test]
@@ -243,7 +245,10 @@ mod tests {
         let shell = collect_shell();
         if cfg!(windows) {
             assert!(
-                matches!(shell.kind, ShellKind::PowerShell | ShellKind::Pwsh | ShellKind::Cmd),
+                matches!(
+                    shell.kind,
+                    ShellKind::PowerShell | ShellKind::Pwsh | ShellKind::Cmd
+                ),
                 "windows shell detected: {:?}",
                 shell.kind
             );
@@ -253,7 +258,10 @@ mod tests {
     #[test]
     fn resources_are_collected_or_unknown() {
         let facts = collect_resources(Path::new("."));
-        assert!(facts.logical_cpus.unwrap_or(0) > 0, "logical cpus always available");
+        assert!(
+            facts.logical_cpus.unwrap_or(0) > 0,
+            "logical cpus always available"
+        );
         #[cfg(windows)]
         {
             assert!(facts.memory_total_bytes.unwrap_or(0) > 0);

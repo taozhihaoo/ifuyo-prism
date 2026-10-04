@@ -19,11 +19,7 @@ pub fn strip_control(text: &str) -> String {
 fn fenced(language: &str, content: &str) -> String {
     let longest_backtick_run = content
         .split('\n')
-        .map(|line| {
-            line.chars()
-                .take_while(|c| *c == '`')
-                .count()
-        })
+        .map(|line| line.chars().take_while(|c| *c == '`').count())
         .max()
         .unwrap_or(0);
     let fence = "`".repeat((longest_backtick_run + 1).max(3));
@@ -88,7 +84,10 @@ pub fn render_markdown(pack: &ContextPack) -> String {
             item.trust_level.as_str()
         ));
         for evidence in &item.evidence {
-            out.push_str(&format!("- evidence: {}\n", escape_markdown(&strip_control(evidence))));
+            out.push_str(&format!(
+                "- evidence: {}\n",
+                escape_markdown(&strip_control(evidence))
+            ));
         }
         if let Some(content) = &item.content {
             let language = item.language.as_deref().unwrap_or("");
@@ -115,7 +114,10 @@ pub fn render_markdown(pack: &ContextPack) -> String {
             finding.rule_id, finding.message
         ));
     }
-    out.push_str(&format!("- coverage: {}\n", coverage_line(&pack.health.coverage)));
+    out.push_str(&format!(
+        "- coverage: {}\n",
+        coverage_line(&pack.health.coverage)
+    ));
 
     out.push_str("## Risk signals\n\n");
     if pack.risk_signals.is_empty() {
@@ -130,7 +132,10 @@ pub fn render_markdown(pack: &ContextPack) -> String {
         out.push_str("- none\n");
     }
     for limitation in &manifest.limitations {
-        out.push_str(&format!("- {}\n", escape_markdown(&strip_control(limitation))));
+        out.push_str(&format!(
+            "- {}\n",
+            escape_markdown(&strip_control(limitation))
+        ));
     }
     out.push_str(&format!(
         "\n---\n*schema_version={} · pack id={} · generated_at={} · state dirty={:?}*\n",
@@ -157,7 +162,11 @@ fn group_title(group: crate::model::ContextGroup) -> &'static str {
 fn coverage_line(coverage: &crate::health::ContextCoverage) -> String {
     format!(
         "target={} impact={} verification={} docs={} environment={}",
-        coverage.target, coverage.impact, coverage.verification, coverage.docs, coverage.environment
+        coverage.target,
+        coverage.impact,
+        coverage.verification,
+        coverage.docs,
+        coverage.environment
     )
 }
 
@@ -178,7 +187,9 @@ pub fn render_plain_text(pack: &ContextPack) -> String {
     for item in &pack.items {
         out.push_str(&format!(
             "\n--- {} [{:?}] trust={} ---\n",
-            item.title, item.priority, item.trust_level.as_str()
+            item.title,
+            item.priority,
+            item.trust_level.as_str()
         ));
         out.push_str(&format!(
             "source: {}{}\nwhy: {}\n",

@@ -24,7 +24,10 @@ fn context_root(state: &State<'_, AppState>) -> Result<std::path::PathBuf, Prism
         .as_ref()
         .map(|project| project.root_path.clone())
         .ok_or_else(|| {
-            PrismErrorDto::new("invalid_input", "no project opened; call open_project first")
+            PrismErrorDto::new(
+                "invalid_input",
+                "no project opened; call open_project first",
+            )
         })
 }
 
@@ -89,8 +92,12 @@ pub fn start_context_generation(
 
     std::thread::spawn(move || {
         let execute = || -> prism_core::PrismResult<prism_context::ContextPack> {
-            let discovery = prism_project::DiscoveryService::new()
-                .discover(&root, prism_project::ScanOptions::default(), &cancel, |_| {})?;
+            let discovery = prism_project::DiscoveryService::new().discover(
+                &root,
+                prism_project::ScanOptions::default(),
+                &cancel,
+                |_| {},
+            )?;
             let code_model = CodeAnalysisService::new().analyze(
                 &discovery,
                 CodeAnalysisOptions::default(),
@@ -180,9 +187,7 @@ pub fn get_context_status(state: State<'_, AppState>) -> ContextStatusDto {
 
 /// 最近一次生成的 pack。
 #[tauri::command]
-pub fn get_context_results(
-    state: State<'_, AppState>,
-) -> Option<prism_context::ContextPack> {
+pub fn get_context_results(state: State<'_, AppState>) -> Option<prism_context::ContextPack> {
     let session = lock_session(&state.session);
     session.context_pack.clone()
 }
@@ -197,14 +202,12 @@ pub fn cancel_context_generation(state: State<'_, AppState>) -> Result<(), Prism
 
 /// 导出（§302/§311：用户显式操作；返回内容字符串，前端 Copy/下载）。
 #[tauri::command]
-pub fn export_context(
-    state: State<'_, AppState>,
-    format: String,
-) -> Result<String, PrismErrorDto> {
+pub fn export_context(state: State<'_, AppState>, format: String) -> Result<String, PrismErrorDto> {
     let session = lock_session(&state.session);
-    let pack = session.context_pack.as_ref().ok_or_else(|| {
-        PrismErrorDto::new("invalid_input", "no context pack generated yet")
-    })?;
+    let pack = session
+        .context_pack
+        .as_ref()
+        .ok_or_else(|| PrismErrorDto::new("invalid_input", "no context pack generated yet"))?;
     match format.as_str() {
         "json" => serde_json::to_string_pretty(pack)
             .map_err(|err| PrismErrorDto::new("internal", format!("serialize failed: {err}"))),

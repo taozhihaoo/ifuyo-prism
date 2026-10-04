@@ -6,9 +6,9 @@
 
 use crate::model::{ProbeOutcome, ToolFact, ToolSource};
 use crate::probe::{run_probe, version_line, ProbeResult, ToolProbe};
+use prism_core::runtime::command::CommandRunner;
 use prism_core::runtime::lookup::resolve_executable;
 use prism_core::task::CancellationToken;
-use prism_core::runtime::command::CommandRunner;
 use std::path::{Path, PathBuf};
 
 /// 工具定义（§23 allowlist；§112–§114 只允许这里的 version 命令）。
@@ -24,33 +24,127 @@ pub struct ToolDefinition {
 
 /// §23 allowlist（实际使用范围按项目 profile 决定，§23 "以真实项目为准"）。
 pub const TOOL_ALLOWLIST: &[ToolDefinition] = &[
-    ToolDefinition { name: "node", program: "node", version_args: &["--version"] },
-    ToolDefinition { name: "npm", program: "npm", version_args: &["--version"] },
-    ToolDefinition { name: "pnpm", program: "pnpm", version_args: &["--version"] },
-    ToolDefinition { name: "yarn", program: "yarn", version_args: &["--version"] },
-    ToolDefinition { name: "bun", program: "bun", version_args: &["--version"] },
-    ToolDefinition { name: "python", program: "python", version_args: &["--version"] },
-    ToolDefinition { name: "python3", program: "python3", version_args: &["--version"] },
-    ToolDefinition { name: "pip", program: "pip", version_args: &["--version"] },
-    ToolDefinition { name: "uv", program: "uv", version_args: &["--version"] },
-    ToolDefinition { name: "poetry", program: "poetry", version_args: &["--version"] },
-    ToolDefinition { name: "dotnet", program: "dotnet", version_args: &["--version"] },
-    ToolDefinition { name: "rustc", program: "rustc", version_args: &["--version"] },
-    ToolDefinition { name: "cargo", program: "cargo", version_args: &["--version"] },
-    ToolDefinition { name: "rustup", program: "rustup", version_args: &["--version"] },
-    ToolDefinition { name: "go", program: "go", version_args: &["version"] },
-    ToolDefinition { name: "java", program: "java", version_args: &["-version"] },
-    ToolDefinition { name: "git", program: "git", version_args: &["--version"] },
-    ToolDefinition { name: "docker", program: "docker", version_args: &["--version"] },
-    ToolDefinition { name: "corepack", program: "corepack", version_args: &["--version"] },
-    ToolDefinition { name: "gcc", program: "gcc", version_args: &["--version"] },
-    ToolDefinition { name: "cmake", program: "cmake", version_args: &["--version"] },
-    ToolDefinition { name: "ninja", program: "ninja", version_args: &["--version"] },
-    ToolDefinition { name: "ssh", program: "ssh", version_args: &["-V"] },
+    ToolDefinition {
+        name: "node",
+        program: "node",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "npm",
+        program: "npm",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "pnpm",
+        program: "pnpm",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "yarn",
+        program: "yarn",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "bun",
+        program: "bun",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "python",
+        program: "python",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "python3",
+        program: "python3",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "pip",
+        program: "pip",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "uv",
+        program: "uv",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "poetry",
+        program: "poetry",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "dotnet",
+        program: "dotnet",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "rustc",
+        program: "rustc",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "cargo",
+        program: "cargo",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "rustup",
+        program: "rustup",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "go",
+        program: "go",
+        version_args: &["version"],
+    },
+    ToolDefinition {
+        name: "java",
+        program: "java",
+        version_args: &["-version"],
+    },
+    ToolDefinition {
+        name: "git",
+        program: "git",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "docker",
+        program: "docker",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "corepack",
+        program: "corepack",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "gcc",
+        program: "gcc",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "cmake",
+        program: "cmake",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "ninja",
+        program: "ninja",
+        version_args: &["--version"],
+    },
+    ToolDefinition {
+        name: "ssh",
+        program: "ssh",
+        version_args: &["-V"],
+    },
 ];
 
 pub fn definition(name: &str) -> Option<&'static ToolDefinition> {
-    TOOL_ALLOWLIST.iter().find(|definition| definition.name == name)
+    TOOL_ALLOWLIST
+        .iter()
+        .find(|definition| definition.name == name)
 }
 
 /// 项目 profile（§121）：由 M1 discovery 启发式推导，决定惰性发现范围。
@@ -155,32 +249,39 @@ pub fn discover_tool(
 
     // probe（§112–§115）：allowlist 命令 + 有界超时 + 取消传播。
     let probe_def = ToolProbe::version(definition.program, definition.version_args);
-    let (version, raw_version, probe_outcome) = match run_probe(&probe_def, runner, working_directory, cancel) {
-        ProbeResult::Output { text, output_truncated: _ } => {
-            let raw = version_line(&text, "");
-            let parsed = raw.as_deref().and_then(crate::version::parse_version_output);
-            if parsed.is_some() {
-                (parsed, raw, ProbeOutcome::Succeeded)
-            } else {
-                // 输出成功但解析不出版本 ⇒ version unknown（§29 保守）。
-                (None, raw, ProbeOutcome::Succeeded)
+    let (version, raw_version, probe_outcome) =
+        match run_probe(&probe_def, runner, working_directory, cancel) {
+            ProbeResult::Output {
+                text,
+                output_truncated: _,
+            } => {
+                let raw = version_line(&text, "");
+                let parsed = raw
+                    .as_deref()
+                    .and_then(crate::version::parse_version_output);
+                if parsed.is_some() {
+                    (parsed, raw, ProbeOutcome::Succeeded)
+                } else {
+                    // 输出成功但解析不出版本 ⇒ version unknown（§29 保守）。
+                    (None, raw, ProbeOutcome::Succeeded)
+                }
             }
-        }
-        ProbeResult::Failed { .. } | ProbeResult::TimedOut | ProbeResult::SpawnFailed { .. } => {
-            // §157：exists = true，version unknown，probe failed。
-            (None, None, ProbeOutcome::Failed)
-        }
-        ProbeResult::Cancelled => (None, None, ProbeOutcome::Failed),
-    };
+            ProbeResult::Failed { .. }
+            | ProbeResult::TimedOut
+            | ProbeResult::SpawnFailed { .. } => {
+                // §157：exists = true，version unknown，probe failed。
+                (None, None, ProbeOutcome::Failed)
+            }
+            ProbeResult::Cancelled => (None, None, ProbeOutcome::Failed),
+        };
 
     ToolFact {
         name: definition.name.to_string(),
         path: Some(active_path.to_string_lossy().to_string()),
         additional_paths: additional,
         version,
-        raw_version: raw_version.map(|line| {
-            prism_core::privacy::redact_text(&line).trim().to_string()
-        }),
+        raw_version: raw_version
+            .map(|line| prism_core::privacy::redact_text(&line).trim().to_string()),
         source: ToolSource::Path,
         probe: probe_outcome,
     }
@@ -210,9 +311,7 @@ fn resolve_on_path(program: &str, working_directory: &Path) -> (Option<PathBuf>,
                 let candidate_text = candidate.to_string_lossy().to_string();
                 let is_active = active
                     .as_ref()
-                    .is_some_and(|active_path| {
-                        paths_equal(&candidate, active_path)
-                    });
+                    .is_some_and(|active_path| paths_equal(&candidate, active_path));
                 if is_active {
                     continue;
                 }
@@ -242,7 +341,9 @@ mod tests {
 
     #[test]
     fn allowlist_covers_key_ecosystems() {
-        for name in ["node", "npm", "pnpm", "python", "dotnet", "cargo", "git", "docker"] {
+        for name in [
+            "node", "npm", "pnpm", "python", "dotnet", "cargo", "git", "docker",
+        ] {
             assert!(definition(name).is_some(), "{name} must be in allowlist");
         }
         // §23：每个定义的 probe 都是版本形态。

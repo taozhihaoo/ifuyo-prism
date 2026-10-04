@@ -68,9 +68,7 @@ fn planned_check_resolved(
 
 /// 显式 depends_on（限已知 id、去自环）+ 约定依赖（§27：同 toolchain 的
 /// Build 失败 ⇒ 后续 Blocked）的统一解析。计划与执行共用，保证二者一致。
-pub fn resolved_dependencies(
-    specs: &[CheckSpec],
-) -> BTreeMap<String, Vec<String>> {
+pub fn resolved_dependencies(specs: &[CheckSpec]) -> BTreeMap<String, Vec<String>> {
     let ids: BTreeSet<String> = specs.iter().map(|spec| spec.id.clone()).collect();
     let has_build = specs.iter().any(|spec| spec.kind == CheckKind::Build);
     let mut dependencies: BTreeMap<String, Vec<String>> = BTreeMap::new();
@@ -85,13 +83,9 @@ pub fn resolved_dependencies(
             // 约定：Build 失败 ⇒ 后续 Blocked（§27）。限定同一 toolchain
             // （program 相同）：npm test 依赖 npm build，cargo-test 依赖
             // cargo-build——前端构建失败不应 Blocked 掉 cargo 测试。
-            if let Some(build) = specs
-                .iter()
-                .find(|candidate| {
-                    candidate.kind == CheckKind::Build
-                        && candidate.program == spec.program
-                })
-            {
+            if let Some(build) = specs.iter().find(|candidate| {
+                candidate.kind == CheckKind::Build && candidate.program == spec.program
+            }) {
                 if build.id != spec.id && !deps.contains(&build.id) {
                     deps.push(build.id.clone());
                 }

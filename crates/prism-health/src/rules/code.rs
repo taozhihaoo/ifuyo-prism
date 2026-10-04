@@ -44,7 +44,10 @@ fn nesting_pick(metric: &SymbolMetrics) -> Option<u64> {
 }
 
 fn is_callable(kind: SymbolKind) -> bool {
-    matches!(kind, SymbolKind::Function | SymbolKind::Method | SymbolKind::Constructor)
+    matches!(
+        kind,
+        SymbolKind::Function | SymbolKind::Method | SymbolKind::Constructor
+    )
 }
 
 fn is_type(kind: SymbolKind) -> bool {
@@ -151,7 +154,8 @@ fn evaluate_code_rule(
 
 // ---------- 具体规则 ----------
 
-static CODE001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
+static CODE001: LazyLock<HealthRuleMeta> = LazyLock::new(|| {
+    HealthRuleMeta {
     id: "CODE001",
     name: "High Complexity",
     category: FindingCategory::Code,
@@ -160,6 +164,7 @@ static CODE001: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     default_enabled: true,
     threshold_meaning: Some("complexity threshold (1 + branch keywords/operators in function body)"),
     needs_derived: true,
+}
 });
 
 static CODE002: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
@@ -177,14 +182,16 @@ static CODE003: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     id: "CODE003",
     name: "Very Large Type",
     category: FindingCategory::Code,
-    description: "Type (class/struct/interface/enum) source-line count exceeds the configured threshold.",
+    description:
+        "Type (class/struct/interface/enum) source-line count exceeds the configured threshold.",
     default_severity: Severity::Info,
     default_enabled: true,
     threshold_meaning: Some("type source-line threshold"),
     needs_derived: true,
 });
 
-static CODE004: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
+static CODE004: LazyLock<HealthRuleMeta> = LazyLock::new(|| {
+    HealthRuleMeta {
     id: "CODE004",
     name: "Excessive Nesting",
     category: FindingCategory::Code,
@@ -193,6 +200,7 @@ static CODE004: LazyLock<HealthRuleMeta> = LazyLock::new(|| HealthRuleMeta {
     default_enabled: true,
     threshold_meaning: Some("maximum brace nesting depth threshold"),
     needs_derived: true,
+}
 });
 
 pub struct HighComplexityRule;
@@ -306,4 +314,3 @@ impl HealthRule for ExcessiveNestingRule {
         )
     }
 }
-

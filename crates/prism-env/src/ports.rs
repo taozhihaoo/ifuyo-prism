@@ -5,8 +5,8 @@
 //! command line（§87 隐私红线：命令行可能含 secret）。
 
 use crate::model::{
-    ExpectedPort, PortInfo, PortProtocol, PortState, ProcessInfo, ProcessKind,
-    PORT_CAP, PROCESS_CAP,
+    ExpectedPort, PortInfo, PortProtocol, PortState, ProcessInfo, ProcessKind, PORT_CAP,
+    PROCESS_CAP,
 };
 use prism_core::runtime::command::{CommandRunner, CommandSpec};
 use prism_core::task::CancellationToken;

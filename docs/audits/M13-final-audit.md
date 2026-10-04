@@ -53,9 +53,9 @@ INFERENCE：全部秒级/亚秒级，§289 哲学（incremental/cache-aware/non-
 
 | Artifact | Size | SHA-256 (前 16) |
 |---|---|---|
-| Prism_0.1.0_x64_en-US.msi | 8.07 MiB | ecd6134898b0fe18 |
-| Prism_0.1.0_x64-setup.exe (NSIS) | 4.35 MiB | c9f3c7e00b4e2721 |
-| prism-app.exe（独立） | 25.8 MB | 17fa573877575e00 |
+| Prism_0.1.0_x64_en-US.msi | 8.07 MiB | ecd61348…（i18n 前）/ d0abfcc6ba8cc2df…（含中英文设置，当前 RC） |
+| Prism_0.1.0_x64-setup.exe (NSIS) | 4.35 MiB | 6ec296413c01a41f…（当前 RC） |
+| prism-app.exe（独立） | 25.8 MB | 17fa5738…（i18n 前） |
 
 §56 RC 流程：install → open → open project → analyze → verify → snapshot → restart → history → compare → context 的数据面均由已验证命令承载（CLI/GUI 同源服务）。
 

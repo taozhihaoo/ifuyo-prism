@@ -11,7 +11,7 @@
   ↓ 依赖：Evidence/Identity/Freshness 契约（本文档套件）；不依赖具体实现
 2.0-M22 L0 Structural（✅ 2026-10-05 完成——prism-l0 crate + `prism intel --domain structural|all`）
   ↓ 依赖：M21 Core 模型；复用 prism-project/git/env
-2.0-M23 L1 Symbol Engine（C# parser + Python 收编）
+2.0-M23 L1 Symbol Engine（✅ 2026-10-05 完成——prism-csharp（tree-sitter-c-sharp）+ `prism intel --domain symbols`；Python 1.0 管线 KEEP 并行）
   ↓ 依赖：M21；M22 的 File Identity
 2.0-M24 Godot Adapter
   ↓ 依赖：M21 契约 + M22 L0 + M23 的 Symbol 接口（Script→Symbol 层可后接）

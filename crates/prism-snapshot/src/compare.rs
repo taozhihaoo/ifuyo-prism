@@ -4,6 +4,7 @@
 //! 不重跑分析器 §112）。全部输出为事实（§35/§46/§235 no hidden inference）。
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use serde_json::Value;
 
 /// 单域 diff 条目（§124 域 diff 的公共形态）。
@@ -452,5 +453,71 @@ mod finding_tests {
         assert_eq!(transitions[0].check, "test");
         assert_eq!(transitions[0].from, "passed");
         assert_eq!(transitions[0].to, "failed");
+    }
+}
+
+/// 完整 SnapshotDiff 构建（§124）：对十个域逐域比较，并推导
+/// finding 生命周期与 verification 迁移（§36/§38/§39/§72/§73）。
+pub fn build_snapshot_diff(
+    snapshot_a_id: &str,
+    snapshot_b_id: &str,
+    domain_json_a: &BTreeMap<String, Value>,
+    domain_json_b: &BTreeMap<String, Value>,
+) -> SnapshotDiff {
+    let domain_names = [
+        "structure", "code", "architecture", "git", "change", "impact", "health",
+        "verification", "environment", "context_health",
+    ];
+    let empty = Value::Null;
+    let mut domain_diffs: BTreeMap<String, DomainDiff> = BTreeMap::new();
+    let mut limitations = Vec::new();
+    let mut compatibility = "compatible".to_string();
+
+    for domain in domain_names {
+        let json_a = domain_json_a.get(domain).unwrap_or(&empty);
+        let json_b = domain_json_b.get(domain).unwrap_or(&empty);
+        let compatibility = compatibility_for(json_a, json_b);
+        if compatibility == "limited" {
+            limitations.push(format!(
+                "domain {domain}: model version mismatch — comparison limited (§71)"
+            ));
+        }
+        let diff = compare_domain(domain, json_a, json_b);
+        domain_diffs.insert(domain.to_string(), diff);
+    }
+    if !limitations.is_empty() {
+        compatibility = "limited".to_string();
+    }
+
+    let health_a = domain_json_a.get("health").unwrap_or(&empty);
+    let health_b = domain_json_b.get("health").unwrap_or(&empty);
+    let finding_lifecycles = finding_lifecycles(health_a, health_b, compatibility == "compatible");
+    let verification_a = domain_json_a.get("verification").unwrap_or(&empty);
+    let verification_b = domain_json_b.get("verification").unwrap_or(&empty);
+    let verification_transitions = verification_transitions(verification_a, verification_b);
+
+    let get = |domain: &str| domain_diffs.get(domain).cloned().unwrap_or(DomainDiff {
+        domain: domain.to_string(),
+        state: "unchanged".to_string(),
+        facts: vec![],
+    });
+
+    SnapshotDiff {
+        snapshot_a: snapshot_a_id.to_string(),
+        snapshot_b: snapshot_b_id.to_string(),
+        compatibility,
+        structure: get("structure"),
+        code: get("code"),
+        architecture: get("architecture"),
+        git: get("git"),
+        change: get("change"),
+        impact: get("impact"),
+        health: get("health"),
+        verification: get("verification"),
+        environment: get("environment"),
+        context_health: get("context_health"),
+        finding_lifecycles,
+        verification_transitions,
+        limitations,
     }
 }

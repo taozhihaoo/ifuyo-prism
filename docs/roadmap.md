@@ -21,7 +21,7 @@ Final Audit → 本地 commit（不 push）。
 | M8 | Verify Engine | Check 发现/计划/执行（Node/Python/C#/Rust/CI/自定义）+ 结构化解析 + verified_state + CI 抽取 + Release 检查 + `--changed` 候选链（`prism verify` checks/ci/release + GUI Verify 页） | ✅ |
 | M9 | Environment Engine | 环境要求 vs 机器事实的采集/匹配/解释（requirement providers + 冲突保留、findings 引擎 + 聚合状态、端口/进程动态事实、MD/HTML 报告、`prism env` 完整 CLI + GUI Environment 页） | ✅ |
 | M10 | Context Engine | ContextPack：任务分类→收集→优先级→预算→脱敏（确定性选择引擎 + Context Health + trust/risk + recipes + MD/Text 渲染 + `prism context` 完整 CLI + GUI Context 页） | ✅ |
-| M11 | Snapshot / Timeline | SQLite 持久化、快照指纹、演化时间线 | |
+| M11 | Snapshot / Timeline | SQLite 持久化、快照指纹、演化时间线（M11a ✅ 捕获/去重/存储 + `prism snapshot`/`prism history`；M11b 进行中：compare/timeline/evolution） | ◐ |
 | M12 | Product UI | 视觉打磨与完整产品界面 | ⏸ 暂缓 |
 | M13 | Release Hardening | 安装器/自动更新/性能/隐私与许可审计 | ⏸ 暂缓 |
 

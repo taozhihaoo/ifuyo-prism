@@ -88,6 +88,23 @@ cargo run -p prism-cli -- impact <path>      # 影响分析：潜在波及 + 证
 cargo run -p prism-cli -- health <path>       # 健康体检：Findings + 证据（M7）
 cargo run -p prism-cli -- health <path> rules # 规则检视（M7）
 cargo run -p prism-cli -- git status <path>  # Git 状态（M4，只读）
+cargo run -p prism-cli -- verify <path>       # 验证编排：build/test/lint（M8）
+cargo run -p prism-cli -- env <path>          # 环境事实 + 需求匹配（M9）
+cargo run -p prism-cli -- context <path> --task "..."  # AI 上下文包（M10）
+cargo run -p prism-cli -- snapshot <path>     # 工程快照（M11）
+cargo run -p prism-cli -- history <path>      # 快照历史
+cargo run -p prism-cli -- compare <path> <a> <b>  # 快照比较
+cargo run -p prism-cli -- timeline <path>     # 项目时间线
+
+## Desktop app（打包）
+
+```bash
+npm run tauri build
+```
+
+产物位于 `target/release/bundle/`（Windows：NSIS 安装器 + 独立 exe）。
+数据边界：快照数据库在系统 AppData（不在项目里）；Prism 不修改用户项目、
+不联网、无遥测。详见 `docs/m11-snapshot.md`。
 cargo run -p prism-cli -- git log <path>     # 最近提交（M4）
 cargo run -p prism-cli -- git diff <path>    # 文件级 diff（M4）
 cargo run -p prism-cli -- inspect <path> --format json

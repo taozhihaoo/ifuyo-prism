@@ -48,13 +48,17 @@ snapshot/history/compare 全链路前后 HEAD + status 一致（M11a §114 测�
 
 `prism snapshot`（--force/--note/--json）、`prism history`（--json/--limit）、`prism compare <path> <a> <b>`（--json/--markdown）、`prism timeline`（--limit/--json/--markdown）、`prism history export`（--output）、`prism history delete`（--snapshot/--all --yes 强制门 §62）。JSON/Markdown/human 三形态均验证。
 
-## L. GUI/IPC — PARTIAL
+## L. GUI/IPC — PASS
 
-M11a 无 GUI history 页（P1，§193 明确"后端正确性优先于 UI polish"）。tauri context/env IPC 不受影响；SnapshotStore 由 Application 层共享（§126/§475 架构就位）。
+Snapshot History 页已交付（注册表导航 History 项）：列表（date/basis/revision/
+state/fingerprint/note §130）+ A/B 选择 + Compare 分域 facts（§49/§95）+
+Timeline（§129）+ Capture now（§147）+ per-row delete（§62）。tauri IPC
+（snapshot_commands.rs）与 CLI 同源 SnapshotStore（§126/§475——CLI capture
+后 GUI history 立即可见）。5 vitest 契约测试。ctx/env/context IPC 不受影响。
 
 ## M. Tests — PASS
 
-526 Rust：store 3、snapshot model 4 + capture 4 + compare 9 + timeline 4、CLI snapshot 5 + compare/timeline 烟测、其余 M0–M10 全量回归。§404 doc-health、§405/§406 privacy/injection 在 M9/M10 已覆盖并保持。
+529 Rust：store 3、snapshot model 4 + capture 4 + compare 9 + timeline 4、CLI snapshot 5 + compare/timeline 烟测、其余 M0–M10 全量回归。§404 doc-health、§405/§406 privacy/injection 在 M9/M10 已覆盖并保持。
 
 ## N. Cross-platform — PASS（Windows 实测）
 
@@ -71,11 +75,11 @@ M11a 无 GUI history 页（P1，§193 明确"后端正确性优先于 UI polish"
 ## 遗留 P1（带入 M12/后续）
 
 1. M2–M10 域捕获接线（DomainFacts.data 注入点已就绪——需 CLI/GUI session 传递各域结果）。
-2. GUI history/compare/timeline 页（§193 P1-1..P1-7）。
-3. §203/§204 完整 migration 兼容矩阵（框架就位）。
-4. 自动 retention（§63 v1 手动）。
-5. §213 ContextRelation 图（M10a P1 沿袭）。
-6. Linux/macOS 实测（§166 记录）。
+2. §203/§204 完整 migration 兼容矩阵（框架就位）。
+3. 自动 retention（§63 v1 手动）。
+4. §213 ContextRelation 图（M10a P1 沿袭）。
+5. Linux/macOS 实测（§166 记录）。
+6. Snapshot Detail 分 tab 展示（§94：API 数据已备，UI polish 归 M12）。
 
 ## Deferred（§481.Y）
 

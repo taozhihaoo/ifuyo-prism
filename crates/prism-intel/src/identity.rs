@@ -94,6 +94,14 @@ impl EntityKind {
     pub fn test() -> Self {
         EntityKind("test".into())
     }
+    /// VCS 仓库实体（跨生态通用；2.0-M22）。
+    pub fn repository() -> Self {
+        EntityKind("repository".into())
+    }
+    /// 配置文件实体（跨生态通用；2.0-M22）。
+    pub fn configuration() -> Self {
+        EntityKind("configuration".into())
+    }
 
     /// adapter 贡献的扩展种类（如 "godot.scene"）；点分命名约定。
     pub fn other(name: impl Into<String>) -> Self {

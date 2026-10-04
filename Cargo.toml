@@ -11,6 +11,7 @@ members = [
     "crates/prism-impact",
     "crates/prism-health",
     "crates/prism-intel",
+    "crates/prism-l0",
     "crates/prism-verify",
     "crates/prism-env",
     "crates/prism-context",
@@ -45,6 +46,7 @@ prism-changes = { path = "crates/prism-changes" }
 prism-impact = { path = "crates/prism-impact" }
 prism-health = { path = "crates/prism-health" }
 prism-intel = { path = "crates/prism-intel" }
+prism-l0 = { path = "crates/prism-l0" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }

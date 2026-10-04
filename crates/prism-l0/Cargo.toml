@@ -1,0 +1,15 @@
+[package]
+name = "prism-l0"
+description = "Prism L0 Structural Analysis (2.0-M22): filesystem/git/manifest/config/environment observation translated into the M21 Intelligence Core (IntelBundle)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-git.workspace = true
+prism-intel.workspace = true
+prism-project.workspace = true
+serde.workspace = true
+serde_json.workspace = true

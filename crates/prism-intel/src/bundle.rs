@@ -80,6 +80,30 @@ impl IntelBundle {
             .collect()
     }
 
+    /// 合并另一 bundle（同 id 幂等保留首见；项目身份必须一致）。
+    /// 多 producer 产出汇入同一 Core 视图（2.0-M22 多域扫描）。
+    pub fn merge(&mut self, other: IntelBundle) {
+        debug_assert_eq!(
+            self.project.stable_key, other.project.stable_key,
+            "cannot merge bundles of different projects"
+        );
+        for (id, entity) in other.entities {
+            self.entities.entry(id).or_insert(entity);
+        }
+        for (id, fact) in other.facts {
+            self.facts.entry(id).or_insert(fact);
+        }
+        for (id, evidence) in other.evidence {
+            self.evidence.entry(id).or_insert(evidence);
+        }
+        for (id, relation) in other.relations {
+            self.relations.entry(id).or_insert(relation);
+        }
+        for (id, finding) in other.findings {
+            self.findings.entry(id).or_insert(finding);
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.entities.is_empty()
             && self.facts.is_empty()

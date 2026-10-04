@@ -109,11 +109,10 @@ pub fn render_markdown(pack: &ContextPack) -> String {
     out.push_str("## Context Health\n\n");
     out.push_str(&format!("- status: {:?}\n", pack.health.status));
     for finding in &pack.health.findings {
+        let severity = format!("{:?}", finding.severity);
         out.push_str(&format!(
-            "- [{}] {}: {}\n",
-            format!("{:?}", finding.severity),
-            finding.rule_id,
-            finding.message
+            "- [{severity}] {}: {}\n",
+            finding.rule_id, finding.message
         ));
     }
     out.push_str(&format!("- coverage: {}\n", coverage_line(&pack.health.coverage)));

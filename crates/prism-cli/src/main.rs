@@ -19,6 +19,7 @@ mod env_command;
 mod git_command;
 mod health_command;
 mod impact_command;
+mod intel_command;
 mod snapshot_command;
 mod verify_command;
 mod verify_subcommands;
@@ -206,6 +207,7 @@ fn run() -> i32 {
             }) => env_command::run_section(env_command::Section::Processes, &sub, sub_json),
             None => env_command::run(&path, json, strict, all_tools, refresh, format),
         },
+        Some(cli::Command::Intel { path, json }) => intel_command::run(&path, json),
         Some(cli::Command::Snapshot {
             path,
             force,

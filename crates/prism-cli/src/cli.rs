@@ -197,6 +197,13 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
+    /// 项目智能核心视图（2.0-M21 垂直切片：依赖域 → 统一 Core 模型）
+    Intel {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+    },
     /// 代码级变更集：Git diff → 文件/符号/模块变更（M5 可用）
     Changes {
         #[arg(default_value = ".")]
@@ -446,6 +453,7 @@ impl Command {
             Command::Info { .. } => "info",
             Command::Scan { .. } => "scan",
             Command::Inspect { .. } => "inspect",
+            Command::Intel { .. } => "intel",
             Command::Graph { .. } => "graph",
             Command::Git { .. } => "git",
             Command::Impact { .. } => "impact",

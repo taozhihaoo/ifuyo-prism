@@ -6,6 +6,7 @@
 mod commands;
 mod context_commands;
 mod env_commands;
+mod snapshot_commands;
 mod state;
 mod verify_commands;
 
@@ -87,6 +88,11 @@ pub fn run() {
             context_commands::get_context_results,
             context_commands::cancel_context_generation,
             context_commands::export_context,
+            snapshot_commands::snapshot_capture,
+            snapshot_commands::snapshot_history,
+            snapshot_commands::compare_snapshots,
+            snapshot_commands::snapshot_timeline,
+            snapshot_commands::delete_snapshot,
         ])
         .run(tauri::generate_context!())
         .unwrap_or_else(|err| {

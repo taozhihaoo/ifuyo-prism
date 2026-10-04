@@ -1139,3 +1139,59 @@ export interface ContextPackDto {
   };
   diagnostics: { kind: string; subject: string | null; detail: string }[];
 }
+
+// ---------- M11：Snapshot History ----------
+
+export interface SnapshotRecordDto {
+  id: string;
+  captured_at: string;
+  basis: string;
+  git_revision: string | null;
+  git_branch: string | null;
+  working_tree_state: string;
+  state_fingerprint: string;
+  counts: Record<string, number>;
+  note: string | null;
+}
+
+export interface DomainDiffDto {
+  domain: string;
+  state: string;
+  facts: string[];
+}
+
+export interface SnapshotDiffDto {
+  snapshot_a: string;
+  snapshot_b: string;
+  compatibility: string;
+  structure: DomainDiffDto;
+  code: DomainDiffDto;
+  architecture: DomainDiffDto;
+  git: DomainDiffDto;
+  change: DomainDiffDto;
+  impact: DomainDiffDto;
+  health: DomainDiffDto;
+  verification: DomainDiffDto;
+  environment: DomainDiffDto;
+  context_health: DomainDiffDto;
+  finding_lifecycles: { finding_fingerprint: string; rule_id: string; lifecycle: string; evidence: string[] }[];
+  verification_transitions: { check: string; from: string; to: string }[];
+  limitations: string[];
+}
+
+export interface TimelineEventDto {
+  id: string;
+  timestamp: string;
+  kind: string;
+  snapshot_id: string | null;
+  git_commit: string | null;
+  title: string;
+  summary: string;
+  source: string;
+}
+
+export interface TimelineDto {
+  project_id: string;
+  events: TimelineEventDto[];
+  limitations: string[];
+}

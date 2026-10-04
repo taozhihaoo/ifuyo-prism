@@ -91,6 +91,9 @@ pub struct ScanSession {
     pub env_snapshot: Option<prism_env::EnvironmentSnapshot>,
     /// environment Failed 时的错误描述。
     pub env_error: Option<String>,
+    /// ---- M11 Snapshot ----
+    /// 同项目 capture 防并发（§145）。
+    pub snapshot_capturing: bool,
     /// ---- M10 Context ----
     pub context_token: prism_core::task::CancellationToken,
     pub context_status: Option<TaskState>,
@@ -157,6 +160,7 @@ impl ScanSession {
         self.context_status = None;
         self.context_pack = None;
         self.context_error = None;
+        self.snapshot_capturing = false;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;

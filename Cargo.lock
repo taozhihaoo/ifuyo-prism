@@ -2525,6 +2525,8 @@ dependencies = [
  "prism-health",
  "prism-impact",
  "prism-project",
+ "prism-snapshot",
+ "prism-store",
  "prism-verify",
  "serde",
  "serde_json",

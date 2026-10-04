@@ -3,11 +3,11 @@ import type { AppInfo } from "../types/prism";
 import OverviewPage from "./OverviewPage";
 import ChangesPage from "./ChangesPage";
 import UnderstandPage from "./UnderstandPage";
-import PlaceholderPage from "../components/PlaceholderPage";
 import HealthPage from "./HealthPage";
 import VerifyPage from "./VerifyPage";
 import EnvironmentPage from "./EnvironmentPage";
 import ContextPage from "./ContextPage";
+import SnapshotHistoryPage from "./SnapshotHistoryPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
 export type PageKey =
@@ -66,13 +66,7 @@ export const PAGES: PageDef[] = [
   },
   {
     key: "reports",
-    label: "Reports",
-    milestoneTag: "M7",
-    render: () => (
-      <PlaceholderPage
-        milestone="M7"
-        description="Saved JSON / Markdown / HTML reports for health, changes, verification and context."
-      />
-    ),
+    label: "History",
+    render: () => <SnapshotHistoryPage />,
   },
 ];

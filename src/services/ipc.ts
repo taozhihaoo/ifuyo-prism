@@ -17,6 +17,9 @@ import type {
   VerifyStatusDto,
   EnvironmentSnapshotDto,
   ContextPackDto,
+  SnapshotRecordDto,
+  SnapshotDiffDto,
+  TimelineDto,
   ImpactAnalysisDto,
   ImpactStatusDto,
   GitFactsDto,
@@ -269,4 +272,29 @@ export function cancelContextGeneration(): Promise<void> {
 
 export function exportContext(format: "json" | "markdown" | "text"): Promise<string> {
   return invoke<string>("export_context", { format });
+}
+
+// ---------- M11：Snapshot History ----------
+
+export function snapshotCapture(force?: boolean, note?: string): Promise<unknown> {
+  return invoke<unknown>("snapshot_capture", {
+    force: force ?? null,
+    note: note ?? null,
+  });
+}
+
+export function snapshotHistory(): Promise<SnapshotRecordDto[]> {
+  return invoke<SnapshotRecordDto[]>("snapshot_history");
+}
+
+export function compareSnapshots(a: string, b: string): Promise<SnapshotDiffDto> {
+  return invoke<SnapshotDiffDto>("compare_snapshots", { snapshotA: a, snapshotB: b });
+}
+
+export function snapshotTimeline(): Promise<TimelineDto> {
+  return invoke<TimelineDto>("snapshot_timeline");
+}
+
+export function deleteSnapshot(snapshotId: string): Promise<{ deleted: boolean }> {
+  return invoke<{ deleted: boolean }>("delete_snapshot", { snapshotId });
 }

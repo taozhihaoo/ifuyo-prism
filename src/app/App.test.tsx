@@ -132,7 +132,7 @@ describe("App shell", () => {
       "Verify",
       "Environment",
       "Context",
-      "Reports",
+      "History",
     ]) {
       expect(screen.getByRole("button", { name: new RegExp(label) })).toBeInTheDocument();
     }

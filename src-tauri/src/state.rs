@@ -91,6 +91,11 @@ pub struct ScanSession {
     pub env_snapshot: Option<prism_env::EnvironmentSnapshot>,
     /// environment Failed 时的错误描述。
     pub env_error: Option<String>,
+    /// ---- M10 Context ----
+    pub context_token: prism_core::task::CancellationToken,
+    pub context_status: Option<TaskState>,
+    pub context_pack: Option<prism_context::ContextPack>,
+    pub context_error: Option<String>,
     /// ---- M5 ChangeSet ----
     /// changeset 取消令牌（独立于扫描/inspect/graph）。
     pub changeset_token: CancellationToken,
@@ -149,6 +154,9 @@ impl ScanSession {
         self.env_status = None;
         self.env_snapshot = None;
         self.env_error = None;
+        self.context_status = None;
+        self.context_pack = None;
+        self.context_error = None;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
         self.code_model = None;

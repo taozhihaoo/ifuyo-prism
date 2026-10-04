@@ -1058,3 +1058,84 @@ export interface EnvironmentSnapshotDto {
   scan_outcome: "completed" | "partial" | "cancelled";
   completeness: "complete" | "partial" | "unknown";
 }
+
+// ---------- M10：Context ----------
+
+export interface ContextSourceDto {
+  source_type: string;
+  source_id: string;
+  path: string | null;
+  location: string | null;
+  provenance: string;
+}
+
+export interface ContextRangeDto {
+  start: number;
+  end: number;
+  reason: string;
+  symbol_id: string | null;
+  symbol_name: string | null;
+}
+
+export interface ContextItemDto {
+  id: string;
+  source: ContextSourceDto;
+  group: string;
+  title: string;
+  content: string | null;
+  location: string | null;
+  priority: "critical" | "high" | "normal" | "supporting" | "low";
+  reasons: string[];
+  evidence: string[];
+  trust_level: string;
+  language: string | null;
+  change_state: string | null;
+  impact_distance: number | null;
+  truncated: boolean;
+  original_size: number | null;
+  included_size: number | null;
+  truncation_reason: string | null;
+  content_level: string;
+  detail_level: string;
+  ranges: ContextRangeDto[];
+  unavailable_reason: string | null;
+  content_hash: string | null;
+}
+
+export interface ContextPackDto {
+  manifest: {
+    schema_version: number;
+    id: string;
+    project_root: string;
+    task: string | null;
+    classification: { kinds: string[]; focus: string[]; specificity: string; raw_task: string | null };
+    target: { raw: string; resolution: { kind: string; paths?: string[]; symbols?: string[]; candidates?: string[] } };
+    scope: string;
+    generated_at: string;
+    status: string;
+    summary: Record<string, number>;
+    budget: {
+      selected_items: number;
+      excluded_items: number;
+      used_bytes: number;
+      used_tokens_estimate: number;
+      limit_tokens_estimate: number;
+    };
+    limitations: string[];
+  };
+  state: { head_commit: string | null; branch: string | null; dirty: boolean | null; generated_at: string };
+  risk_signals: string[];
+  items: ContextItemDto[];
+  selection: {
+    candidates: number;
+    selected: string[];
+    excluded: { id: string; title: string; reason: string; detail: string }[];
+  };
+  health: {
+    status: string;
+    findings: { rule_id: string; severity: string; title: string; message: string; evidence: string[] }[];
+    coverage: Record<string, string>;
+    limitations: string[];
+  };
+  diagnostics: { kind: string; subject: string | null; detail: string }[];
+}

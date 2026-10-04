@@ -7,6 +7,7 @@ import PlaceholderPage from "../components/PlaceholderPage";
 import HealthPage from "./HealthPage";
 import VerifyPage from "./VerifyPage";
 import EnvironmentPage from "./EnvironmentPage";
+import ContextPage from "./ContextPage";
 
 /** 主导航页面键（纲领 §13 固定八个，不随功能膨胀）。 */
 export type PageKey =
@@ -61,13 +62,7 @@ export const PAGES: PageDef[] = [
   {
     key: "context",
     label: "Context",
-    milestoneTag: "M10",
-    render: () => (
-      <PlaceholderPage
-        milestone="M10"
-        description="Risk-weighted, task-aware context packs for AI — deterministic, redacted, budgeted."
-      />
-    ),
+    render: () => <ContextPage />,
   },
   {
     key: "reports",

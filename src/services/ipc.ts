@@ -16,6 +16,7 @@ import type {
   VerificationReportDto,
   VerifyStatusDto,
   EnvironmentSnapshotDto,
+  ContextPackDto,
   ImpactAnalysisDto,
   ImpactStatusDto,
   GitFactsDto,
@@ -242,4 +243,30 @@ export function getEnvironmentResults(): Promise<EnvironmentSnapshotDto | null> 
 
 export function cancelEnvironmentScan(): Promise<void> {
   return invoke<void>("cancel_environment_scan");
+}
+
+// ---------- M10：Context ----------
+
+export function startContextGeneration(options?: { task?: string; scope?: string; maxTokens?: number }): Promise<string> {
+  return invoke<string>("start_context_generation", {
+    task: options?.task ?? null,
+    scope: options?.scope ?? null,
+    maxTokens: options?.maxTokens ?? null,
+  });
+}
+
+export function getContextStatus(): Promise<{ status: string; error: string | null }> {
+  return invoke<{ status: string; error: string | null }>("get_context_status");
+}
+
+export function getContextResults(): Promise<ContextPackDto | null> {
+  return invoke<ContextPackDto | null>("get_context_results");
+}
+
+export function cancelContextGeneration(): Promise<void> {
+  return invoke<void>("cancel_context_generation");
+}
+
+export function exportContext(format: "json" | "markdown" | "text"): Promise<string> {
+  return invoke<string>("export_context", { format });
 }

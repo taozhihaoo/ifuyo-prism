@@ -18,6 +18,7 @@ pub mod identity;
 pub mod index;
 pub mod intel;
 pub mod model;
+pub mod semantic;
 
 pub use extract::extract;
 pub use identity::symbol_id;
@@ -25,6 +26,10 @@ pub use index::{SymbolEngine, SymbolIndex};
 pub use model::{
     AttributeInfo, DeclarationOccurrence, FileExtraction, ParamInfo, ParseDiagnostic, RawSymbol,
     SourceRangeCs, SymbolKindCs,
+};
+pub use semantic::{
+    analyze_file_with_resolver, Dispatch, Resolution, SemanticDiagnostic, SemanticEngine,
+    SemanticRelation, SemanticRelationKind, SemanticTarget,
 };
 
 /// M23 输出契约版本（§61：与 parser/extraction 版本分离）。

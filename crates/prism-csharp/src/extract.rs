@@ -67,12 +67,14 @@ pub fn extract(file: &str, source: &str) -> FileExtraction {
         namespace: String::new(),
         type_stack: Vec::new(),
         doc_summary: None,
+        usings: Vec::new(),
     };
     walk_root(tree.root_node(), &mut context);
     FileExtraction {
         file: file.to_string(),
         content_hash,
         symbols: context.symbols,
+        usings: context.usings,
         diagnostics,
     }
 }
@@ -85,6 +87,8 @@ struct ExtractContext<'a> {
     type_stack: Vec<String>,
     /// 下一个声明可能携带的 `///` 文档摘要。
     doc_summary: Option<String>,
+    /// using 指令限定名（§21：仅供引用解析作用域规则）。
+    usings: Vec<String>,
 }
 
 fn walk_root(node: Node, ctx: &mut ExtractContext) {
@@ -124,6 +128,20 @@ fn walk_root(node: Node, ctx: &mut ExtractContext) {
                 let _ = previous;
             }
             "comment" => note_doc_comment(child, ctx),
+            "using_directive" => {
+                // §21：记录限定名；alias 记 "alias:名字=目标" 原样。
+                if let Some(name) = child.child_by_field_name("name") {
+                    let text = name.utf8_text(ctx.source.as_bytes()).unwrap_or_default();
+                    ctx.usings.push(text.to_string());
+                } else {
+                    for part in child.children(&mut child.walk()) {
+                        if part.kind() == "name_equals" {
+                            let text = part.utf8_text(ctx.source.as_bytes()).unwrap_or_default();
+                            ctx.usings.push(format!("alias:{text}"));
+                        }
+                    }
+                }
+            }
             _ => {
                 if is_declaration_kind(child.kind()) {
                     walk_declaration(child, ctx);
@@ -327,8 +345,11 @@ fn walk_declaration(node: Node, ctx: &mut ExtractContext) {
                 .to_string()
         })
         .collect();
+    // grammar 证实：base_list 不是 field（class_declaration fields 只有
+    // body/name）——按 kind 扫描子节点。
     let base_types: Vec<String> = node
-        .child_by_field_name("bases")
+        .children(&mut node.walk())
+        .find(|c| c.kind() == "base_list")
         .map(|list| {
             let mut out = Vec::new();
             let mut cursor = list.walk();

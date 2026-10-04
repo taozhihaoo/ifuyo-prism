@@ -5,6 +5,7 @@
 //! 与 M22 bundle merge 时 file 实体按同口径 id 去重（§三十四 链路）。
 
 use crate::index::SymbolIndex;
+use crate::semantic::SemanticTarget;
 use prism_intel::entity::{Entity, EntityLocation, EntityScope};
 use prism_intel::evidence::{Evidence, EvidenceKind, SourceRange};
 use prism_intel::fact::{Fact, FactType, FactValue};
@@ -202,6 +203,242 @@ pub fn symbols_to_intel(
         IntelOutcome::complete(bundle)
     } else {
         IntelOutcome {
+            status: prism_intel::IntelStatus::Complete,
+            data: Some(bundle),
+            warnings,
+            errors: Vec::new(),
+        }
+    }
+}
+
+/// L2 语义关系 → M21 IntelBundle（2.0-M25 §23/§32/§六十一）。
+///
+/// - Resolved 关系：source 符号 Entity → `calls/inherits/...` 关系 →
+///   target 符号 Entity（M23 同口径 id，跨 bundle merge 同链）；
+///   Resolution/Dispatch 进 relation metadata；Evidence = 调用点 SourceRange。
+/// - Unresolved/Ambiguous：不伪造边——降级为 `semantic_unresolved` 事实。
+/// - 诊断（dynamic/reflection）→ bundle warnings（诚实降级可见）。
+pub fn semantic_to_intel(
+    relations: &[crate::semantic::SemanticRelation],
+    diagnostics: &[crate::semantic::SemanticDiagnostic],
+    identity: &ProjectIdentity,
+    observed_at: &str,
+) -> IntelOutcome<IntelBundle> {
+    let mut warnings: Vec<String> = diagnostics
+        .iter()
+        .map(|d| {
+            format!(
+                "{}: {} ({}:{})",
+                d.kind, d.message, d.file, d.range.start_line
+            )
+        })
+        .collect();
+    let provenance = Provenance {
+        producer: "prism-csharp::semantic_to_intel".to_string(),
+        producer_version: format!(
+            "{}/{}",
+            crate::index::PARSER_VERSION,
+            crate::index::EXTRACTION_VERSION
+        ),
+        observed_at: observed_at.to_string(),
+    };
+    let mut bundle = IntelBundle::new(identity.clone(), provenance.clone());
+
+    let relation_type = |kind: crate::semantic::SemanticRelationKind| match kind {
+        crate::semantic::SemanticRelationKind::Inherits => prism_intel::RelationType::inherits(),
+        crate::semantic::SemanticRelationKind::Implements => {
+            prism_intel::RelationType::implements()
+        }
+        crate::semantic::SemanticRelationKind::Overrides => {
+            prism_intel::RelationType::other("overrides")
+        }
+        crate::semantic::SemanticRelationKind::Calls => prism_intel::RelationType::calls(),
+        crate::semantic::SemanticRelationKind::Constructs => {
+            prism_intel::RelationType::other("constructs")
+        }
+        crate::semantic::SemanticRelationKind::ReferencesType => {
+            prism_intel::RelationType::references()
+        }
+        crate::semantic::SemanticRelationKind::SubscribesEvent => {
+            prism_intel::RelationType::other("subscribes_event")
+        }
+        crate::semantic::SemanticRelationKind::UnsubscribesEvent => {
+            prism_intel::RelationType::other("unsubscribes_event")
+        }
+    };
+
+    let symbol_entity = |bundle: &IntelBundle, symbol_id: &str, qualified: &str| {
+        let suffix = symbol_id.rsplit('#').next().unwrap_or_default();
+        bundle.entity_id(&EntityKind::symbol(), &format!("{qualified}#{suffix}"))
+    };
+
+    let mut resolved = 0usize;
+    let mut unresolved = 0usize;
+    for relation in relations {
+        let evidence = Evidence::new(
+            EvidenceKind::SourceRange,
+            Some(relation.file.clone()),
+            Some(SourceRange {
+                path: relation.file.clone(),
+                start_line: relation.range.start_line,
+                start_column: relation.range.start_column,
+                end_line: relation.range.end_line,
+                end_column: relation.range.end_column,
+            }),
+            None,
+            format!(
+                "{:?} at {}:{} (resolution: {:?})",
+                relation.kind, relation.file, relation.range.start_line, relation.resolution
+            ),
+        );
+        let evidence_id = evidence.id.clone();
+        bundle.insert_evidence(evidence);
+
+        match &relation.target {
+            SemanticTarget::Resolved {
+                symbol_id,
+                qualified_name,
+            } => {
+                resolved += 1;
+                let source = symbol_entity(
+                    &bundle,
+                    &relation.source_symbol_id,
+                    &relation.source_symbol_id,
+                );
+                let target = symbol_entity(&bundle, symbol_id, qualified_name);
+                // source/target 实体按 M23 id 建占位（与 M23 bundle merge 同链）；
+                // 这里只建最小说明实体，真实成员详情由 M23 bundle 提供。
+                bundle.insert_entity(Entity::new(
+                    source.clone(),
+                    EntityKind::symbol(),
+                    relation.source_symbol_id.clone(),
+                    EntityLocation::Unknown,
+                    EntityScope::Internal,
+                ));
+                bundle.insert_entity(Entity::new(
+                    target.clone(),
+                    EntityKind::symbol(),
+                    qualified_name.clone(),
+                    EntityLocation::Unknown,
+                    EntityScope::Internal,
+                ));
+                let mut r = Relation::new(
+                    relation_type(relation.kind),
+                    source,
+                    RelationTarget::Resolved { entity: target },
+                    Origin::Fact,
+                    relation.confidence,
+                    vec![evidence_id],
+                );
+                r.metadata.insert(
+                    "resolution".to_string(),
+                    format!("{:?}", relation.resolution).to_lowercase(),
+                );
+                r.metadata.insert(
+                    "dispatch".to_string(),
+                    format!("{:?}", relation.dispatch).to_lowercase(),
+                );
+                if relation.cross_project {
+                    r.metadata
+                        .insert("cross_project".to_string(), "true".to_string());
+                }
+                bundle.insert_relation(r);
+            }
+            SemanticTarget::Unresolved { name, reason } => {
+                unresolved += 1;
+                bundle.insert_fact(Fact::new(
+                    FactType::other("semantic_unresolved"),
+                    None,
+                    FactValue::Structured(serde_json::json!({
+                        "kind": relation.kind.as_str(),
+                        "name": name,
+                        "reason": reason,
+                        "file": relation.file,
+                        "line": relation.range.start_line,
+                    })),
+                    Origin::Fact,
+                    Confidence::Unknown,
+                    ConfidenceReason::insufficient_evidence(),
+                    Freshness::Fresh,
+                    vec![evidence_id],
+                    observed_at,
+                    provenance.clone(),
+                ));
+            }
+            SemanticTarget::Ambiguous { name, candidates } => {
+                unresolved += 1;
+                bundle.insert_fact(Fact::new(
+                    FactType::other("semantic_ambiguous"),
+                    None,
+                    FactValue::Structured(serde_json::json!({
+                        "kind": relation.kind.as_str(),
+                        "name": name,
+                        "candidates": candidates,
+                        "file": relation.file,
+                    })),
+                    Origin::Fact,
+                    Confidence::Medium,
+                    ConfidenceReason::heuristic_inference(),
+                    Freshness::Fresh,
+                    vec![evidence_id],
+                    observed_at,
+                    provenance.clone(),
+                ));
+            }
+            SemanticTarget::Unknown { reason } => {
+                warnings.push(format!("unknown resolution: {reason}"));
+            }
+            // §26：外部/框架符号——记录 External 引用事实，不伪装成内部解析。
+            SemanticTarget::External { name, reason } => {
+                unresolved += 1;
+                bundle.insert_fact(Fact::new(
+                    FactType::other("semantic_external_reference"),
+                    None,
+                    FactValue::Structured(serde_json::json!({
+                        "name": name,
+                        "reason": reason,
+                        "file": relation.file,
+                    })),
+                    Origin::Fact,
+                    Confidence::Unknown,
+                    ConfidenceReason::insufficient_evidence(),
+                    Freshness::Fresh,
+                    vec![evidence_id],
+                    observed_at,
+                    provenance.clone(),
+                ));
+            }
+        }
+    }
+    bundle.insert_fact(Fact::new(
+        FactType::other("semantic_relations_resolved"),
+        None,
+        FactValue::Int(resolved as i64),
+        Origin::Fact,
+        Confidence::High,
+        ConfidenceReason::direct_observation(),
+        Freshness::Fresh,
+        vec![],
+        observed_at,
+        provenance.clone(),
+    ));
+    bundle.insert_fact(Fact::new(
+        FactType::other("semantic_relations_unresolved"),
+        None,
+        FactValue::Int(unresolved as i64),
+        Origin::Fact,
+        Confidence::High,
+        ConfidenceReason::direct_observation(),
+        Freshness::Fresh,
+        vec![],
+        observed_at,
+        provenance.clone(),
+    ));
+
+    if warnings.is_empty() {
+        IntelOutcome::complete(bundle)
+    } else {
+        prism_intel::IntelOutcome {
             status: prism_intel::IntelStatus::Complete,
             data: Some(bundle),
             warnings,

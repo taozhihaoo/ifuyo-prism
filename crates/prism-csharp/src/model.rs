@@ -142,6 +142,10 @@ pub struct FileExtraction {
     pub file: String,
     pub content_hash: String,
     pub symbols: Vec<RawSymbol>,
+    /// using 指令的限定名（含 global using；alias 右侧原文带 "alias:" 前缀，
+    /// §21：import 本身不是语义依赖，仅供引用解析的作用域规则使用）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub usings: Vec<String>,
     pub diagnostics: Vec<ParseDiagnostic>,
 }
 

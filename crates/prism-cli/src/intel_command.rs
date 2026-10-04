@@ -74,7 +74,11 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     // symbols 域也依赖 L0 的文件清单 + 语言标注（§三十四：不重扫文件系统）。
     let l0_needed = matches!(
         domain,
-        IntelDomain::Structural | IntelDomain::Symbols | IntelDomain::Godot | IntelDomain::All
+        IntelDomain::Structural
+            | IntelDomain::Symbols
+            | IntelDomain::Semantic
+            | IntelDomain::Godot
+            | IntelDomain::All
     );
     let mut l0_bundle: Option<IntelBundle> = None;
     if l0_needed {
@@ -107,7 +111,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     let mut symbol_index: Option<prism_csharp::SymbolIndex> = None;
     if matches!(
         domain,
-        IntelDomain::Symbols | IntelDomain::Godot | IntelDomain::All
+        IntelDomain::Symbols | IntelDomain::Semantic | IntelDomain::Godot | IntelDomain::All
     ) {
         let Some(l0) = l0_bundle
             .clone()
@@ -184,6 +188,106 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             );
         }
         symbol_index = Some(index);
+    }
+
+    // ---- M25 L2 语义域（消费 L0 清单 + M23 符号索引；§45 垂直切片）----
+    if matches!(domain, IntelDomain::Semantic | IntelDomain::All) {
+        let Some(l0) = l0_bundle
+            .clone()
+            .or_else(|| merged.as_ref().and_then(|outcome| outcome.data.clone()))
+        else {
+            eprintln!("prism: intel semantic domain requires the structural inventory");
+            return crate::EXIT_ERROR;
+        };
+        let csharp_files = collect_csharp_files(&l0);
+        let mut engine = prism_csharp::SymbolEngine::new();
+        let mut semantic = prism_csharp::SemanticEngine::new();
+        for (relative_path, absolute) in &csharp_files {
+            let Ok(metadata) = std::fs::metadata(absolute) else {
+                continue;
+            };
+            if metadata.len() > MAX_SOURCE_BYTES {
+                continue;
+            }
+            let Ok(source) = std::fs::read_to_string(absolute) else {
+                continue;
+            };
+            engine.update_file(relative_path, &source);
+            semantic.update_file(&engine.build_index(), relative_path, &source);
+        }
+        // 查询输出（§52 callers/callees/references）。
+        if let Some(needle) = search {
+            let hits: Vec<_> = semantic
+                .relations()
+                .filter(|relation| {
+                    relation
+                        .source_symbol_id
+                        .to_lowercase()
+                        .contains(&needle.to_lowercase())
+                        || matches!(
+                            &relation.target,
+                            prism_csharp::SemanticTarget::Resolved { qualified_name, .. }
+                                if qualified_name.to_lowercase().contains(&needle.to_lowercase())
+                        )
+                        || matches!(
+                            &relation.target,
+                            prism_csharp::SemanticTarget::Unresolved { name, .. }
+                                | prism_csharp::SemanticTarget::External { name, .. }
+                                    if name.to_lowercase().contains(&needle.to_lowercase())
+                        )
+                })
+                .collect();
+            if json {
+                match serde_json::to_string_pretty(&hits) {
+                    Ok(text) => println!("{text}"),
+                    Err(err) => {
+                        eprintln!("prism: failed to serialize semantic relations: {err}");
+                        return crate::EXIT_ERROR;
+                    }
+                }
+            } else {
+                println!("Semantic relations matching \"{}\": {}", needle, hits.len());
+                for relation in hits {
+                    let target = match &relation.target {
+                        prism_csharp::SemanticTarget::Resolved { qualified_name, .. } => {
+                            qualified_name.clone()
+                        }
+                        prism_csharp::SemanticTarget::Unresolved { name, .. }
+                        | prism_csharp::SemanticTarget::External { name, .. }
+                        | prism_csharp::SemanticTarget::Ambiguous { name, .. } => name.clone(),
+                        prism_csharp::SemanticTarget::Unknown { reason } => reason.clone(),
+                    };
+                    println!(
+                        "  {:?} {} -> {} [{:?}/{:?}] @ {}:{}",
+                        relation.kind,
+                        relation.source_symbol_id,
+                        target,
+                        relation.resolution,
+                        relation.dispatch,
+                        relation.file,
+                        relation.range.start_line
+                    );
+                }
+            }
+            return crate::EXIT_OK;
+        }
+        let outcome = prism_csharp::intel::semantic_to_intel(
+            semantic.relations().cloned().collect::<Vec<_>>().as_slice(),
+            semantic
+                .diagnostics()
+                .cloned()
+                .collect::<Vec<_>>()
+                .as_slice(),
+            &identity,
+            &prism_core::Timestamp::now_utc().to_string(),
+        );
+        absorb(
+            &mut merged,
+            &mut domain_label,
+            outcome,
+            "semantic",
+            "dependency+l0_structural+symbols+semantic+godot",
+        );
     }
 
     // ---- M24 Godot 域（消费 L0 清单 + M23 符号索引；§61-§63）----

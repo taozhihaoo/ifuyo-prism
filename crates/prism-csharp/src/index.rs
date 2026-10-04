@@ -155,6 +155,11 @@ impl SymbolEngine {
         self.extractions.get(file)
     }
 
+    /// 抽取表直读（L2 Resolver 的 usings 作用域来源，M25）。
+    pub fn extraction_map(&self) -> &BTreeMap<String, FileExtraction> {
+        &self.extractions
+    }
+
     pub fn extractions(&self) -> impl Iterator<Item = &FileExtraction> {
         self.extractions.values()
     }

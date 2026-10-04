@@ -3,7 +3,14 @@ import { formatBytesLabel } from "../services/format";
 import { useProjectStore } from "../app/ProjectStore";
 import ScanProgressCard from "../components/ScanProgressCard";
 import ProjectTypesCard from "../components/ProjectTypesCard";
-import { getGitFacts, getVerifyResults } from "../services/ipc";
+import {
+  getGitFacts,
+  getHealthStatus,
+  getVerifyResults,
+  getVerifyStatus,
+  snapshotHistory,
+} from "../services/ipc";
+import type { SnapshotRecordDto } from "../types/prism";
 import type { CheckRunDto, VerificationReportDto } from "../types/prism";
 import type { AppInfo } from "../types/prism";
 
@@ -43,6 +50,9 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
     useProjectStore();
   const [verifyOverview, setVerifyOverview] = useState<VerifyOverview | null>(null);
   const [verifyChecked, setVerifyChecked] = useState(false);
+  const [latestSnapshot, setLatestSnapshot] = useState<SnapshotRecordDto | null>(null);
+  const [healthState, setHealthState] = useState<string | null>(null);
+  const [verifyState, setVerifyState] = useState<string | null>(null);
 
   useEffect(() => {
     if (!project?.root_path) return;
@@ -54,6 +64,22 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
           getVerifyResults(),
           getGitFacts(false),
         ]);
+        // §14 Overview Status Cards：真实 session 事实（无则如实 idle）。
+        void snapshotHistory()
+          .then((list) => {
+            if (!disposed) setLatestSnapshot(list[0] ?? null);
+          })
+          .catch(() => {});
+        void getHealthStatus()
+          .then((status) => {
+            if (!disposed) setHealthState(status.status);
+          })
+          .catch(() => {});
+        void getVerifyStatus()
+          .then((status) => {
+            if (!disposed) setVerifyState(status.status);
+          })
+          .catch(() => {});
         if (disposed) return;
         if (results?.report) {
           const headCommit = facts.head?.commit_id ?? null;
@@ -154,6 +180,34 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
               </div>
             )}
           </div>
+
+          {(latestSnapshot || healthState || verifyState) && (
+            <div className="card" data-testid="overview-status-cards">
+              <h2 className="card-title">Status</h2>
+              <dl className="fact-grid">
+                <div>
+                  <dt>Health</dt>
+                  <dd>{healthState ?? "not run"}</dd>
+                </div>
+                <div>
+                  <dt>Verify</dt>
+                  <dd>{verifyState ?? "not run"}</dd>
+                </div>
+                <div>
+                  <dt>Last snapshot</dt>
+                  <dd>
+                    {latestSnapshot
+                      ? new Date(latestSnapshot.captured_at).toLocaleString()
+                      : "none"}
+                  </dd>
+                </div>
+              </dl>
+              <p className="muted small">
+                Session facts — Health/Verify 反映本次会话是否运行过；snapshot
+                为最近一次捕获时间（§14）。
+              </p>
+            </div>
+          )}
 
           <ProjectTypesCard candidates={discovery.project_types} />
 

@@ -6,6 +6,9 @@ import type { GitFactsDto, VerificationReportDto } from "../types/prism";
 const ipc = vi.hoisted(() => ({
   getVerifyResults: vi.fn(),
   getGitFacts: vi.fn(),
+  getHealthStatus: vi.fn().mockResolvedValue({ status: "idle", error: null }),
+  getVerifyStatus: vi.fn().mockResolvedValue({ status: "idle", error: null }),
+  snapshotHistory: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock("../services/ipc", () => ({

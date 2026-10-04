@@ -103,6 +103,31 @@ pub enum HealthFormatArg {
     Html,
 }
 
+/// `prism history` 子命令（§61/§62）
+#[derive(Debug, Subcommand)]
+pub enum HistoryCommand {
+    /// 导出历史 JSON（§61；显式操作 §260，导出前再脱敏 §261）
+    Export {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        output: Option<String>,
+    },
+    /// 删除快照/清空项目历史（§62；--yes 必须）
+    Delete {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 删除单个快照 id
+        #[arg(long)]
+        snapshot: Option<String>,
+        /// 清空项目全部历史
+        #[arg(long)]
+        all: bool,
+        #[arg(long)]
+        yes: bool,
+    },
+}
+
 /// `prism env` 子命令（§237/§238：按节输出）。
 #[derive(Debug, Subcommand)]
 pub enum EnvCommand {
@@ -330,6 +355,28 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// 比较两个快照（M11b §59）
+    Compare {
+        /// 项目路径（compare 需显式传入——必需 positional 必须排在可选之前）
+        path: std::path::PathBuf,
+        snapshot_a: String,
+        snapshot_b: String,
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        markdown: bool,
+    },
+    /// 项目时间线（M11b §60）
+    Timeline {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        limit: Option<usize>,
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        markdown: bool,
+    },
     /// 查看项目快照历史（M11a）
     History {
         #[arg(default_value = ".")]
@@ -338,6 +385,8 @@ pub enum Command {
         json: bool,
         #[arg(long)]
         limit: Option<usize>,
+        #[command(subcommand)]
+        command: Option<HistoryCommand>,
     },
     /// 生成确定性项目上下文包（M10a）
     Context {
@@ -402,6 +451,8 @@ impl Command {
             Command::Env { .. } => "env",
             Command::Context { .. } => "context",
             Command::Snapshot { .. } => "snapshot",
+            Command::Compare { .. } => "compare",
+            Command::Timeline { .. } => "timeline",
             Command::History { .. } => "history",
             Command::Report { .. } => "report",
         }

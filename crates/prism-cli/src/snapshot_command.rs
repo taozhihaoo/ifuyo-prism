@@ -132,3 +132,152 @@ pub fn run_history(path: &Path, json: bool, limit: Option<usize>) -> i32 {
     }
     crate::EXIT_OK
 }
+
+/// §59：compare 渲染（markdown/json）。
+#[allow(clippy::too_many_arguments)]
+pub fn run_compare(
+    path: &Path,
+    snapshot_a: &str,
+    snapshot_b: &str,
+    json: bool,
+    markdown: bool,
+) -> i32 {
+    if !path.exists() {
+        eprintln!("prism: path does not exist: {}", path.to_string_lossy());
+        return crate::EXIT_INVALID_INPUT;
+    }
+    let store = match open_store() {
+        Ok(store) => store,
+        Err(err) => {
+            eprintln!("prism: snapshot store unavailable: {err}");
+            return crate::EXIT_ERROR;
+        }
+    };
+    match prism_snapshot::render_compare(store.as_ref(), snapshot_a, snapshot_b, json) {
+        Ok(text) => {
+            if markdown && !json {
+                print!("{}", text);
+            } else if json {
+                println!("{text}");
+            } else {
+                print!("{}", text);
+            }
+            crate::EXIT_OK
+        }
+        Err(err) => {
+            eprintln!("prism: compare failed: {err}");
+            crate::EXIT_ERROR
+        }
+    }
+}
+
+/// §60：timeline 渲染（git + snapshot 派生）。
+pub fn run_timeline(path: &Path, limit: Option<usize>, json: bool, markdown: bool) -> i32 {
+    if !path.exists() {
+        eprintln!("prism: path does not exist: {}", path.to_string_lossy());
+        return crate::EXIT_INVALID_INPUT;
+    }
+    let store = match open_store() {
+        Ok(store) => store,
+        Err(err) => {
+            eprintln!("prism: snapshot store unavailable: {err}");
+            return crate::EXIT_ERROR;
+        }
+    };
+    // json=false 时 render_timeline 本身输出 markdown（§60 --markdown）。
+    let as_json = json || !markdown;
+    match prism_snapshot::render_timeline(store.as_ref(), path, limit, as_json) {
+        Ok(text) => {
+            println!("{text}");
+            crate::EXIT_OK
+        }
+        Err(err) => {
+            eprintln!("prism: timeline failed: {err}");
+            crate::EXIT_ERROR
+        }
+    }
+}
+
+/// §61：history export（用户显式操作 §260；导出前再脱敏 §261）。
+pub fn run_history_export(path: &Path, output: Option<String>) -> i32 {
+    if !path.exists() {
+        eprintln!("prism: path does not exist: {}", path.to_string_lossy());
+        return crate::EXIT_INVALID_INPUT;
+    }
+    let store = match open_store() {
+        Ok(store) => store,
+        Err(err) => {
+            eprintln!("prism: snapshot store unavailable: {err}");
+            return crate::EXIT_ERROR;
+        }
+    };
+    match prism_snapshot::render_history_export(store.as_ref(), path) {
+        Ok(content) => match output {
+            Some(output_path) => {
+                if std::fs::write(&output_path, content).is_err() {
+                    eprintln!("prism: failed to write export file");
+                    return crate::EXIT_ERROR;
+                }
+                println!("History exported to {output_path}");
+                crate::EXIT_OK
+            }
+            None => {
+                println!("{content}");
+                crate::EXIT_OK
+            }
+        },
+        Err(err) => {
+            eprintln!("prism: export failed: {err}");
+            crate::EXIT_ERROR
+        }
+    }
+}
+
+/// §62：delete selected snapshot / clear project history（--yes 必须 §62）。
+pub fn run_history_delete(path: &Path, snapshot: Option<String>, yes: bool, all: bool) -> i32 {
+    if !yes {
+        eprintln!("prism: destructive operation requires --yes (§62)");
+        return crate::EXIT_INVALID_INPUT;
+    }
+    let store = match open_store() {
+        Ok(store) => store,
+        Err(err) => {
+            eprintln!("prism: snapshot store unavailable: {err}");
+            return crate::EXIT_ERROR;
+        }
+    };
+    let canonical_root = path.to_string_lossy().to_string();
+    let Some(project) = store
+        .get_project_by_root(&canonical_root)
+        .map_err(|err| {
+            eprintln!("prism: store error: {err}");
+        })
+        .ok()
+        .flatten()
+    else {
+        eprintln!("prism: no history for this project");
+        return crate::EXIT_OK;
+    };
+    let deleted = if let Some(snapshot_id) = snapshot {
+        match store.delete_snapshot(&snapshot_id) {
+            Ok(deleted) => deleted as usize,
+            Err(err) => {
+                eprintln!("prism: delete failed: {err}");
+                return crate::EXIT_ERROR;
+            }
+        }
+    } else if all {
+        match store.delete_project_history(&project.id) {
+            Ok(deleted) => deleted,
+            Err(err) => {
+                eprintln!("prism: delete failed: {err}");
+                return crate::EXIT_ERROR;
+            }
+        }
+    } else {
+        eprintln!("prism: specify --snapshot <id> or --all");
+        return crate::EXIT_INVALID_INPUT;
+    };
+    println!("Deleted {deleted} snapshot(s). Project files untouched (§116).");
+    crate::EXIT_OK
+}

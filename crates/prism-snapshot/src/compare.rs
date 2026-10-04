@@ -100,6 +100,10 @@ fn domain_state(domain_json: &Value) -> &str {
         .unwrap_or("not_captured")
 }
 
+fn domain_content(domain_json: &Value) -> &Value {
+    domain_json.get("data").unwrap_or(&Value::Null)
+}
+
 /// 通用标量集合 diff（added/removed 基于字符串集合）。
 pub fn set_diff(a: &[String], b: &[String]) -> (Vec<String>, Vec<String>) {
     let set_a: std::collections::BTreeSet<&String> = a.iter().collect();
@@ -148,8 +152,9 @@ pub fn compare_domain(domain: &str, a: &Value, b: &Value) -> DomainDiff {
         };
     }
 
-    // 结构化比较：顶层标量字段变化 + 集合字段 added/removed。
-    let (obj_a, obj_b) = (a.as_object(), b.as_object());
+    // 结构化比较：**域内容**（wrapper.data）的顶层标量变化 + 集合 added/removed。
+    let (content_a, content_b) = (domain_content(a), domain_content(b));
+    let (obj_a, obj_b) = (content_a.as_object(), content_b.as_object());
     if let (Some(obj_a), Some(obj_b)) = (obj_a, obj_b) {
         let mut keys: std::collections::BTreeSet<&String> = obj_a.keys().collect();
         keys.extend(obj_b.keys());
@@ -212,8 +217,9 @@ mod tests {
 
     #[test]
     fn structure_diff_reports_added_removed() {
-        let a = json!({ "status": "available", "files": ["a.ts", "b.ts"] });
-        let b = json!({ "status": "available", "files": ["b.ts", "c.ts"] });
+        // wrapper 形态：{status, data}（persist 列映射）。
+        let a = json!({ "status": "available", "data": { "files": ["a.ts", "b.ts"] } });
+        let b = json!({ "status": "available", "data": { "files": ["b.ts", "c.ts"] } });
         let diff = compare_domain("structure", &a, &b);
         assert_eq!(diff.state, "changed");
         assert!(diff.facts.iter().any(|fact| fact.contains("added: \"c.ts\"")));
@@ -223,7 +229,7 @@ mod tests {
     #[test]
     fn unavailable_is_not_empty() {
         // §245：Unavailable ≠ empty —— 状态迁移是事实，不当成空集合。
-        let a = json!({ "status": "available", "tools": ["node"] });
+        let a = json!({ "status": "available", "data": { "tools": ["node"] } });
         let b = json!({ "status": "unavailable" });
         let diff = compare_domain("environment", &a, &b);
         assert!(diff.facts.iter().any(|fact| fact.contains("§245") || fact.contains("availability changed")));
@@ -240,8 +246,8 @@ mod tests {
 
     #[test]
     fn unchanged_domain_reports_no_facts() {
-        let a = json!({ "status": "available", "modules": 5 });
-        let b = json!({ "status": "available", "modules": 5 });
+        let a = json!({ "status": "available", "data": { "modules": 5 } });
+        let b = json!({ "status": "available", "data": { "modules": 5 } });
         let diff = compare_domain("architecture", &a, &b);
         assert_eq!(diff.state, "unchanged");
         assert!(diff.facts.is_empty());

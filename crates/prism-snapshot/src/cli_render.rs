@@ -23,7 +23,11 @@ pub fn load_snapshot_json(
     let domains = store.get_domains(snapshot_id).map_err(|err| err.to_string())?;
     let mut domain_json = std::collections::BTreeMap::new();
     for row in domains {
-        domain_json.insert(row.domain.clone(), row.data_json.clone());
+        // wrapper 形态：compare 直读 status + data（M11a schema 列映射）。
+        domain_json.insert(
+            row.domain.clone(),
+            serde_json::json!({ "status": row.status, "data": row.data_json }),
+        );
     }
     let header = serde_json::json!({
         "id": record.id,
@@ -236,7 +240,7 @@ pub fn render_history_export(
         "created_at": project.created_at,
         "last_seen_at": project.last_seen_at,
     });
-    Ok(crate::report::render_history_export(
+    Ok(crate::report::render_history_export_json(
         &project_json,
         &snapshot_values,
         &timeline,

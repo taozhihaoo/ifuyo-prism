@@ -157,7 +157,7 @@ pub struct HistoryExport {
     pub limitations: Vec<String>,
 }
 
-pub fn render_history_export(
+pub fn render_history_export_json(
     project: &Value,
     snapshots: &[Value],
     timeline: &Timeline,

@@ -212,9 +212,36 @@ fn run() -> i32 {
             note,
             json,
         }) => snapshot_command::run_capture(&path, force, note, json),
-        Some(cli::Command::History { path, json, limit }) => {
-            snapshot_command::run_history(&path, json, limit)
-        }
+        Some(cli::Command::Compare {
+            path,
+            snapshot_a,
+            snapshot_b,
+            json,
+            markdown,
+        }) => snapshot_command::run_compare(&path, &snapshot_a, &snapshot_b, json, markdown),
+        Some(cli::Command::Timeline {
+            path,
+            limit,
+            json,
+            markdown,
+        }) => snapshot_command::run_timeline(&path, limit, json, markdown),
+        Some(cli::Command::History {
+            path,
+            json,
+            limit,
+            command,
+        }) => match command {
+            Some(cli::HistoryCommand::Export { path: sub, output }) => {
+                snapshot_command::run_history_export(&sub, output)
+            }
+            Some(cli::HistoryCommand::Delete {
+                path: sub,
+                snapshot,
+                all,
+                yes,
+            }) => snapshot_command::run_history_delete(&sub, snapshot, yes, all),
+            None => snapshot_command::run_history(&path, json, limit),
+        },
         Some(cli::Command::Context {
             path,
             task,

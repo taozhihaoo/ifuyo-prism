@@ -1,0 +1,15 @@
+[package]
+name = "prism-csharp"
+description = "Prism L1 C# Symbol Engine (2.0-M23): tree-sitter-c-sharp declaration extraction, stable symbol identity, partial-type aggregation, symbol index, and M21 IntelBundle integration"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-intel.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tree-sitter.workspace = true
+tree-sitter-c-sharp.workspace = true

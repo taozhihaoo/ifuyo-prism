@@ -55,6 +55,7 @@ pub enum ChangesFormatArg {
 pub enum IntelDomain {
     Dependency,
     Structural,
+    Symbols,
     All,
 }
 
@@ -209,9 +210,12 @@ pub enum Command {
     Intel {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
-        /// 分析域：dependency（M21）/ structural（M22 L0）/ all
+        /// 分析域：dependency（M21）/ structural（M22 L0）/ symbols（M23 C#）/ all
         #[arg(long, value_enum, default_value_t = IntelDomain::Dependency)]
         domain: IntelDomain,
+        /// 符号搜索（symbols 域；按名称大小写不敏感子串）
+        #[arg(long)]
+        search: Option<String>,
         #[arg(long)]
         json: bool,
     },

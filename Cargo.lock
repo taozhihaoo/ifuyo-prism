@@ -2560,6 +2560,7 @@ dependencies = [
  "prism-changes",
  "prism-context",
  "prism-core",
+ "prism-csharp",
  "prism-env",
  "prism-git",
  "prism-graph",
@@ -2602,6 +2603,18 @@ dependencies = [
  "serde_json",
  "time",
  "uuid",
+]
+
+[[package]]
+name = "prism-csharp"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-intel",
+ "serde",
+ "serde_json",
+ "tree-sitter",
+ "tree-sitter-c-sharp",
 ]
 
 [[package]]

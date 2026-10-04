@@ -207,7 +207,12 @@ fn run() -> i32 {
             }) => env_command::run_section(env_command::Section::Processes, &sub, sub_json),
             None => env_command::run(&path, json, strict, all_tools, refresh, format),
         },
-        Some(cli::Command::Intel { path, domain, json }) => intel_command::run(&path, domain, json),
+        Some(cli::Command::Intel {
+            path,
+            domain,
+            search,
+            json,
+        }) => intel_command::run(&path, domain, search.as_deref(), json),
         Some(cli::Command::Snapshot {
             path,
             force,

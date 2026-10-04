@@ -456,3 +456,150 @@ fn snapshot_from_record(
         note: record.note,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use prism_store::InMemorySnapshotStore;
+
+    fn temp_project(name: &str, file_count: usize) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "prism-snap-cap-{name}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.subsec_nanos())
+                .unwrap_or(0)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for index in 0..file_count {
+            std::fs::write(dir.join(format!("file-{index}.txt")), format!("content {index}"))
+                .unwrap();
+        }
+        dir
+    }
+
+    // §159 Dedup Tests：连续两次 capture ⇒ 一次创建 + 一次去重。
+    #[test]
+    fn second_capture_deduplicates() {
+        let dir = temp_project("dedup", 2);
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store.clone());
+        let cancel = CancellationToken::new();
+
+        let first = service
+            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .unwrap();
+        assert!(first.created);
+        assert!(!first.deduplicated);
+
+        let second = service
+            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .unwrap();
+        assert!(!second.created, "§17: unchanged state must deduplicate");
+        assert!(second.deduplicated);
+        assert_eq!(first.snapshot_id, second.snapshot_id);
+
+        // --force ⇒ 新 observation。
+        let forced = service
+            .capture(
+                &dir,
+                &DomainFacts::default(),
+                &SnapshotCaptureOptions { force: true, ..Default::default() },
+                &cancel,
+            )
+            .unwrap();
+        assert!(forced.created);
+        assert_ne!(forced.snapshot_id, first.snapshot_id, "§18 observation vs snapshot");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // §17：状态变化 ⇒ 新 snapshot（不是去重）。
+    #[test]
+    fn changed_state_creates_new_snapshot() {
+        let dir = temp_project("changed", 1);
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store);
+        let cancel = CancellationToken::new();
+        let options = SnapshotCaptureOptions::default();
+
+        let first = service.capture(&dir, &DomainFacts::default(), &options, &cancel).unwrap();
+        std::fs::write(dir.join("new-file.ts"), "export {};").unwrap();
+        let second = service.capture(&dir, &DomainFacts::default(), &options, &cancel).unwrap();
+
+        assert!(first.created);
+        assert!(second.created);
+        assert_ne!(first.state_fingerprint, second.state_fingerprint, "§206");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // §197/§198：多项目/同名项目隔离。
+    #[test]
+    fn multi_project_histories_are_isolated() {
+        let dir_a = temp_project("app-a", 1);
+        let dir_b = std::env::temp_dir().join(format!(
+            "app-b-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.subsec_nanos())
+                .unwrap_or(0)
+        ));
+        std::fs::create_dir_all(&dir_b).unwrap();
+        std::fs::write(dir_b.join("file-0.txt"), "different").unwrap();
+
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store.clone());
+        let cancel = CancellationToken::new();
+        let options = SnapshotCaptureOptions::default();
+
+        let snapshot_a = service.capture(&dir_a, &DomainFacts::default(), &options, &cancel).unwrap();
+        let snapshot_b = service.capture(&dir_b, &DomainFacts::default(), &options, &cancel).unwrap();
+
+        assert_ne!(snapshot_a.snapshot_id, snapshot_b.snapshot_id);
+        // A 的 history 不含 B；删 A 不影响 B（§199）。
+        let project_a = store.get_project_by_root(&dir_a.to_string_lossy()).unwrap().unwrap();
+        let deleted = store.delete_project_history(&project_a.id).unwrap();
+        assert_eq!(deleted, 1);
+        let b_history = service.list(&dir_b).unwrap();
+        assert_eq!(b_history.len(), 1, "§199 history isolation");
+    }
+
+    // §114/§145：capture 不修改工作树（git status/HEAD 前后一致）。
+    #[test]
+    fn capture_is_read_only_for_worktree() {
+        let dir = temp_project("readonly", 1);
+        let run_git = |args: &[&str]| {
+            let output = std::process::Command::new("git")
+                .args(args)
+                .current_dir(&dir)
+                .output()
+                .expect("git available");
+            assert!(output.status.success(), "{args:?}");
+            String::from_utf8_lossy(&output.stdout).to_string()
+        };
+        run_git(&["init", "-b", "main"]);
+        run_git(&["config", "user.name", "Prism Test"]);
+        run_git(&["config", "user.email", "test@prism.local"]);
+        run_git(&["add", "-A"]);
+        run_git(&["commit", "-m", "base"]);
+        let head_before = run_git(&["rev-parse", "HEAD"]);
+        let status_before = run_git(&["status", "--porcelain"]);
+
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store);
+        let cancel = CancellationToken::new();
+        let result = service
+            .capture(&dir, &DomainFacts::default(), &SnapshotCaptureOptions::default(), &cancel)
+            .unwrap();
+
+        let head_after = run_git(&["rev-parse", "HEAD"]);
+        let status_after = run_git(&["status", "--porcelain"]);
+        assert_eq!(head_before, head_after, "§114: HEAD unchanged");
+        assert_eq!(status_before, status_after, "§114: status unchanged");
+        let snapshot = service.get(result.snapshot_id.as_str()).unwrap().expect("snapshot persisted");
+        assert_eq!(snapshot.basis, SnapshotBasis::GitRevision, "clean repo => GitRevision basis");
+        assert_eq!(result.status, CaptureStatus::Created);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

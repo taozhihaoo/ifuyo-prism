@@ -13,6 +13,7 @@ members = [
     "crates/prism-verify",
     "crates/prism-env",
     "crates/prism-context",
+    "crates/prism-store",
     "crates/prism-cli",
     "src-tauri",
     "tests/integration",
@@ -30,6 +31,7 @@ uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["formatting", "parsing", "macros", "serde", "serde-well-known"] }
 log = { version = "0.4", features = ["std"] }
 clap = { version = "4", features = ["derive"] }
+rusqlite = { version = "0.37", features = ["bundled"] }
 
 prism-core = { path = "crates/prism-core" }
 prism-project = { path = "crates/prism-project" }
@@ -43,6 +45,7 @@ prism-health = { path = "crates/prism-health" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }
+prism-store = { path = "crates/prism-store" }
 ignore = "0.4"
 tree-sitter = "0.25"
 tree-sitter-typescript = "0.23"

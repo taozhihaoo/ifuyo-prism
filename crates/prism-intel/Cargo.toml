@@ -1,0 +1,15 @@
+[package]
+name = "prism-intel"
+description = "Prism Intelligence Core (2.0-M21): unified engineering entity/fact/evidence/relation/finding model with provenance, confidence, freshness and deterministic serialization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-graph.workspace = true
+prism-project.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true

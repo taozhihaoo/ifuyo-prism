@@ -1,0 +1,15 @@
+[package]
+name = "prism-snapshot"
+description = "Prism snapshot domain: ProjectSnapshot model, canonical serialization, domain fingerprints, capture orchestration with dedup (M11a)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-project.workspace = true
+prism-store.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+uuid.workspace = true

@@ -2701,6 +2701,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-snapshot"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-project",
+ "prism-store",
+ "serde",
+ "serde_json",
+ "uuid",
+]
+
+[[package]]
 name = "prism-store"
 version = "0.1.0"
 dependencies = [

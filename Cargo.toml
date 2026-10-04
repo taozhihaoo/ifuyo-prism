@@ -14,6 +14,7 @@ members = [
     "crates/prism-env",
     "crates/prism-context",
     "crates/prism-store",
+    "crates/prism-snapshot",
     "crates/prism-cli",
     "src-tauri",
     "tests/integration",
@@ -46,6 +47,7 @@ prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }
 prism-store = { path = "crates/prism-store" }
+prism-snapshot = { path = "crates/prism-snapshot" }
 ignore = "0.4"
 tree-sitter = "0.25"
 tree-sitter-typescript = "0.23"

@@ -53,8 +53,10 @@ INFERENCE：全部秒级/亚秒级，§289 哲学（incremental/cache-aware/non-
 
 | Artifact | Size | SHA-256 (前 16) |
 |---|---|---|
-| Prism_0.1.0_x64_en-US.msi | 8.10 MiB | 29ab805e9f767230…（含 M11b 域捕获接线，当前 RC）|
-| Prism_0.1.0_x64-setup.exe (NSIS) | 4.36 MiB | f98520d1c15838ee…（含 M11b 域捕获接线，当前 RC）|
+| Prism_0.1.0_x64_en-US.msi | 8.10 MiB | 18883837f9559718…（含 2.0-M20 路径身份归一化，当前 RC）|
+| Prism_0.1.0_x64-setup.exe (NSIS) | 4.37 MiB | 308c038466f31151…（含 2.0-M20 路径身份归一化，当前 RC）|
+| Prism_0.1.0_x64_en-US.msi | 8.10 MiB | 29ab805e9f767230…（域接线后、M20 前）|
+| Prism_0.1.0_x64-setup.exe (NSIS) | 4.36 MiB | f98520d1c15838ee…（域接线后、M20 前）|
 | Prism_0.1.0_x64_en-US.msi | 8.07 MiB | d0abfcc6ba8cc2df…（i18n 后、域接线前）|
 | Prism_0.1.0_x64-setup.exe (NSIS) | 4.35 MiB | 6ec296413c01a41f…（i18n 后、域接线前）|
 

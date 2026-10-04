@@ -336,6 +336,27 @@ pub enum Command {
         /// 预算上限（estimated tokens，启发式 §32）
         #[arg(long)]
         max_tokens: Option<u64>,
+        /// 输出 markdown 报告（§349）
+        #[arg(long)]
+        markdown: bool,
+        /// 只展示 selection plan，不物化内容（§285/§350）
+        #[arg(long)]
+        dry_run: bool,
+        /// 显示 selection trace（§287 explain mode）
+        #[arg(long)]
+        explain: bool,
+        /// 只输出 Context Health（§284）
+        #[arg(long)]
+        check_health: bool,
+        /// auto | review | debug（§290/§291）
+        #[arg(long)]
+        profile: Option<String>,
+        /// item 上限（§288）
+        #[arg(long)]
+        max_items: Option<usize>,
+        /// 字节上限（§288）
+        #[arg(long)]
+        max_bytes: Option<u64>,
     },
     /// 生成报告（随各里程碑逐步提供）
     Report {

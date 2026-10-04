@@ -21,7 +21,20 @@ pub fn run(
     scope: Option<String>,
     target: Option<String>,
     max_tokens: Option<u64>,
+    markdown: bool,
+    dry_run: bool,
+    explain: bool,
+    check_health: bool,
+    profile: Option<String>,
+    max_items: Option<usize>,
+    max_bytes: Option<u64>,
 ) -> i32 {
+    if let Some(value) = profile.as_deref() {
+        if prism_context::ContextRecipe::parse(value).is_none() {
+            eprintln!("prism: unknown profile '{value}' (auto|review|debug)");
+            return crate::EXIT_INVALID_INPUT;
+        }
+    }
     if !path.exists() {
         eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
@@ -98,6 +111,12 @@ pub fn run(
     if let Some(max_tokens) = max_tokens {
         budget.max_tokens_estimate = max_tokens;
     }
+    if let Some(max_items) = max_items {
+        budget.max_items = max_items;
+    }
+    if let Some(max_bytes) = max_bytes {
+        budget.max_bytes = max_bytes;
+    }
 
     let request = ContextRequest {
         project_root: path.to_string_lossy().to_string(),
@@ -131,6 +150,74 @@ pub fn run(
         }
     };
 
+    // §284：--check-health 只输出 Context Health。
+    if check_health {
+        let value = serde_json::json!({
+            "status": pack.health.status,
+            "findings": pack.health.findings,
+            "coverage": pack.health.coverage,
+            "risk_signals": pack.risk_signals,
+        });
+        match serde_json::to_string_pretty(&value) {
+            Ok(text) => println!("{text}"),
+            Err(err) => {
+                eprintln!("prism: failed to serialize context health: {err}");
+                return crate::EXIT_ERROR;
+            }
+        }
+        return crate::EXIT_OK;
+    }
+
+    // §285/§350：dry-run 只输出 selection plan（不物化内容——pack 的
+    // content 在 dry-run 分支不打印）。
+    if dry_run {
+        println!(
+            "Selection plan: {} selected · {} excluded · est tokens {}/{}",
+            manifest_selected(&pack),
+            pack.selection.excluded.len(),
+            pack.manifest.budget.used_tokens_estimate,
+            pack.manifest.budget.limit_tokens_estimate
+        );
+        for (index, item) in pack.items.iter().enumerate() {
+            println!(
+                "{}. [{:>9}] {} — why: {}",
+                index + 1,
+                item.priority.as_str(),
+                item.title,
+                item.reasons
+                    .iter()
+                    .map(|reason| reason.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            );
+        }
+        for excluded in &pack.selection.excluded {
+            println!(
+                "excluded: {} ({})",
+                excluded.title,
+                excluded.reason.as_str()
+            );
+        }
+        return crate::EXIT_OK;
+    }
+
+    // §287：explain = selection trace（含排除理由）。
+    if explain {
+        println!(
+            "Selection trace: {} candidates → {} selected, {} excluded",
+            pack.selection.candidates,
+            pack.selection.selected.len(),
+            pack.selection.excluded.len()
+        );
+        for excluded in &pack.selection.excluded {
+            println!(
+                "  EXCLUDED [{:?}] {} — {}",
+                excluded.reason, excluded.title, excluded.detail
+            );
+        }
+        return crate::EXIT_OK;
+    }
+
     if json {
         match serde_json::to_string_pretty(&pack) {
             Ok(text) => println!("{text}"),
@@ -139,8 +226,14 @@ pub fn run(
                 return crate::EXIT_ERROR;
             }
         }
+    } else if markdown {
+        print!("{}", prism_context::render_markdown(&pack));
     } else {
         print!("{}", prism_context::render_text(&pack));
     }
     crate::EXIT_OK
+}
+
+fn manifest_selected(pack: &prism_context::ContextPack) -> usize {
+    pack.items.len()
 }

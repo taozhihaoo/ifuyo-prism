@@ -112,3 +112,82 @@ fn context_missing_path_is_invalid_input() {
     let output = prism(&["context", "Z:/definitely/missing", "--json"]);
     assert_eq!(output.status.code(), Some(3));
 }
+
+// §285/§350：dry-run 输出 selection plan（不物化全文）。
+#[test]
+fn context_dry_run_shows_plan_without_content() {
+    let dir = temp_project("dryrun");
+    let output = prism(&["context", dir.to_str().unwrap(), "--task", "重构 BattleManager", "--dry-run"]);
+    assert!(output.status.success());
+    let stdout = stdout_text(&output);
+    assert!(stdout.contains("Selection plan"));
+    assert!(stdout.contains("explicit_task_target"));
+    // plan 不含物化正文（正文以 class 开头）。
+    assert!(!stdout.contains("class BattleManager"), "dry-run must not materialize");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// §287：explain 显示排除理由。
+#[test]
+fn context_explain_shows_trace() {
+    let dir = temp_project("explain");
+    let output = prism(&["context", dir.to_str().unwrap(), "--explain"]);
+    assert!(output.status.success());
+    assert!(stdout_text(&output).contains("Selection trace"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// §284：--check-health 只输出 health。
+#[test]
+fn context_check_health_outputs_health_json() {
+    let dir = temp_project("health");
+    let output = prism(&["context", dir.to_str().unwrap(), "--check-health"]);
+    assert!(output.status.success());
+    let value: serde_json::Value =
+        serde_json::from_str(&stdout_text(&output)).expect("health JSON");
+    assert!(value["status"].is_string());
+    assert!(value["findings"].is_array());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// §349：markdown 输出结构。
+#[test]
+fn context_markdown_renders_pack() {
+    let dir = temp_project("md");
+    let output = prism(&["context", dir.to_str().unwrap(), "--markdown", "--task", "重构 BattleManager"]);
+    assert!(output.status.success());
+    let stdout = stdout_text(&output);
+    assert!(stdout.starts_with("# Prism Context Pack"));
+    assert!(stdout.contains("## Task"));
+    assert!(stdout.contains("## Context Health"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// §290/§291：profile 校验。
+#[test]
+fn context_unknown_profile_rejected() {
+    let dir = temp_project("profile");
+    let output = prism(&["context", dir.to_str().unwrap(), "--profile", "everything"]);
+    assert_eq!(output.status.code(), Some(3));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+// §205-§207 选择/截断集成：小预算 ⇒ 截断事实。
+#[test]
+fn context_small_budget_truncates_with_facts() {
+    let dir = temp_project("budget");
+    let output = prism(&[
+        "context",
+        dir.to_str().unwrap(),
+        "--task",
+        "重构 BattleManager",
+        "--json",
+        "--max-tokens",
+        "128",
+    ]);
+    assert!(output.status.success(), "small budget must still generate (§199)");
+    let value: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();
+    // §199：极小预算 ⇒ Critical 保留 + limitations 声明，不崩溃。
+    assert!(value["manifest"]["limitations"].as_array().unwrap().len() > 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}

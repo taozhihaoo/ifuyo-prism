@@ -187,6 +187,17 @@ impl ContextService {
                 materialize_report.truncated
             ));
         }
+        // §199：极小预算 ⇒ 声明排除事实（Minimal context + limitations）。
+        let budget_excluded = trace
+            .excluded
+            .iter()
+            .filter(|excluded| excluded.reason == crate::model::ExcludedReason::BudgetExceeded)
+            .count();
+        if budget_excluded > 0 {
+            limitations.push(format!(
+                "{budget_excluded} candidate(s) excluded by budget — context is minimal,                  not comprehensive."
+            ));
+        }
 
         let manifest = ContextManifest {
             schema_version: CONTEXT_SCHEMA_VERSION,

@@ -109,6 +109,14 @@ pub trait SnapshotStore: Send + Sync {
     ) -> Result<(), StoreError>;
     fn list_snapshots(&self, project_id: &str) -> Result<Vec<SnapshotRecord>, StoreError>;
     fn get_snapshot(&self, id: &str) -> Result<Option<SnapshotRecord>, StoreError>;
+    fn get_domains(&self, snapshot_id: &str) -> Result<Vec<DomainRow>, StoreError>;
+    fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<SnapshotRecord>, StoreError>;
+    fn get_previous_snapshot(
+        &self,
+        project_id: &str,
+        captured_at: &str,
+    ) -> Result<Option<SnapshotRecord>, StoreError>;
+    fn delete_snapshot(&self, id: &str) -> Result<bool, StoreError>;
     fn delete_project_history(&self, project_id: &str) -> Result<usize, StoreError>;
 }
 
@@ -469,6 +477,98 @@ impl SnapshotStore for SqliteSnapshotStore {
         Ok(None)
     }
 
+    fn get_domains(&self, snapshot_id: &str) -> Result<Vec<DomainRow>, StoreError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
+        let mut statement = connection
+            .prepare(
+                "SELECT snapshot_id, domain, status, captured_at, source_revision, input_fingerprint, content_fingerprint, freshness, data_json FROM snapshot_domains WHERE snapshot_id = ?1 ORDER BY domain",
+            )
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut rows = statement
+            .query([snapshot_id])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut out = Vec::new();
+        while let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+            out.push(DomainRow {
+                snapshot_id: row.get(0)?,
+                domain: row.get(1)?,
+                status: row.get(2)?,
+                captured_at: row.get(3)?,
+                source_revision: row.get(4)?,
+                input_fingerprint: row.get(5)?,
+                content_fingerprint: row.get(6)?,
+                freshness: row.get(7)?,
+                data_json: serde_json::from_str(&row.get::<_, String>(8)?).unwrap_or(Value::Null),
+            });
+        }
+        Ok(out)
+    }
+
+    fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<SnapshotRecord>, StoreError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
+        let mut statement = connection
+            .prepare(&format!(
+                "SELECT {SNAPSHOT_COLUMNS} FROM snapshots WHERE project_id = ?1 ORDER BY captured_at DESC LIMIT 1"
+            ))
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut rows = statement
+            .query([project_id])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+            return Ok(Some(row_to_snapshot_checked(row)?));
+        }
+        Ok(None)
+    }
+
+    fn get_previous_snapshot(
+        &self,
+        project_id: &str,
+        captured_at: &str,
+    ) -> Result<Option<SnapshotRecord>, StoreError> {
+        let connection = self
+            .connection
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
+        let mut statement = connection
+            .prepare(&format!(
+                "SELECT {SNAPSHOT_COLUMNS} FROM snapshots WHERE project_id = ?1 AND captured_at < ?2 ORDER BY captured_at DESC LIMIT 1"
+            ))
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let mut rows = statement
+            .query(rusqlite::params![project_id, captured_at])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        if let Some(row) = rows.next().map_err(|err| StoreError::Unavailable(err.to_string()))? {
+            return Ok(Some(row_to_snapshot_checked(row)?));
+        }
+        Ok(None)
+    }
+
+    fn delete_snapshot(&self, id: &str) -> Result<bool, StoreError> {
+        let mut connection = self
+            .connection
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
+        let transaction = connection
+            .transaction()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        transaction
+            .execute("DELETE FROM snapshot_domains WHERE snapshot_id = ?1", [id])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        let deleted = transaction
+            .execute("DELETE FROM snapshots WHERE id = ?1", [id])
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        transaction
+            .commit()
+            .map_err(|err| StoreError::Unavailable(err.to_string()))?;
+        Ok(deleted > 0)
+    }
+
     fn delete_project_history(&self, project_id: &str) -> Result<usize, StoreError> {
         let mut connection = self
             .connection
@@ -608,6 +708,55 @@ impl SnapshotStore for InMemorySnapshotStore {
             .lock()
             .map_err(|_| StoreError::Unavailable("lock".into()))?;
         Ok(inner.snapshots.get(id).cloned())
+    }
+
+    fn get_domains(&self, snapshot_id: &str) -> Result<Vec<DomainRow>, StoreError> {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock".into()))?;
+        Ok(inner.domains.get(snapshot_id).cloned().unwrap_or_default())
+    }
+
+    fn get_latest_snapshot(&self, project_id: &str) -> Result<Option<SnapshotRecord>, StoreError> {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock".into()))?;
+        Ok(inner
+            .snapshots
+            .values()
+            .filter(|snapshot| snapshot.project_id == project_id)
+            .max_by(|a, b| a.captured_at.cmp(&b.captured_at))
+            .cloned())
+    }
+
+    fn get_previous_snapshot(
+        &self,
+        project_id: &str,
+        captured_at: &str,
+    ) -> Result<Option<SnapshotRecord>, StoreError> {
+        let inner = self
+            .inner
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock".into()))?;
+        Ok(inner
+            .snapshots
+            .values()
+            .filter(|snapshot| {
+                snapshot.project_id == project_id && snapshot.captured_at.as_str() < captured_at
+            })
+            .max_by(|a, b| a.captured_at.cmp(&b.captured_at))
+            .cloned())
+    }
+
+    fn delete_snapshot(&self, id: &str) -> Result<bool, StoreError> {
+        let mut inner = self
+            .inner
+            .lock()
+            .map_err(|_| StoreError::Unavailable("lock".into()))?;
+        inner.domains.remove(id);
+        Ok(inner.snapshots.remove(id).is_some())
     }
 
     fn delete_project_history(&self, project_id: &str) -> Result<usize, StoreError> {

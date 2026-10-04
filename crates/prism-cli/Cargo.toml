@@ -19,6 +19,7 @@ prism-changes.workspace = true
 prism-impact.workspace = true
 prism-health.workspace = true
 prism-intel.workspace = true
+prism-l0.workspace = true
 prism-verify.workspace = true
 prism-env.workspace = true
 prism-context.workspace = true

@@ -1,17 +1,17 @@
-//! `prism intel <path>` — 2.0-M21 Intelligence Core 垂直切片：
-//! 既有 M3 依赖分析 → 统一 Core 模型（prism-intel）。
+//! `prism intel <path>` — Intelligence Core 消费面：
+//! M21 依赖域切片 + M22 L0 结构域（`--domain`），三面同源的 CLI 面。
 //!
-//! 旧 `prism graph` JSON 契约保持不变（M21 §32 additive first）；
-//! 本命令是 Core 模型的第一个生产消费面（CLI；GUI/MCP 待对应能力落地）。
+//! 旧 `prism graph` / `prism scan` JSON 契约保持不变（M21 §32 additive first）。
 
+use crate::cli::IntelDomain;
 use prism_core::task::CancellationToken;
 use prism_graph::DependencyService;
-use prism_intel::{AnalysisContext, AnalysisScope};
+use prism_intel::{AnalysisContext, AnalysisScope, IntelBundle, IntelOutcome, ProjectIdentity};
 use prism_project::Project;
 use std::path::Path;
 
-/// `prism intel <path> [--json]`。
-pub fn run(path: &Path, json: bool) -> i32 {
+/// `prism intel <path> [--domain dependency|structural|all] [--json]`。
+pub fn run(path: &Path, domain: IntelDomain, json: bool) -> i32 {
     if !path.exists() {
         eprintln!("prism: path does not exist: {}", path.to_string_lossy());
         return crate::EXIT_INVALID_INPUT;
@@ -24,43 +24,82 @@ pub fn run(path: &Path, json: bool) -> i32 {
         }
     };
     let cancel = CancellationToken::new();
+    let identity = ProjectIdentity::from_project(&project);
 
-    // 既有 analyzer（不重算；M21 §34）。
-    let graph = match DependencyService::new().inspect_graph(&project.root_path, &cancel) {
-        Ok(graph) => graph,
-        Err(err) => {
-            eprintln!("prism: intel failed building dependency graph: {err}");
-            return if matches!(
-                err.code(),
-                prism_core::PrismErrorCode::InvalidInput | prism_core::PrismErrorCode::NotFound
-            ) {
-                crate::EXIT_INVALID_INPUT
-            } else {
-                crate::EXIT_ERROR
-            };
-        }
-    };
+    let mut warnings: Vec<String> = Vec::new();
+    let mut merged: Option<IntelOutcome<IntelBundle>> = None;
+    let mut domain_label = "";
 
-    let identity = prism_intel::ProjectIdentity::from_project(&project);
-    let context = AnalysisContext::new(
-        identity,
-        AnalysisScope::Domain("dependency".to_string()),
-        vec!["dependency_graph".to_string()],
-        cancel.clone(),
-    );
-    let outcome = prism_intel::translate::dependencies_to_intel(&graph, &context);
-
-    match &outcome.status {
-        prism_intel::IntelStatus::Failed => {
-            for error in &outcome.errors {
-                eprintln!("prism: intel: {error}");
+    // ---- M21 依赖域 ----
+    if matches!(domain, IntelDomain::Dependency | IntelDomain::All) {
+        let graph = match DependencyService::new().inspect_graph(&project.root_path, &cancel) {
+            Ok(graph) => graph,
+            Err(err) => {
+                eprintln!("prism: intel failed building dependency graph: {err}");
+                return if matches!(
+                    err.code(),
+                    prism_core::PrismErrorCode::InvalidInput | prism_core::PrismErrorCode::NotFound
+                ) {
+                    crate::EXIT_INVALID_INPUT
+                } else {
+                    crate::EXIT_ERROR
+                };
             }
-            return crate::EXIT_ERROR;
+        };
+        let context = AnalysisContext::new(
+            identity.clone(),
+            AnalysisScope::Domain("dependency".to_string()),
+            vec!["dependency_graph".to_string()],
+            cancel.clone(),
+        );
+        let outcome = prism_intel::translate::dependencies_to_intel(&graph, &context);
+        if guard_status(&outcome) {
+            return exit_for(&outcome);
         }
-        prism_intel::IntelStatus::Cancelled => return crate::EXIT_CANCELLED,
-        _ => {}
+        warnings.extend(outcome.warnings.clone());
+        match &mut merged {
+            Some(existing) => {
+                if let Some(bundle) = outcome.data {
+                    existing.data.as_mut().unwrap().merge(bundle);
+                }
+                domain_label = "dependency+l0_structural";
+            }
+            None => {
+                merged = Some(outcome);
+                domain_label = "dependency";
+            }
+        }
     }
 
+    // ---- M22 L0 结构域 ----
+    if matches!(domain, IntelDomain::Structural | IntelDomain::All) {
+        let context = AnalysisContext::new(
+            identity.clone(),
+            AnalysisScope::Domain("l0_structural".to_string()),
+            vec!["l0_structural".to_string()],
+            cancel.clone(),
+        );
+        let outcome =
+            prism_l0::structural_analysis(&project.root_path, &context, &Default::default());
+        if guard_status(&outcome) {
+            return exit_for(&outcome);
+        }
+        warnings.extend(outcome.warnings.clone());
+        match &mut merged {
+            Some(existing) => {
+                if let Some(bundle) = outcome.data {
+                    existing.data.as_mut().unwrap().merge(bundle);
+                }
+                domain_label = "dependency+l0_structural";
+            }
+            None => {
+                merged = Some(outcome);
+                domain_label = "l0_structural";
+            }
+        }
+    }
+
+    let outcome = merged.expect("at least one domain selected");
     let bundle = outcome
         .data
         .as_ref()
@@ -75,7 +114,7 @@ pub fn run(path: &Path, json: bool) -> i32 {
         }
     } else {
         println!("ifuyo-prism");
-        println!("Intelligence Core (2.0-M21; dependency domain)");
+        println!("Intelligence Core (domains: {domain_label})");
         println!();
         println!(
             "Project: {} ({})",
@@ -92,16 +131,43 @@ pub fn run(path: &Path, json: bool) -> i32 {
         println!("  Facts:     {}", bundle.facts.len());
         println!("  Evidence:  {}", bundle.evidence.len());
         println!("  Findings:  {}", bundle.findings.len());
-        for fact in bundle.facts.values() {
+        const MAX_FACT_LINES: usize = 10;
+        for fact in bundle.facts.values().take(MAX_FACT_LINES) {
             println!("  fact {}: {:?}", fact.fact_type, fact.value);
         }
-        if !outcome.warnings.is_empty() {
+        if bundle.facts.len() > MAX_FACT_LINES {
+            println!(
+                "  …and {} more facts (--json for full bundle)",
+                bundle.facts.len() - MAX_FACT_LINES
+            );
+        }
+        if !warnings.is_empty() {
             println!();
             println!("Diagnostics (project issues, not analysis errors):");
-            for warning in &outcome.warnings {
+            for warning in &warnings {
                 println!("  {warning}");
             }
         }
     }
     crate::EXIT_OK
+}
+
+/// Failed/Cancelled 的统一提前返回（打印已由调用方处理数据面）。
+fn guard_status<T>(outcome: &IntelOutcome<T>) -> bool {
+    matches!(
+        outcome.status,
+        prism_intel::IntelStatus::Failed | prism_intel::IntelStatus::Cancelled
+    )
+}
+
+fn exit_for<T>(outcome: &IntelOutcome<T>) -> i32 {
+    match outcome.status {
+        prism_intel::IntelStatus::Failed => {
+            for error in &outcome.errors {
+                eprintln!("prism: intel: {error}");
+            }
+            crate::EXIT_ERROR
+        }
+        _ => crate::EXIT_CANCELLED,
+    }
 }

@@ -50,6 +50,14 @@ pub enum ChangesFormatArg {
     Markdown,
 }
 
+/// `prism intel --domain`（2.0-M22）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum IntelDomain {
+    Dependency,
+    Structural,
+    All,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum FormatArg {
     Text,
@@ -197,10 +205,13 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
-    /// 项目智能核心视图（2.0-M21 垂直切片：依赖域 → 统一 Core 模型）
+    /// 项目智能核心视图（2.0-M21/M22：依赖域 + L0 结构域 → 统一 Core 模型）
     Intel {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// 分析域：dependency（M21）/ structural（M22 L0）/ all
+        #[arg(long, value_enum, default_value_t = IntelDomain::Dependency)]
+        domain: IntelDomain,
         #[arg(long)]
         json: bool,
     },

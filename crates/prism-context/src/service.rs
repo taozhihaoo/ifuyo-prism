@@ -195,7 +195,7 @@ impl ContextService {
             .count();
         if budget_excluded > 0 {
             limitations.push(format!(
-                "{budget_excluded} candidate(s) excluded by budget — context is minimal,                  not comprehensive."
+                "{budget_excluded} candidate(s) excluded by budget — context is minimal, not comprehensive."
             ));
         }
 

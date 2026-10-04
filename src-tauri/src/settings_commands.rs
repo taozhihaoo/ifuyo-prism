@@ -79,7 +79,12 @@ pub fn register_project_open(state: State<'_, AppState>) -> Result<(), PrismErro
         return Ok(());
     }
     let store = SqliteSnapshotStore::open(&path).map_err(store_error)?;
-    let canonical_root = root.to_string_lossy().to_string();
+    // 2.0-M20 §32：与 snapshot capture 同一规范根口径。
+    let canonical_root = match prism_project::canonicalize_root(&root) {
+        Ok(canonical) => canonical.to_string_lossy().to_string(),
+        // 根目录不可用时跳过注册（best-effort §82）。
+        Err(_) => return Ok(()),
+    };
     let now = Timestamp::now_utc().to_string();
     let existing = store
         .get_project_by_root(&canonical_root)

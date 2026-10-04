@@ -88,7 +88,11 @@ pub fn snapshot_capture(
 pub fn snapshot_history(state: State<'_, AppState>) -> Result<Value, PrismErrorDto> {
     let root = snapshot_root(&state)?;
     let store = open_store()?;
-    let canonical_root = root.to_string_lossy().to_string();
+    // 2.0-M20 §32：查询按规范根（与 capture 注册口径一致）。
+    let canonical_root = prism_project::canonicalize_root(&root)
+        .map_err(|err| PrismErrorDto::new("invalid_input", format!("cannot canonicalize project root: {err}")))?
+        .to_string_lossy()
+        .to_string();
     let Some(project) = store
         .get_project_by_root(&canonical_root)
         .map_err(|err| PrismErrorDto::new("internal", err.to_string()))?
@@ -141,7 +145,11 @@ pub fn compare_snapshots(
 pub fn snapshot_timeline(state: State<'_, AppState>) -> Result<Value, PrismErrorDto> {
     let root = snapshot_root(&state)?;
     let store = open_store()?;
-    let canonical_root = root.to_string_lossy().to_string();
+    // 2.0-M20 §32：查询按规范根（与 capture 注册口径一致）。
+    let canonical_root = prism_project::canonicalize_root(&root)
+        .map_err(|err| PrismErrorDto::new("invalid_input", format!("cannot canonicalize project root: {err}")))?
+        .to_string_lossy()
+        .to_string();
     let Some(project) = store
         .get_project_by_root(&canonical_root)
         .map_err(|err| PrismErrorDto::new("internal", err.to_string()))?

@@ -36,7 +36,7 @@ pub use evidence::Evidence;
 pub use file::{build_file_info, FileClassification, FileClassifier, FileInfo, FileKind};
 pub use ignore::{IgnoreEngine, ScanOptions};
 pub use language::{Language, LanguageRegistry};
-pub use project::Project;
+pub use project::{canonicalize_root, Project};
 pub use project_type::ProjectTypeCandidate;
 pub use scanner::{ScanError, ScanErrorKind, ScanProgress};
 pub use service::DiscoveryService;

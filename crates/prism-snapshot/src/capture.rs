@@ -39,13 +39,23 @@ pub struct DomainFacts {
     pub data: BTreeMap<String, serde_json::Value>,
 }
 
+/// 项目根的规范字符串形态（2.0-M20 §32 Path Identity：与 M1
+/// `Project::from_root` 同一口径——canonicalize + 去 verbatim 前缀），
+/// 注册与查询共用，避免 `.`/相对路径/短路径名分裂同一项目的身份。
+pub(crate) fn canonical_root_string(
+    project_root: &Path,
+) -> Result<String, prism_core::PrismError> {
+    let canonical = prism_project::canonicalize_root(project_root)?;
+    Ok(canonical.to_string_lossy().to_string())
+}
+
 /// 稳定项目身份（§8）：canonical root 为本地身份依据；首见即注册。
 pub fn resolve_project_identity(
     store: &dyn SnapshotStore,
     project_root: &Path,
     now: &str,
 ) -> Result<ProjectRecord, prism_core::PrismError> {
-    let canonical_root = project_root.to_string_lossy().to_string();
+    let canonical_root = canonical_root_string(project_root)?;
     if let Some(existing) = store
         .get_project_by_root(&canonical_root)
         .map_err(prism_store_error)?
@@ -158,7 +168,9 @@ impl SnapshotCaptureService {
     ) -> prism_core::PrismResult<SnapshotCaptureResult> {
         let started = Instant::now();
         let now = Timestamp::now_utc().to_string();
-        let canonical_root = project_root.to_string_lossy().to_string();
+        // 2.0-M20 §32：入口即归一化，锁键/身份/快照记录全部使用规范根。
+        let canonical_root = canonical_root_string(project_root)?;
+        let project_root = std::path::PathBuf::from(&canonical_root);
 
         // ---- §145：per-project capture lock ----
         if !self.try_acquire_capture_lock(&canonical_root) {
@@ -174,13 +186,13 @@ impl SnapshotCaptureService {
         };
 
         // ---- Resolve Project Identity（§8/§9）----
-        let identity = resolve_project_identity(&*self.store, project_root, &now)?;
+        let identity = resolve_project_identity(&*self.store, &project_root, &now)?;
 
         // ---- Git state（§5：basis；M4 只读，§114 不改工作树）----
         let runner: Arc<dyn prism_core::runtime::command::CommandRunner> =
             Arc::new(prism_core::runtime::command::StdCommandRunner::new());
         let git = prism_git::GitService::new(runner.clone());
-        let status = git.status(project_root, false, cancel).ok();
+        let status = git.status(&project_root, false, cancel).ok();
         let (basis, git_revision, git_branch, working_tree_state) = match &status {
             Some(status) if status.repository.is_some() => {
                 let dirty = !status.entries.is_empty();
@@ -220,7 +232,7 @@ impl SnapshotCaptureService {
         } else {
             prism_project::DiscoveryService::new()
                 .discover(
-                    project_root,
+                    &project_root,
                     prism_project::ScanOptions::default(),
                     cancel,
                     |_| {},
@@ -452,7 +464,7 @@ impl SnapshotCaptureService {
 
     /// §105：列出项目快照。
     pub fn list(&self, project_root: &Path) -> prism_core::PrismResult<Vec<ProjectSnapshot>> {
-        let canonical_root = project_root.to_string_lossy().to_string();
+        let canonical_root = canonical_root_string(project_root)?;
         let Some(project) = self
             .store
             .get_project_by_root(&canonical_root)
@@ -704,8 +716,9 @@ mod tests {
 
         assert_ne!(snapshot_a.snapshot_id, snapshot_b.snapshot_id);
         // A 的 history 不含 B；删 A 不影响 B（§199）。
+        // 身份按规范根存储（2.0-M20 §32），查询用同一口径。
         let project_a = store
-            .get_project_by_root(&dir_a.to_string_lossy())
+            .get_project_by_root(&canonical_root_string(&dir_a).unwrap())
             .unwrap()
             .unwrap();
         let deleted = store.delete_project_history(&project_a.id).unwrap();
@@ -720,7 +733,8 @@ mod tests {
         let dir = temp_project("busy", 1);
         let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
         let service = SnapshotCaptureService::new(store);
-        let canonical_root = dir.to_string_lossy().to_string();
+        // 锁键 = 规范根（capture 入口归一化后的同一口径，2.0-M20 §32）。
+        let canonical_root = canonical_root_string(&dir).unwrap();
 
         // 模拟另一个 capture 持有锁。
         assert!(service.try_acquire_capture_lock(&canonical_root));
@@ -751,6 +765,41 @@ mod tests {
             &cancel,
         );
         assert!(result.is_ok());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // 2.0-M20 §32：同一项目以不同路径形态（尾部子目录穿越/`.` 后缀）
+    // 注册与查询，必须收敛到同一条项目身份。
+    #[test]
+    fn project_identity_is_canonical_across_path_forms() {
+        let dir = temp_project("identity", 1);
+        let store: Arc<dyn SnapshotStore> = Arc::new(InMemorySnapshotStore::default());
+        let service = SnapshotCaptureService::new(store.clone());
+        let cancel = CancellationToken::new();
+        let options = SnapshotCaptureOptions::default();
+
+        // 用 verbatim 前缀形态（\\?\C:\...）首次捕获——与规范形态
+        // 指向同一目录但字符串不同。
+        let verbatim = std::fs::canonicalize(&dir).unwrap();
+        let first = service
+            .capture(&verbatim, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
+
+        // 规范根查询必须命中同一项目；存储形态不含 verbatim 前缀。
+        let canonical = canonical_root_string(&dir).unwrap();
+        let project = store.get_project_by_root(&canonical).unwrap().unwrap();
+        assert_eq!(project.canonical_root, canonical);
+        assert!(!project.canonical_root.starts_with(r"\\?\"));
+
+        // 换普通形态再次捕获：同项目去重（内容未变 ⇒ Snapshot unchanged）。
+        let second = service
+            .capture(&dir, &DomainFacts::default(), &options, &cancel)
+            .unwrap();
+        assert!(
+            second.deduplicated,
+            "same canonical root must reuse the unchanged snapshot"
+        );
+        assert_eq!(first.state_fingerprint, second.state_fingerprint);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

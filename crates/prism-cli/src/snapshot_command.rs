@@ -263,7 +263,14 @@ pub fn run_history_delete(path: &Path, snapshot: Option<String>, yes: bool, all:
             return crate::EXIT_ERROR;
         }
     };
-    let canonical_root = path.to_string_lossy().to_string();
+    // 2.0-M20 §32：查询按规范根（与 capture 注册口径一致）。
+    let canonical_root = match prism_project::canonicalize_root(path) {
+        Ok(root) => root.to_string_lossy().to_string(),
+        Err(err) => {
+            eprintln!("prism: cannot canonicalize project root: {err}");
+            return crate::EXIT_INVALID_INPUT;
+        }
+    };
     let Some(project) = store
         .get_project_by_root(&canonical_root)
         .map_err(|err| {

@@ -151,7 +151,9 @@ pub fn render_timeline(
     limit: Option<usize>,
     json: bool,
 ) -> Result<String, String> {
-    let canonical_root = project_root.to_string_lossy().to_string();
+    // 2.0-M20 §32：查询按规范根（与 capture 注册口径一致）。
+    let canonical_root = crate::capture::canonical_root_string(project_root)
+        .map_err(|err| err.to_string())?;
     let Some(project) = store
         .get_project_by_root(&canonical_root)
         .map_err(|err| err.to_string())?
@@ -213,7 +215,9 @@ pub fn render_history_export(
     store: &dyn SnapshotStore,
     project_root: &Path,
 ) -> Result<String, String> {
-    let canonical_root = project_root.to_string_lossy().to_string();
+    // 2.0-M20 §32：查询按规范根（与 capture 注册口径一致）。
+    let canonical_root = crate::capture::canonical_root_string(project_root)
+        .map_err(|err| err.to_string())?;
     let Some(project) = store
         .get_project_by_root(&canonical_root)
         .map_err(|err| err.to_string())?

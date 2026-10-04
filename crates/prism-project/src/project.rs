@@ -58,6 +58,14 @@ fn strip_windows_verbatim(path: &Path) -> PathBuf {
     path.to_path_buf()
 }
 
+/// 项目根路径的规范形态：canonicalize + 去 Windows verbatim 前缀，
+/// 与 `Project::from_root` 的身份口径一致（2.0-M20 §32 Path Identity）。
+/// 项目注册/查询必须统一使用该形态，避免 `.`、相对路径、短路径名
+/// 产生同项目的多条身份记录。
+pub fn canonicalize_root(root: &Path) -> PrismResult<PathBuf> {
+    Ok(strip_windows_verbatim(&root.canonicalize()?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -74,7 +74,7 @@ Timeline（§129）+ Capture now（§147）+ per-row delete（§62）。tauri IP
 
 ## 遗留 P1（带入 M12/后续）
 
-1. M2–M10 域捕获接线（DomainFacts.data 注入点已就绪——需 CLI/GUI session 传递各域结果）。
+1. ~~M2–M10 域捕获接线~~ **已闭合（2026-10-04，M11b 收尾）**：prism-snapshot::domains 新增 `collect_analysis`/`build_domain_data`（§475 CLI/GUI 同源），CLI `prism snapshot` 与 GUI `snapshot_capture` 均注入七域事实；新增 `--refresh-verification` 旗标（默认不跑 M8，§147）。实测（Python 冒烟项目）：code/architecture/git/change/impact/health/verification/environment 全 Available，compare 输出 symbols/edges/files/checks 的 added/removed 与标量迁移，verification transitions `sanity: passed → failed`，finding lifecycle `still_active`（DEP001 真实指纹）实测通过。顺带修复：include_git 规格默认 true 却被 derive(Default) 置 false（git 域恒 NotApplicable）；compare 生命周期误读 wrapper 未解包 .data。
 2. §203/§204 完整 migration 兼容矩阵（框架就位）。
 3. 自动 retention（§63 v1 手动）。
 4. §213 ContextRelation 图（M10a P1 沿袭）。

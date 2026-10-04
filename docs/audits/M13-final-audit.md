@@ -53,9 +53,10 @@ INFERENCE：全部秒级/亚秒级，§289 哲学（incremental/cache-aware/non-
 
 | Artifact | Size | SHA-256 (前 16) |
 |---|---|---|
-| Prism_0.1.0_x64_en-US.msi | 8.07 MiB | ecd61348…（i18n 前）/ d0abfcc6ba8cc2df…（含中英文设置，当前 RC） |
-| Prism_0.1.0_x64-setup.exe (NSIS) | 4.35 MiB | 6ec296413c01a41f…（当前 RC） |
-| prism-app.exe（独立） | 25.8 MB | 17fa5738…（i18n 前） |
+| Prism_0.1.0_x64_en-US.msi | 8.10 MiB | 29ab805e9f767230…（含 M11b 域捕获接线，当前 RC）|
+| Prism_0.1.0_x64-setup.exe (NSIS) | 4.36 MiB | f98520d1c15838ee…（含 M11b 域捕获接线，当前 RC）|
+| Prism_0.1.0_x64_en-US.msi | 8.07 MiB | d0abfcc6ba8cc2df…（i18n 后、域接线前）|
+| Prism_0.1.0_x64-setup.exe (NSIS) | 4.35 MiB | 6ec296413c01a41f…（i18n 后、域接线前）|
 
 §56 RC 流程：install → open → open project → analyze → verify → snapshot → restart → history → compare → context 的数据面均由已验证命令承载（CLI/GUI 同源服务）。
 
@@ -73,7 +74,7 @@ scan/inspect/changes/impact/health/env/context/snapshot/history/compare/timeline
 
 1. Linux/macOS 打包与安装实测（本机 Windows）。
 2. 自动 retention（§63/§78 手动清理即可）。
-3. M2–M10 域捕获接线到 Snapshot 域数据（结构域已捕获）。
+3. ~~M2–M10 域捕获接线到 Snapshot 域数据~~ **已闭合（2026-10-04，M11b 收尾）**：CLI/GUI 快照捕获经 `collect_analysis` 注入七域 JSON，compare/Evolution 随之获得真实深度（详见 M11-final-audit 遗留 P1 第 1 条）；发布包按此重建（见下方 checksum 更新）。
 4. Toast 统一通知组件、独立 Architecture 视图（M12 P1 沿袭）。
 5. a11y 完整 WCAG 审计（基础 aria/键盘已做）。
 

@@ -15,6 +15,7 @@
 mod changes_command;
 mod cli;
 mod context_command;
+mod snapshot_command;
 mod env_command;
 mod health_command;
 mod verify_command;
@@ -194,6 +195,17 @@ fn run() -> i32 {
             }
             None => env_command::run(&path, json, strict, all_tools, refresh, format),
         },
+        Some(cli::Command::Snapshot {
+            path,
+            force,
+            note,
+            json,
+        }) => snapshot_command::run_capture(&path, force, note, json),
+        Some(cli::Command::History {
+            path,
+            json,
+            limit,
+        }) => snapshot_command::run_history(&path, json, limit),
         Some(cli::Command::Context {
             path,
             task,

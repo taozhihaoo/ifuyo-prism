@@ -317,6 +317,28 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<EnvCommand>,
     },
+    /// 捕获项目快照（M11a；Manual Snapshot First §147）
+    Snapshot {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// §17：跳过去重，强制创建新 observation
+        #[arg(long)]
+        force: bool,
+        /// §91：用户备注
+        #[arg(long)]
+        note: Option<String>,
+        #[arg(long)]
+        json: bool,
+    },
+    /// 查看项目快照历史（M11a）
+    History {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[arg(long)]
+        json: bool,
+        #[arg(long)]
+        limit: Option<usize>,
+    },
     /// 生成确定性项目上下文包（M10a）
     Context {
         #[arg(default_value = ".")]
@@ -379,6 +401,8 @@ impl Command {
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",
             Command::Context { .. } => "context",
+            Command::Snapshot { .. } => "snapshot",
+            Command::History { .. } => "history",
             Command::Report { .. } => "report",
         }
     }

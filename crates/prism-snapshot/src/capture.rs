@@ -42,9 +42,7 @@ pub struct DomainFacts {
 /// 项目根的规范字符串形态（2.0-M20 §32 Path Identity：与 M1
 /// `Project::from_root` 同一口径——canonicalize + 去 verbatim 前缀），
 /// 注册与查询共用，避免 `.`/相对路径/短路径名分裂同一项目的身份。
-pub(crate) fn canonical_root_string(
-    project_root: &Path,
-) -> Result<String, prism_core::PrismError> {
+pub(crate) fn canonical_root_string(project_root: &Path) -> Result<String, prism_core::PrismError> {
     let canonical = prism_project::canonicalize_root(project_root)?;
     Ok(canonical.to_string_lossy().to_string())
 }

@@ -39,11 +39,24 @@ describe("SettingsPage (M12 §48/§11)", () => {
         <Probe />
       </SettingsProvider>,
     );
-    fireEvent.click(screen.getByText("light"));
+    fireEvent.click(screen.getByText("Light"));
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(screen.getByTestId("probe")).toHaveTextContent("light/comfortable");
     // §48 持久化：重新 loadSettings 应读回。
     expect(loadSettings().theme).toBe("light");
+  });
+
+  it("language switch translates nav-adjacent labels and persists (§240/§241)", async () => {
+    render(
+      <SettingsProvider>
+        <SettingsPage />
+        <Probe />
+      </SettingsProvider>,
+    );
+    // 切到中文。
+    fireEvent.click(screen.getByText("中文"));
+    expect(screen.getByText(/语言/)).toBeInTheDocument();
+    expect(loadSettings().language).toBe("zh");
   });
 
   it("density switch applies data-density", async () => {
@@ -53,7 +66,7 @@ describe("SettingsPage (M12 §48/§11)", () => {
         <Probe />
       </SettingsProvider>,
     );
-    fireEvent.click(screen.getByText("compact"));
+    fireEvent.click(screen.getByText("Compact"));
     expect(document.documentElement.dataset.density).toBe("compact");
     expect(screen.getByTestId("probe")).toHaveTextContent(/compact/);
   });
@@ -62,7 +75,7 @@ describe("SettingsPage (M12 §48/§11)", () => {
 // applySettings 独立验证（§244 无副作用渲染路径）。
 describe("applySettings", () => {
   it("sets dataset attributes", () => {
-    applySettings({ theme: "light", density: "compact" });
+    applySettings({ theme: "light", density: "compact", language: "en" });
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(document.documentElement.dataset.density).toBe("compact");
   });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import { useUiSettings } from "../app/SettingsProvider";
 import {
   compareSnapshots,
   deleteSnapshot,
@@ -17,6 +18,7 @@ import type { DomainDiffDto, SnapshotDiffDto, SnapshotRecordDto, TimelineDto } f
  */
 export default function SnapshotHistoryPage() {
   const { project } = useProjectStore();
+  const { t } = useUiSettings();
   const [snapshots, setSnapshots] = useState<SnapshotRecordDto[] | null>(null);
   const [timeline, setTimeline] = useState<TimelineDto | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -101,13 +103,10 @@ export default function SnapshotHistoryPage() {
   if (snapshots.length === 0) {
     return (
       <div className="card" data-testid="history-empty">
-        <h2 className="card-title">Snapshot History</h2>
-        <p className="muted">
-          No snapshots for this project yet — this will be the first recorded
-          Prism snapshot (§246).
-        </p>
+        <h2 className="card-title">{t("history.title")}</h2>
+        <p className="muted">{t("history.empty.first")}</p>
         <button type="button" className="linklike" onClick={capture} disabled={capturing}>
-          {capturing ? "Capturing…" : "Create first snapshot"}
+          {capturing ? t("history.capturing") : t("history.empty.capture")}
         </button>
       </div>
     );
@@ -116,10 +115,8 @@ export default function SnapshotHistoryPage() {
   return (
     <section className="stack">
       <div className="card" data-testid="history-list">
-        <h2 className="card-title">Snapshot History</h2>
-        <p className="muted small">
-          Engineering state snapshots — not source backups (§177).
-        </p>
+        <h2 className="card-title">{t("history.title")}</h2>
+        <p className="muted small">{t("history.notBackups")}</p>
         <ul>
           {snapshots.map((snapshot) => (
             <li key={snapshot.id} className="small">
@@ -164,7 +161,7 @@ export default function SnapshotHistoryPage() {
           disabled={!selectedA || !selectedB || selectedA === selectedB || comparing}
           onClick={runCompare}
         >
-          {comparing ? "Comparing…" : "Compare A vs B"}
+          {comparing ? t("history.capturing") : t("history.compare")}
         </button>
         <button type="button" className="linklike" onClick={capture} disabled={capturing}>
           Capture now
@@ -173,7 +170,7 @@ export default function SnapshotHistoryPage() {
 
       {diff && (
         <div className="card" data-testid="history-compare">
-          <h2 className="card-title">Comparison ({diff.compatibility})</h2>
+          <h2 className="card-title">{t("history.comparison")} ({diff.compatibility})</h2>
           {(Object.entries({
             Structure: diff.structure,
             Code: diff.code,
@@ -214,7 +211,7 @@ export default function SnapshotHistoryPage() {
 
       {timeline && (
         <div className="card" data-testid="history-timeline">
-          <h2 className="card-title">Timeline</h2>
+          <h2 className="card-title">{t("history.timeline")}</h2>
           <ul>
             {timeline.events.map((event) => (
               <li key={event.id} className="small">
@@ -224,7 +221,7 @@ export default function SnapshotHistoryPage() {
                 [{event.source}] {event.title} — {event.summary}
               </li>
             ))}
-            {timeline.events.length === 0 && <li className="muted">No events.</li>}
+            {timeline.events.length === 0 && <li className="muted">{t("history.noEvents")}</li>}
           </ul>
           {timeline.limitations.map((limitation) => (
             <p key={limitation} className="muted small">

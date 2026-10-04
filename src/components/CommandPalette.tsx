@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageKey } from "../pages/registry";
 import { PAGES } from "../pages/registry";
+import { useUiSettings } from "../app/SettingsProvider";
+import { translate } from "../app/i18n";
 
 interface RecentProject {
   display_name: string;
@@ -26,6 +28,7 @@ export default function CommandPalette({
   onOpenProject,
   onClose,
 }: CommandPaletteProps) {
+  const { settings, t } = useUiSettings();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -39,7 +42,7 @@ export default function CommandPalette({
       PAGES.map((page) => ({
         kind: "page" as const,
         id: page.key,
-        label: page.label,
+        label: translate(settings.language, `page.${page.key}`),
         hint: page.key === active ? "current page" : "go to page",
       })),
     [active],
@@ -49,7 +52,7 @@ export default function CommandPalette({
       recentProjects.slice(0, 6).map((project) => ({
         kind: "project" as const,
         id: project.canonical_root,
-        label: `Open: ${project.display_name}`,
+        label: `${t("palette.openProject")}: ${project.display_name}`,
         hint: project.canonical_root,
       })),
     [recentProjects],
@@ -92,7 +95,7 @@ export default function CommandPalette({
         <input
           ref={inputRef}
           className="palette-input"
-          placeholder="Search pages and projects…"
+          placeholder={t("palette.placeholder")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -114,7 +117,7 @@ export default function CommandPalette({
               </button>
             </li>
           ))}
-          {filtered.length === 0 && <li className="palette-item">No matches.</li>}
+          {filtered.length === 0 && <li className="palette-item">{t("palette.noMatches")}</li>}
         </ul>
       </div>
     </div>

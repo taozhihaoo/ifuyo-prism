@@ -24,7 +24,7 @@ function Shell() {
   const [error, setError] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
-  const { settings } = useUiSettings();
+  const { settings, t } = useUiSettings();
 
   // theme/density 应用到 root（§11/§48）。
   useEffect(() => {
@@ -87,6 +87,7 @@ function Shell() {
   }, []);
 
   const page = PAGES.find((p) => p.key === active) ?? PAGES[0];
+  const page_label = page ? t(`page.${page.key}`) : "";
 
   return (
     <div className="app-shell">
@@ -108,7 +109,7 @@ function Shell() {
         </button>
       </aside>
       <main className="main-content">
-        <h1 className="page-title">{page?.label}</h1>
+        <h1 className="page-title">{page_label}</h1>
         {page?.render(appInfo)}
       </main>
       <StatusBar version={appInfo?.version ?? null} error={error} />

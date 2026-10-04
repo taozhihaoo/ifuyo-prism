@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { formatBytesLabel } from "../services/format";
 import { useProjectStore } from "../app/ProjectStore";
+import { useUiSettings } from "../app/SettingsProvider";
 import ScanProgressCard from "../components/ScanProgressCard";
 import ProjectTypesCard from "../components/ProjectTypesCard";
 import {
@@ -48,6 +49,7 @@ function staleReasonFor(
 export default function OverviewPage({ appInfo }: OverviewPageProps) {
   const { project, phase, scanStatus, discovery, pickAndOpenProject, lastError } =
     useProjectStore();
+  const { t } = useUiSettings();
   const [verifyOverview, setVerifyOverview] = useState<VerifyOverview | null>(null);
   const [verifyChecked, setVerifyChecked] = useState(false);
   const [latestSnapshot, setLatestSnapshot] = useState<SnapshotRecordDto | null>(null);
@@ -186,19 +188,19 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
               <h2 className="card-title">Status</h2>
               <dl className="fact-grid">
                 <div>
-                  <dt>Health</dt>
-                  <dd>{healthState ?? "not run"}</dd>
+                  <dt>{t("overview.health")}</dt>
+                  <dd>{healthState ?? t("overview.notRun")}</dd>
                 </div>
                 <div>
-                  <dt>Verify</dt>
-                  <dd>{verifyState ?? "not run"}</dd>
+                  <dt>{t("overview.verify")}</dt>
+                  <dd>{verifyState ?? t("overview.notRun")}</dd>
                 </div>
                 <div>
-                  <dt>Last snapshot</dt>
+                  <dt>{t("overview.lastSnapshot")}</dt>
                   <dd>
                     {latestSnapshot
                       ? new Date(latestSnapshot.captured_at).toLocaleString()
-                      : "none"}
+                      : t("overview.none")}
                   </dd>
                 </div>
               </dl>

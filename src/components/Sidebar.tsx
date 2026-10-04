@@ -1,12 +1,13 @@
+import { useUiSettings } from "../app/SettingsProvider";
 import { PAGES, type PageKey } from "../pages/registry";
 
-/** §7 信息架构：导航分组（policy，非硬编码功能）。 */
-const NAV_GROUPS: { title: string; keys: PageKey[] }[] = [
-  { title: "Project", keys: ["overview", "understand"] },
-  { title: "Change", keys: ["changes"] },
-  { title: "Quality", keys: ["health", "verify", "environment"] },
-  { title: "AI Context", keys: ["context"] },
-  { title: "History", keys: ["reports"] },
+/** §7 信息架构：导航分组（policy）；标签随语言设置翻译。 */
+const NAV_GROUPS: { titleKey: string; keys: PageKey[] }[] = [
+  { titleKey: "nav.group.project", keys: ["overview", "understand"] },
+  { titleKey: "nav.group.change", keys: ["changes"] },
+  { titleKey: "nav.group.quality", keys: ["health", "verify", "environment"] },
+  { titleKey: "nav.group.aiContext", keys: ["context"] },
+  { titleKey: "nav.group.history", keys: ["reports"] },
 ];
 
 interface SidebarProps {
@@ -14,8 +15,10 @@ interface SidebarProps {
   onSelect: (key: PageKey) => void;
 }
 
-/** 固定主导航（纲领 §13 八项），按 §7 IA 分组呈现。 */
+/** 固定主导航（纲领 §13 八项），按 §7 IA 分组呈现；标签随语言设置翻译。 */
 export default function Sidebar({ active, onSelect }: SidebarProps) {
+  const { t } = useUiSettings();
+
   return (
     <ul className="nav-list">
       {NAV_GROUPS.map((group) => {
@@ -24,9 +27,9 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
           .filter((page): page is (typeof PAGES)[number] => Boolean(page));
         if (pages.length === 0) return null;
         return (
-          <li key={group.title}>
+          <li key={group.titleKey}>
             <div className="nav-group-title" aria-hidden="true">
-              {group.title}
+              {t(group.titleKey)}
             </div>
             <ul className="nav-group-list">
               {pages.map((page) => (
@@ -37,7 +40,7 @@ export default function Sidebar({ active, onSelect }: SidebarProps) {
                     aria-current={page.key === active ? "page" : undefined}
                     onClick={() => onSelect(page.key)}
                   >
-                    {page.label}
+                    {t(`page.${page.key}`)}
                     {page.milestoneTag ? (
                       <span className="nav-tag">{page.milestoneTag}</span>
                     ) : (

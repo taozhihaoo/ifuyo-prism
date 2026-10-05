@@ -315,11 +315,14 @@ impl<'a> Resolver<'a> {
     }
 }
 
-/// 语义分析编排：逐文件 walk（增量：extractions 已按 hash 复用）。
+/// 语义分析编排：批量 `update_source` 登记 → 单遍 `rebuild` 重建全部
+/// 语义（§37 文件级增量；§67 修复——单 Resolver 单遍，无 per-file 深拷贝）。
 #[derive(Default)]
 pub struct SemanticEngine {
     /// Source of Truth：逐文件 M23 抽取（含 usings 作用域表，§39）。
     extractions: BTreeMap<String, crate::model::FileExtraction>,
+    /// 源码缓存（rebuild 重解析用）。
+    sources: BTreeMap<String, String>,
     files: BTreeMap<String, FileSemantics>,
 }
 
@@ -328,9 +331,10 @@ impl SemanticEngine {
         Self::default()
     }
 
-    /// 更新文件（M23 抽取 + L2 语义）：content_hash 未变 ⇒ 双重复用；
-    /// 变了 ⇒ 重抽取 + 重语义（作用域表 = 当前全部文件的 usings）。
-    pub fn update_file(&mut self, index: &SymbolIndex, file: &str, source: &str) {
+    /// 登记文件源码（抽取 hash 未变 ⇒ 复用抽取；语义由 rebuild 统一重算
+    /// ——符号表变更影响任意文件解析，rebuild 为权威重算点 §36-§38）。
+    /// `_index`：解析上下文由 rebuild 持有；保留参数位以稳定调用约定。
+    pub fn update_source(&mut self, _index: &SymbolIndex, file: &str, source: &str) {
         let extraction = crate::extract::extract(file, source);
         if self
             .extractions
@@ -338,23 +342,31 @@ impl SemanticEngine {
             .map(|existing| existing.content_hash == extraction.content_hash)
             .unwrap_or(false)
         {
+            self.sources.insert(file.to_string(), source.to_string());
             return;
         }
         self.extractions.insert(file.to_string(), extraction);
-        self.reanalyze(index, file, source);
-    }
-
-    /// 变更文件语义（保持其余文件抽取复用——§37 文件级增量）。
-    pub fn reanalyze(&mut self, index: &SymbolIndex, file: &str, source: &str) {
-        let resolver = Resolver::new(index, &self.extractions);
-        let semantics = analyze_file_with_resolver(&resolver, index, file, source);
-        self.files.insert(file.to_string(), semantics);
-    }
-
-    /// 删除文件（§28：无幽灵关系——索引/关系由当前集合重建）。
-    pub fn remove_file(&mut self, file: &str) {
-        self.extractions.remove(file);
+        self.sources.insert(file.to_string(), source.to_string());
         self.files.remove(file);
+    }
+
+    /// 删除文件（§28：无幽灵关系——rebuild 后当前集合之外零残留）。
+    pub fn remove_source(&mut self, file: &str) {
+        self.extractions.remove(file);
+        self.sources.remove(file);
+        self.files.remove(file);
+    }
+
+    /// 单遍重建全部语义：单 Resolver 复用（修复此前每文件深拷贝
+    /// extractions 的 O(N²)；确定性由 BTreeMap 遍历保证 §41）。
+    pub fn rebuild(&mut self, index: &SymbolIndex) {
+        let mut files = std::mem::take(&mut self.files);
+        let resolver = Resolver::new(index, &self.extractions);
+        for (path, source) in &self.sources {
+            let semantics = analyze_file_with_resolver(&resolver, index, path, source);
+            files.insert(path.clone(), semantics);
+        }
+        self.files = files;
     }
 
     pub fn file(&self, file: &str) -> Option<&FileSemantics> {
@@ -1355,11 +1367,12 @@ public class Factory {
         let _ = engine;
         let mut semantic = SemanticEngine::new();
         let index = crate::index::SymbolIndex::default();
-        semantic.update_file(
+        semantic.update_source(
             &index,
             "R.cs",
             "class R { void M() { typeof(R).GetMethod(\"M\"); } }",
         );
+        semantic.rebuild(&index);
         assert!(
             semantic.diagnostics().any(|d| d.kind == "reflection_usage"),
             "§30 reflection detection"
@@ -1371,17 +1384,20 @@ public class Factory {
         let mut incremental = SemanticEngine::new();
         let index = crate::index::SymbolIndex::default();
         for (file, source) in SOURCES {
-            incremental.update_file(&index, file, source);
+            incremental.update_source(&index, file, source);
         }
+        incremental.rebuild(&index);
         let mut full = SemanticEngine::new();
         for (file, source) in SOURCES {
-            full.update_file(&index, file, source);
+            full.update_source(&index, file, source);
         }
+        full.rebuild(&index);
         let a: Vec<_> = incremental.relations().cloned().collect();
         let b: Vec<_> = full.relations().cloned().collect();
         assert_eq!(a, b, "§66 incremental == clean full");
         // 删除文件 ⇒ 关系移除（无幽灵）。
-        incremental.remove_file("Warrior.cs");
+        incremental.remove_source("Warrior.cs");
+        incremental.rebuild(&index);
         assert!(incremental.file("Warrior.cs").is_none());
     }
 
@@ -1405,12 +1421,12 @@ public class CombatService {
         );
         let index = m23.build_index();
         let mut semantic = SemanticEngine::new();
-        semantic.update_file(
+        semantic.update_source(
             &index,
             "Player.cs",
             "namespace Game; public class Player { public void TakeDamage(int a) { } }",
         );
-        semantic.update_file(
+        semantic.update_source(
             &index,
             "CombatService.cs",
             r#"namespace Game;
@@ -1419,6 +1435,7 @@ public class CombatService {
 }
 "#,
         );
+        semantic.rebuild(&index);
         let all: Vec<SemanticRelation> = semantic.relations().cloned().collect();
         let calls = find(&all, SemanticRelationKind::Calls, "TakeDamage");
         assert_eq!(calls.resolution, Resolution::Resolved);

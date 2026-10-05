@@ -126,6 +126,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
         }
         let mut engine = prism_csharp::SymbolEngine::new();
         let mut parse_error_files = 0usize;
+        let mut sources: Vec<(String, String)> = Vec::new();
         for (relative_path, absolute) in &csharp_files {
             let Ok(metadata) = std::fs::metadata(absolute) else {
                 continue;
@@ -146,6 +147,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
                 parse_error_files += 1;
             }
             engine.update_file(relative_path, &source);
+            sources.push((relative_path.clone(), source));
         }
         let index = engine.build_index();
         let outcome = prism_csharp::intel::symbols_to_intel(
@@ -200,8 +202,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             return crate::EXIT_ERROR;
         };
         let csharp_files = collect_csharp_files(&l0);
-        let mut engine = prism_csharp::SymbolEngine::new();
-        let mut semantic = prism_csharp::SemanticEngine::new();
+        let mut sources: Vec<(String, String)> = Vec::new();
         for (relative_path, absolute) in &csharp_files {
             let Ok(metadata) = std::fs::metadata(absolute) else {
                 continue;
@@ -212,9 +213,19 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             let Ok(source) = std::fs::read_to_string(absolute) else {
                 continue;
             };
-            engine.update_file(relative_path, &source);
-            semantic.update_file(&engine.build_index(), relative_path, &source);
+            sources.push((relative_path.clone(), source));
         }
+        // M23 索引一次建全（§67：无每文件重建 Compilation 式浪费）。
+        let mut engine = prism_csharp::SymbolEngine::new();
+        for (relative_path, source) in &sources {
+            engine.update_file(relative_path, source);
+        }
+        let index = engine.build_index();
+        let mut semantic = prism_csharp::SemanticEngine::new();
+        for (relative_path, source) in &sources {
+            semantic.update_source(&index, relative_path, source);
+        }
+        semantic.rebuild(&index);
         // 查询输出（§52 callers/callees/references）。
         if let Some(needle) = search {
             let hits: Vec<_> = semantic

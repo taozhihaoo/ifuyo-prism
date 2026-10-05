@@ -28,6 +28,11 @@ pub struct FactsInputs<'a> {
     pub state: crate::model::ContextStateReference,
     /// §131–§132：M8 事实相对当前工作区的新鲜度。
     pub verification_stale: crate::model::ContextFreshness,
+    /// M27 2.0：M26 Evidence Graph 关系（calls/inherits/... 边，§十九/§二十
+    /// Impact-aware Context 的输入）。None ⇒ 该 collector 静默跳过。
+    pub evidence_relations: Option<&'a [prism_intel::GraphEdge]>,
+    /// M26 变更符号/实体 id 集（Evidence 关系的匹配目标）。
+    pub changed_entities: Option<&'a std::collections::BTreeSet<String>>,
 }
 
 /// 收集全部候选（各 collector 顺序稳定；候选内部排序由 selector 保证）。
@@ -37,6 +42,7 @@ pub fn collect_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
     candidates.extend(change_candidates(inputs));
     candidates.extend(diff_candidates(inputs));
     candidates.extend(impact_candidates(inputs));
+    candidates.extend(evidence_candidates(inputs));
     candidates.extend(test_candidates(inputs));
     candidates.extend(health_candidates(inputs));
     candidates.extend(verification_candidates(inputs));
@@ -623,5 +629,111 @@ fn excerpt_from_output(stderr: &str, stdout: &str) -> String {
         format!("excerpt: {}", head.join(" | "))
     } else {
         format!("excerpt: {}", lines.join(" | "))
+    }
+}
+
+/// M27 2.0 §十九/§二十 Impact/Change-aware collector：消费 M26 Evidence
+/// Graph 关系——**target ∈ 变更实体集** 的边 ⇒ 其 source（调用者/派生者/
+/// 引用者）成为候选。resolved 边 ⇒ DirectlyImpacted；unresolved 边 ⇒
+/// ReverseDependency（§63 低可信）。Evidence = 关系 file:line。
+/// 零伪造：无输入/无变更集 ⇒ 静默跳过。
+fn evidence_candidates(inputs: &FactsInputs) -> Vec<ContextCandidate> {
+    evidence_candidates_from(
+        inputs.evidence_relations.unwrap_or(&[]),
+        inputs.changed_entities.unwrap_or(&Default::default()),
+    )
+}
+
+/// 纯函数版（可测）：resolved 边 ⇒ DirectlyImpacted；unresolved ⇒
+/// ReverseDependency（§63 低可信）。同实体同关系去重。
+fn evidence_candidates_from(
+    relations: &[prism_intel::GraphEdge],
+    changed: &std::collections::BTreeSet<String>,
+) -> Vec<ContextCandidate> {
+    let mut candidates = Vec::new();
+    let mut seen: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+    for edge in relations {
+        if !changed.contains(&edge.target) {
+            continue;
+        }
+        let reason = if edge.resolution.as_deref() == Some("unresolved") {
+            SelectionReason::ReverseDependency
+        } else {
+            SelectionReason::DirectlyImpacted
+        };
+        let key = format!("{}|{}", edge.source, edge.relation);
+        if !seen.insert(key) {
+            continue;
+        }
+        candidates.push(candidate(
+            SourceType::ImpactAnalysis,
+            edge.source.clone(),
+            Some(edge.file.clone()),
+            "evidence_graph",
+            ContextGroup::CurrentChange,
+            format!("{} {} {}", edge.source, edge.relation, edge.target),
+            vec![reason],
+            vec![format!("{}:{} ({})", edge.file, edge.line, edge.relation)],
+        ));
+    }
+    candidates
+}
+
+#[cfg(test)]
+mod evidence_tests {
+    use super::evidence_candidates_from;
+    use crate::model::SelectionReason;
+    use prism_intel::graph::{EvidenceGraph, GraphEdge};
+
+    fn edge(source: &str, target: &str, resolution: Option<&str>) -> GraphEdge {
+        GraphEdge {
+            source: source.into(),
+            target: target.into(),
+            relation: "calls".into(),
+            file: "CombatService.cs".into(),
+            line: 7,
+            resolution: resolution.map(str::to_string),
+        }
+    }
+
+    fn changed() -> std::collections::BTreeSet<String> {
+        std::collections::BTreeSet::from(["cs:Game.Player.TakeDamage#method#abc".to_string()])
+    }
+
+    #[test]
+    fn resolved_edge_yields_directly_impacted_candidate() {
+        let graph = EvidenceGraph::from_edges([edge(
+            "cs:Game.CombatService.Hit#method",
+            "cs:Game.Player.TakeDamage#method#abc",
+            Some("resolved"),
+        )]);
+        let relations: Vec<GraphEdge> = graph.edges.clone();
+        let candidates = evidence_candidates_from(&relations, &changed());
+        assert_eq!(candidates.len(), 1);
+        assert!(candidates[0]
+            .reasons
+            .contains(&SelectionReason::DirectlyImpacted));
+        assert!(candidates[0].evidence[0].contains("CombatService.cs:7"));
+    }
+
+    #[test]
+    fn unresolved_edge_downgrades_to_reverse_dependency() {
+        let graph = EvidenceGraph::from_edges([edge(
+            "cs:Game.CombatService.Hit#method",
+            "cs:Game.Player.TakeDamage#method#abc",
+            Some("unresolved"),
+        )]);
+        let relations: Vec<GraphEdge> = graph.edges.clone();
+        let candidates = evidence_candidates_from(&relations, &changed());
+        assert!(candidates[0]
+            .reasons
+            .contains(&SelectionReason::ReverseDependency));
+    }
+
+    #[test]
+    fn unrelated_targets_skipped() {
+        let graph = EvidenceGraph::from_edges([edge("X", "cs:Other.Thing", None)]);
+        let relations: Vec<GraphEdge> = graph.edges.clone();
+        assert!(evidence_candidates_from(&relations, &changed()).is_empty());
     }
 }

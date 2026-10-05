@@ -5,7 +5,7 @@
 
 ## 1. Core 的职责
 
-统一承载工程智能的**表达层**：Entity / Fact / Evidence / Relation / Finding + Origin / Confidence / Provenance / Freshness + AnalysisContext + IntelOutcome（部分结果诚实表达）+ IntelBundle（确定性集合）。垂直切片：依赖域（M21）+ L0 结构域（M22，第一个主要 Fact Producer）+ C# 符号域（M23）+ Godot 域（M24）+ L2 语义域（M25，`prism-csharp::semantic_to_intel`）+ Impact 域（M26，`prism-intel::impact::analyze`——EvidenceGraph 反向遍历，Direct/Transitive/Potential/Unknown）。
+统一承载工程智能的**表达层**：Entity / Fact / Evidence / Relation / Finding + Origin / Confidence / Provenance / Freshness + AnalysisContext + IntelOutcome（部分结果诚实表达）+ IntelBundle（确定性集合）。垂直切片：依赖域（M21）+ L0 结构域（M22，第一个主要 Fact Producer）+ C# 符号域（M23）+ Godot 域（M24）+ L2 语义域（M25，`prism-csharp::semantic_to_intel`）+ Impact 域（M26，`prism-intel::impact::analyze`）+ Context 域（M27，`prism-context` evidence collector 消费 Evidence Graph——Impact/Change-aware Context）。
 
 ## 2. Core 的非职责
 

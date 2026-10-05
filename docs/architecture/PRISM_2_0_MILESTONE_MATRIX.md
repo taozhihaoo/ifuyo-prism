@@ -19,7 +19,7 @@
   ↓ 依赖：M23 L1；后端选型（Roslyn 环境依赖须显式决策）
 2.0-M26 Evidence Graph & Impact Intelligence（✅ 2026-10-05 完成——prism-intel graph/impact + `prism intel --domain impact`）
   ↓ 依赖：M21 Core + M23/M24 关系源
-2.0-M27 Context Intelligence 2.0
+2.0-M27 Context Intelligence 2.0（✅ 2026-10-05 完成——evidence collector + `prism context --impact-aware`）
   ↓ 依赖：M26 关系图；MCP 候选承载点
 2.0-M28 Health Findings 2.0 ── 依赖：M21（可与 M26/M27 并行）
 2.0-M29 Dependency/Security/Environment ── 依赖：M21（可并行）

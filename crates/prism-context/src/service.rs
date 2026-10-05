@@ -15,7 +15,8 @@ use prism_core::PrismResult;
 pub struct ContextService;
 
 impl ContextService {
-    /// 生成 ContextPack（§7/§474）。
+    /// 生成 ContextPack（§7/§474）。1.0 兼容入口：等价于无 Evidence 输入
+    /// 的 [`Self::generate_with_evidence`]。
     #[allow(clippy::too_many_arguments)]
     pub fn generate(
         request: ContextRequest,
@@ -27,6 +28,40 @@ impl ContextService {
         health: Option<&prism_health::HealthAnalysis>,
         verification: Option<&prism_verify::VerificationReport>,
         environment: Option<&prism_env::EnvironmentSnapshot>,
+        cancel: &CancellationToken,
+    ) -> PrismResult<ContextPack> {
+        Self::generate_with_evidence(
+            request,
+            discovery,
+            code_model,
+            changeset,
+            impact,
+            graph,
+            health,
+            verification,
+            environment,
+            None,
+            None,
+            cancel,
+        )
+    }
+
+    /// 2.0-M27：带 Evidence Graph 的生成（§十九/§二十 Impact/Change-aware
+    /// Context）。`evidence_relations` = M26 关系边；`changed_entities` =
+    /// 变更实体 id 集；任一 None ⇒ evidence collector 静默跳过。
+    #[allow(clippy::too_many_arguments)]
+    pub fn generate_with_evidence(
+        request: ContextRequest,
+        discovery: Option<&prism_project::ProjectDiscovery>,
+        code_model: Option<&prism_analysis::ProjectCodeModel>,
+        changeset: Option<&prism_changes::ChangeSet>,
+        impact: Option<&prism_impact::ImpactAnalysis>,
+        graph: Option<&prism_graph::DependencyGraphResult>,
+        health: Option<&prism_health::HealthAnalysis>,
+        verification: Option<&prism_verify::VerificationReport>,
+        environment: Option<&prism_env::EnvironmentSnapshot>,
+        evidence_relations: Option<&[prism_intel::GraphEdge]>,
+        changed_entities: Option<&std::collections::BTreeSet<String>>,
         cancel: &CancellationToken,
     ) -> PrismResult<ContextPack> {
         // ---- 1) 任务分类（§12–§18）----
@@ -62,6 +97,8 @@ impl ContextService {
             cancel,
             state: state.clone(),
             verification_stale: crate::model::ContextFreshness::Unknown,
+            evidence_relations,
+            changed_entities,
         };
         let candidates = collect_candidates(&inputs);
         let verification_stale = inputs.verification_stale;

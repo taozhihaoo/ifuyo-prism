@@ -4,6 +4,7 @@
 //! M0 阶段除 `info` 外均为占位，明确输出未实现而不是伪造数据。
 
 use clap::{Parser, Subcommand, ValueEnum};
+use crate::api_command::ApiCommand;
 use prism_core::config::OutputFormat;
 
 #[derive(Debug, Parser)]
@@ -354,6 +355,13 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// API / Webhook 调试（2.0-M213：端点发现/观测/关联；网络动作显式）
+    Api {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[command(subcommand)]
+        command: ApiCommand,
+    },
     /// Visualization 投影（2.0-M212：与 GUI/MCP 同一 prism-viz 数据面）
     Viz {
         #[arg(default_value = ".")]
@@ -542,6 +550,7 @@ impl Command {
             Command::Health2 { .. } => "health2",
             Command::Supply { .. } => "supply",
             Command::Viz { .. } => "viz",
+            Command::Api { .. } => "api",
             Command::Debug { .. } => "debug",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",

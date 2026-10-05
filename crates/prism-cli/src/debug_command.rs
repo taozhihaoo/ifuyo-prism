@@ -190,6 +190,7 @@ pub fn run(path: &Path, sources: &[PathBuf], baseline: Option<&Path>, json: bool
         supply: None,
         debug: Some(&report),
         evolution: None,
+        api: None,
         cancel: &cancel,
     };
     let health_report = registry.evaluate(&rule_context);

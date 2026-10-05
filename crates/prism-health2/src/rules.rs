@@ -35,6 +35,10 @@ pub struct RuleThresholds {
     pub evolution_hotspot_min_commits: u64,
     /// M211：耦合判定阈值（共同变更次数）。
     pub evolution_min_co_change: u64,
+    /// M213：HTTP 状态阈值（≥ 该值视为失败观测，默认 500）。
+    pub api_failure_status_min: u16,
+    /// M213：同一端点重复失败次数阈值。
+    pub api_repeated_failures: u64,
 }
 
 impl Default for RuleThresholds {
@@ -49,6 +53,8 @@ impl Default for RuleThresholds {
             report_unresolved_frames: true,
             evolution_hotspot_min_commits: 10,
             evolution_min_co_change: 5,
+            api_failure_status_min: 500,
+            api_repeated_failures: 3,
         }
     }
 }

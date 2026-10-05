@@ -155,6 +155,7 @@ mod tests {
             supply: None,
             debug: None,
             evolution: None,
+            api: None,
             cancel,
         }
     }
@@ -282,6 +283,7 @@ mod tests {
             supply: None,
             debug: None,
             evolution: None,
+            api: None,
             cancel: &cancel,
         };
         let outcome = scene_wiring_rule(&ctx);

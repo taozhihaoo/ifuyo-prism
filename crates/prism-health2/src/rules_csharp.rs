@@ -291,6 +291,7 @@ mod tests {
             supply: None,
             debug: None,
             evolution: None,
+            api: None,
             cancel,
         }
     }

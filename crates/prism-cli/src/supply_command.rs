@@ -214,6 +214,7 @@ pub fn run(
         supply: Some(&report),
         debug: None,
         evolution: None,
+        api: None,
         cancel: &cancel,
     };
     let mut health_report = registry.evaluate(&rule_context);

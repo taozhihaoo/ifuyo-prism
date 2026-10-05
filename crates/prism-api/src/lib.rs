@@ -31,7 +31,7 @@ pub use correlate::{
     correlate_error_cluster, correlate_handler_symbol, correlate_recent_change,
     correlate_request_logs, match_endpoint,
 };
-pub use discover::{discover_endpoints, normalize_route, DiscoverInput};
+pub use discover::{discover_endpoints, is_discoverable_source, normalize_route, DiscoverInput};
 pub use http::{observe, HttpObservation};
 pub use model::{
     ApiEndpoint, ApiObservation, FailureKind, HttpMethod, SignatureState, WebhookEvent,

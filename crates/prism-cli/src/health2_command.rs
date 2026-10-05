@@ -169,6 +169,7 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
         supply: None,
         debug: None,
         evolution: None,
+        api: None,
         cancel: &cancel,
     };
     let mut report = registry.evaluate(&rule_context);

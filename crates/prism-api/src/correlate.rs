@@ -9,21 +9,27 @@
 use crate::model::{ApiEndpoint, HttpMethod};
 use prism_core::task::CancellationToken;
 
-/// route template 与 (method, path) 的匹配（§24：{id} 段通配）。
+/// route template 与 (method, path) 的匹配（§24：{id} 段通配；ASP.NET
+/// 路由大小写不敏感 ⇒ 小写比较；匹配是 INFERENCE 非 FACT）。
 pub fn match_endpoint<'a>(
     endpoints: &'a [ApiEndpoint],
     method: HttpMethod,
     path: &str,
 ) -> Option<&'a ApiEndpoint> {
-    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    let segments: Vec<String> = path
+        .split('/')
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_ascii_lowercase())
+        .collect();
     endpoints.iter().find(|endpoint| {
         if endpoint.method != method {
             return false;
         }
-        let template: Vec<&str> = endpoint
+        let template: Vec<String> = endpoint
             .route_template
             .split('/')
             .filter(|s| !s.is_empty())
+            .map(|s| s.to_ascii_lowercase())
             .collect();
         template.len() == segments.len()
             && template
@@ -65,19 +71,22 @@ pub fn correlate_handler_symbol(
 ) -> Option<String> {
     let file = endpoint.evidence.split(':').next()?;
     let candidates = symbol_index.by_file.get(file)?;
-    candidates.first().and_then(|id| {
-        symbol_index
-            .by_id
-            .get(id)
-            .filter(|symbol| {
-                // handler 关联只对类型符号成立（namespace 不算，§24）。
-                matches!(
-                    symbol.qualified_name.split('#').next(),
-                    Some(qualified) if qualified.contains('.')
-                )
-            })
-            .map(|symbol| symbol.qualified_name.clone())
-    })
+    // handler 关联优先类型符号（class/struct/record），namespace 不算（§24）。
+    let is_type_symbol = |kind: prism_csharp::SymbolKindCs| {
+        matches!(
+            kind,
+            prism_csharp::SymbolKindCs::Class
+                | prism_csharp::SymbolKindCs::Struct
+                | prism_csharp::SymbolKindCs::Record
+                | prism_csharp::SymbolKindCs::RecordStruct
+                | prism_csharp::SymbolKindCs::Interface
+        )
+    };
+    candidates
+        .iter()
+        .filter_map(|id| symbol_index.by_id.get(id))
+        .find(|symbol| is_type_symbol(symbol.kind))
+        .map(|symbol| symbol.qualified_name.clone())
 }
 
 /// Endpoint → Recent Change（§27）：handler 文件的最近 commit

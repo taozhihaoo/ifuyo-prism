@@ -316,6 +316,7 @@ mod tests {
             supply: None,
             debug: report,
             evolution: None,
+            api: None,
             cancel,
         }
     }

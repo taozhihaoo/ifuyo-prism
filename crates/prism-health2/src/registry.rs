@@ -27,6 +27,7 @@ pub enum RuleCategory {
     Environment,
     Debug,
     Evolution,
+    Api,
 }
 
 impl RuleCategory {
@@ -42,6 +43,7 @@ impl RuleCategory {
             RuleCategory::Environment => "environment",
             RuleCategory::Debug => "debug",
             RuleCategory::Evolution => "evolution",
+            RuleCategory::Api => "api",
         }
     }
 }
@@ -86,6 +88,8 @@ pub struct RuleContext<'a> {
     pub debug: Option<&'a prism_debug::DebugReport>,
     /// M211 演化事实（None ⇒ Evolution 规则记诊断跳过）。
     pub evolution: Option<&'a prism_evolution::EvolutionReport>,
+    /// M213 API 观测（None ⇒ Api 规则记诊断跳过）。
+    pub api: Option<&'a [prism_api::ApiObservation]>,
     pub cancel: &'a CancellationToken,
 }
 
@@ -264,6 +268,22 @@ impl RuleRegistry {
                 category: RuleCategory::Evolution,
             },
             crate::rules_evolution::coupling_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "API/UNEXPECTED_STATUS",
+                name: "Unexpected HTTP status",
+                category: RuleCategory::Api,
+            },
+            crate::rules_api::unexpected_status_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "API/REPEATED_FAILURE",
+                name: "Repeated endpoint failure",
+                category: RuleCategory::Api,
+            },
+            crate::rules_api::repeated_failure_rule,
         );
         registry
     }

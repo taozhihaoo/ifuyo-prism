@@ -13,6 +13,7 @@ use crate::model::{FailureKind, HttpMethod};
 use crate::redaction::redact_headers;
 use crate::ssrf::TargetGuard;
 use prism_core::task::CancellationToken;
+use serde::Serialize;
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -37,7 +38,7 @@ impl Default for ObserveLimits {
 }
 
 /// 一次 HTTP 观测（§9 失败分类，绝不统一成 API Failed）。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct HttpObservation {
     pub method: HttpMethod,
     pub url: String,

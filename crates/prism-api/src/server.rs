@@ -78,6 +78,9 @@ impl WebhookReceiver {
                             events.push(event);
                         }
                     }
+                    Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
+                        std::thread::sleep(Duration::from_millis(20))
+                    }
                     Err(_) => std::thread::sleep(Duration::from_millis(20)),
                 }
             }
@@ -102,6 +105,11 @@ impl WebhookReceiver {
         self.port
     }
 
+    /// 是否仍在监听（未被 stop/cancel/timeout 停止）。
+    pub fn is_running(&self) -> bool {
+        !self.shutdown.load(Ordering::Relaxed) && self.handle.is_some()
+    }
+
     pub fn events(&self) -> Vec<WebhookEvent> {
         self.events
             .lock()
@@ -118,6 +126,11 @@ impl Drop for WebhookReceiver {
 
 /// 接收单个连接 → WebhookEvent（§22 生命周期前半：Capture→Parse→Signature）。
 fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig) -> WebhookEvent {
+    // 关键：accepted stream 继承 listener 的 nonblocking（§21——listener
+    // 必须 nonblocking 才能 poll 关闭）；receive 的 read 需要 blocking
+    // 语义，否则无数据时立即 WouldBlock => 假 EOF => 丢请求。
+    stream.set_nonblocking(false).ok();
+    stream.set_read_timeout(Some(Duration::from_secs(5))).ok();
     let received_at = prism_core::Timestamp::now_utc().to_string();
     let mut buffer = Vec::new();
     let mut chunk = [0u8; 4096];
@@ -192,6 +205,7 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
         "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
     };
     let _ = stream.write_all(status_line.as_bytes());
+    let _ = stream.flush();
     let event_id = header_value(
         if buffer.is_empty() {
             ""

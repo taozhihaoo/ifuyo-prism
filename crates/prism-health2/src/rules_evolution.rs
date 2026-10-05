@@ -193,6 +193,7 @@ mod tests {
             supply: None,
             debug: None,
             evolution: report,
+            api: None,
             cancel,
         }
     }

@@ -14,5 +14,6 @@ prism-intel.workspace = true
 prism-supply.workspace = true
 prism-debug.workspace = true
 prism-evolution.workspace = true
+prism-api.workspace = true
 serde.workspace = true
 serde_json.workspace = true

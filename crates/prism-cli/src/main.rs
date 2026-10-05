@@ -12,6 +12,7 @@
 //! - `5` 成功完成但有警告（scan completed with warnings）
 //! - `6` 非 Git 项目（`prism git <cmd>` 明确请求 Git 时）
 
+mod api_command;
 mod changes_command;
 mod cli;
 mod context_command;
@@ -180,6 +181,10 @@ fn run() -> i32 {
             json,
         ),
         Some(cli::Command::Viz { path, view, json }) => viz_command::run(&path, &view, json),
+        Some(cli::Command::Api { path, command }) => {
+            let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
+            api_command::run(&path, &command, runner)
+        }
         Some(cli::Command::Debug {
             path,
             sources,

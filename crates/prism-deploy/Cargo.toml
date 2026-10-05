@@ -1,0 +1,14 @@
+[package]
+name = "prism-deploy"
+description = "Prism Developer Deploy (2.0-M214): artifact identity/manifest (SHA-256), target model, local transport with atomic release activation, deployment state machine, preflight/policy, rollback, history/diff — credential-reference boundary (no plaintext storage)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-intel.workspace = true
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true

@@ -20,6 +20,7 @@ members = [
     "crates/prism-evolution",
     "crates/prism-viz",
     "crates/prism-api",
+    "crates/prism-deploy",
     "crates/prism-verify",
     "crates/prism-env",
     "crates/prism-context",
@@ -64,6 +65,7 @@ prism-debug = { path = "crates/prism-debug" }
 prism-evolution = { path = "crates/prism-evolution" }
 prism-viz = { path = "crates/prism-viz" }
 prism-api = { path = "crates/prism-api" }
+prism-deploy = { path = "crates/prism-deploy" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }

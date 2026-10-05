@@ -21,7 +21,8 @@
   ↓ 依赖：M21 Core + M23/M24 关系源
 2.0-M27 Context Intelligence 2.0（✅ 2026-10-05 完成——evidence collector + `prism context --impact-aware`）
   ↓ 依赖：M26 关系图；MCP 候选承载点
-2.0-M28 Health Findings 2.0 ── 依赖：M21（可与 M26/M27 并行）
+2.0-M28 Health Findings 2.0（✅ 2026-10-05 完成——prism-health2 crate + RuleRegistry 四类规则 + `prism health2 [--baseline]`；契约见 PRISM_2_0_HEALTH2.md）
+  ↓ 依赖：M21 Finding/Evidence 契约（达成）；M23-M25/M24 事实注入（达成）
 2.0-M29 Dependency/Security/Environment ── 依赖：M21（可并行）
 2.0-M210 Debug Intelligence ── 依赖：M27（日志→symbol 链）
 2.0-M211 Git Intelligence & Evolution ── 依赖：M21/M22（可与 M28/M29 并行）

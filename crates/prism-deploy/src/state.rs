@@ -146,7 +146,6 @@ pub fn execute(input: &ExecuteInput, cancel: &CancellationToken) -> ExecuteResul
 
         // ---- Apply / Activate（§二十一 atomic release）----
         if state == DeploymentState::Transferring {
-            state = DeploymentState::Applying;
             match input.transport.activate(input.release_id, cancel) {
                 Ok(was_atomic) => {
                     activated = true;
@@ -211,7 +210,7 @@ pub fn execute(input: &ExecuteInput, cancel: &CancellationToken) -> ExecuteResul
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     use crate::transport::LocalTransport;
     use std::path::PathBuf;
 

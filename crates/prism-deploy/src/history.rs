@@ -6,7 +6,6 @@
 use crate::plan::DeploymentState;
 use crate::plan::FailureStage;
 use crate::state::DeploymentRecord;
-use crate::transport::Transport;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -88,7 +87,7 @@ pub fn rollback(
     reason: &str,
     cancel: &prism_core::task::CancellationToken,
 ) -> std::io::Result<DeploymentRecord> {
-    transport.activate(previous_release, cancel)?;
+    crate::transport::Transport::activate(transport, previous_release, cancel)?;
     Ok(DeploymentRecord {
         deployment_id: format!("dep:rollback-{}", previous_release),
         plan_id: format!("rollback:{reason}"),

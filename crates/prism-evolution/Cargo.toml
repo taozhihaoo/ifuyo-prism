@@ -1,0 +1,13 @@
+[package]
+name = "prism-evolution"
+description = "Prism Git Intelligence & Codebase Evolution (2.0-M211): file evolution facts, raw-metric hotspots, change coupling over the M4 GitProvider, bounded history windows"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-git.workspace = true
+serde.workspace = true
+serde_json.workspace = true

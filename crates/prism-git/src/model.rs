@@ -300,3 +300,38 @@ pub enum RevisionBlob {
     /// 该 revision 中不存在此路径。
     Missing,
 }
+
+/// M211 13: 单 Commit 的文件级变更(rename 经 git 原生 --find-renames,
+/// 不做文件名字符串猜测; similarity 为 R/C 后的分数).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitFileChange {
+    /// rename/copy 前路径(其它变更类型为 None).
+    pub path_before: Option<String>,
+    /// 变更后路径(Deleted 时为原路径).
+    pub path_after: String,
+    pub change_type: GitChangeType,
+    pub similarity: Option<u32>,
+    /// numstat 行数（二进制为 None；不伪造 0，§55）。
+    pub lines_added: Option<u64>,
+    pub lines_deleted: Option<u64>,
+}
+
+/// M211 22: blame 区段(同一 commit 的连续行归并为一段).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitBlameRange {
+    pub commit: String,
+    pub author: String,
+    pub committed_at: Option<String>,
+    /// 1-based 闭区间.
+    pub line_start: u32,
+    pub line_end: u32,
+}
+
+/// M211 15: 文件历史条目(--follow 回放; numstat 提供 churn,
+/// rename 时 numstat 输出双路径). 全仓库扫描时 changes 含该提交全部文件。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GitFileHistoryEntry {
+    pub commit: GitCommit,
+    /// 该提交的文件级变更（--follow 时通常 1 条；numstat 双路径 => Renamed）。
+    pub changes: Vec<GitFileChange>,
+}

@@ -5,6 +5,7 @@
 //! 且均为只读命令（§40 安全审计清单：无任何 mutating 命令）。
 
 use crate::error::{GitError, GitResult};
+use crate::model::{GitBlameRange, GitFileChange, GitFileHistoryEntry};
 use crate::model::{
     GitBranch, GitCommit, GitDiff, GitDiffScope, GitHead, GitHeadKind, GitRef, GitRepository,
     GitStatus, RevisionBlob,
@@ -79,6 +80,43 @@ pub trait GitProvider: Send + Sync {
         max_bytes: u64,
         cancel: &CancellationToken,
     ) -> GitResult<RevisionBlob>;
+
+    /// M211 §13：单 commit 的文件级变更（--find-renames 原生 rename 证据；
+    /// 只读 `show --name-status -z`，max_files bounded §47）。
+    fn commit_changes(
+        &self,
+        repo: &GitRepository,
+        commit: &str,
+        max_files: usize,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileChange>>;
+
+    /// M211 §15：文件历史（--follow 回放 + numstat churn；max_commits bounded）。
+    fn file_history(
+        &self,
+        repo: &GitRepository,
+        path: &str,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileHistoryEntry>>;
+
+    /// M211 §24/§25：全仓库近期历史（--numstat，无 path filter；
+    /// max_commits bounded §47——禁止默认全历史扫描）。
+    fn log_numstat(
+        &self,
+        repo: &GitRepository,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileHistoryEntry>>;
+
+    /// M211 §22：blame（porcelain；-L 1,max_lines bounded §47）。
+    fn blame(
+        &self,
+        repo: &GitRepository,
+        path: &str,
+        max_lines: u32,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitBlameRange>>;
 }
 
 /// 基于系统 git CLI 的实现（经 CommandRunner，规格 §28）。
@@ -536,6 +574,94 @@ impl GitProvider for CliGitProvider {
         Ok(RevisionBlob::Text {
             content: blob_output.stdout,
         })
+    }
+
+    fn commit_changes(
+        &self,
+        repo: &GitRepository,
+        commit: &str,
+        max_files: usize,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileChange>> {
+        // 单 commit 本身即 bounded；max_files 由解析后截断（§47）。
+        let output = self.run_git(
+            repo,
+            &[
+                "show",
+                "--name-status",
+                "--find-renames=50%",
+                "--format=",
+                "-z",
+                commit,
+                "--",
+            ],
+            cancel,
+        )?;
+        Ok(parse::parse_name_status_z(&output, max_files))
+    }
+
+    fn file_history(
+        &self,
+        repo: &GitRepository,
+        path: &str,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileHistoryEntry>> {
+        let max_arg = max_commits.to_string();
+        let output = self.run_git(
+            repo,
+            &[
+                "log",
+                "--follow",
+                "--numstat",
+                "--find-renames=50%",
+                "--format=%x01%H%x1f%an%x1f%aI%x1f%cI%x1f%s",
+                "-n",
+                &max_arg,
+                "--",
+                path,
+            ],
+            cancel,
+        )?;
+        Ok(parse::parse_file_history(&output))
+    }
+
+    fn log_numstat(
+        &self,
+        repo: &GitRepository,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitFileHistoryEntry>> {
+        let max_arg = max_commits.to_string();
+        let output = self.run_git(
+            repo,
+            &[
+                "log",
+                "--numstat",
+                "--find-renames=50%",
+                "--format=%x01%H%x1f%an%x1f%aI%x1f%cI%x1f%s",
+                "-n",
+                &max_arg,
+            ],
+            cancel,
+        )?;
+        Ok(parse::parse_file_history(&output))
+    }
+
+    fn blame(
+        &self,
+        repo: &GitRepository,
+        path: &str,
+        max_lines: u32,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<GitBlameRange>> {
+        let lines_arg = format!("1,{max_lines}");
+        let output = self.run_git(
+            repo,
+            &["blame", "--porcelain", "-L", &lines_arg, "--", path],
+            cancel,
+        )?;
+        Ok(parse::parse_blame(&output))
     }
 }
 

@@ -578,3 +578,217 @@ fn split_diff_git_paths(rest: &str) -> (String, String) {
         (rest.to_string(), rest.to_string())
     }
 }
+
+// ---------- M211 (2.0): name-status -z / file history / blame ----------
+
+/// `show --name-status --find-renames -z --format=` 输出解析：
+/// 记录形如 `M<NUL>path<NUL>`、`R100<NUL>old<NUL>new<NUL>`。
+pub fn parse_name_status_z(output: &str, max_files: usize) -> Vec<crate::model::GitFileChange> {
+    use crate::model::{GitChangeType, GitFileChange};
+    let mut out = Vec::new();
+    let mut parts = output.split(char::from(0)).filter(|p| !p.is_empty());
+    while let Some(status_token) = parts.next() {
+        if out.len() >= max_files {
+            break;
+        }
+        let mut chars = status_token.chars();
+        let Some(letter) = chars.next() else { continue };
+        let change_type = GitChangeType::from_letter(letter);
+        let score: Option<u32> = {
+            let digits: String = chars.collect();
+            if digits.is_empty() {
+                None
+            } else {
+                digits.parse().ok()
+            }
+        };
+        match change_type {
+            GitChangeType::Renamed | GitChangeType::Copied => {
+                let (Some(before), Some(after)) = (parts.next(), parts.next()) else {
+                    break;
+                };
+                out.push(GitFileChange {
+                    path_before: Some(before.to_string()),
+                    path_after: after.to_string(),
+                    change_type,
+                    similarity: score,
+                    lines_added: None,
+                    lines_deleted: None,
+                });
+            }
+            _ => {
+                let Some(path) = parts.next() else { break };
+                out.push(GitFileChange {
+                    path_before: None,
+                    path_after: path.to_string(),
+                    change_type,
+                    similarity: score,
+                    lines_added: None,
+                    lines_deleted: None,
+                });
+            }
+        }
+    }
+    out
+}
+
+/// `log --follow --numstat --format=%x01%H%x1f%an%x1f%aI%x1f%cI%x1f%s` 解析。
+pub fn parse_file_history(output: &str) -> Vec<crate::model::GitFileHistoryEntry> {
+    use crate::model::{GitChangeType, GitCommit, GitFileChange, GitFileHistoryEntry, GitPerson};
+    let mut out = Vec::new();
+    for record in output.split(char::from(1)) {
+        let record = record.trim_start_matches(char::from(1));
+        if record.trim().is_empty() {
+            continue;
+        }
+        let mut lines = record.lines();
+        let Some(header) = lines.next() else { continue };
+        let fields: Vec<&str> = header.split(char::from(31)).collect();
+        if fields.len() < 5 {
+            continue;
+        }
+        let commit = GitCommit {
+            id: fields[0].to_string(),
+            short_id: None,
+            parents: Vec::new(),
+            author: GitPerson {
+                name: fields[1].to_string(),
+                email: String::new(),
+            },
+            committer: GitPerson {
+                name: fields[1].to_string(),
+                email: String::new(),
+            },
+            authored_at: Some(fields[2].to_string()),
+            committed_at: Some(fields[3].to_string()),
+            subject: fields[4].to_string(),
+            message: fields[4].to_string(),
+            refs: Vec::new(),
+        };
+        // numstat 行：`added<TAB>deleted<TAB>path`（rename 双路径；二进制为 -）。
+        let mut changes = Vec::new();
+        for line in lines.by_ref() {
+            let line = line.trim();
+            if line.is_empty() {
+                continue;
+            }
+            let columns: Vec<&str> = line.split('\t').collect();
+            if columns.len() < 3 {
+                continue;
+            }
+            let added: Option<u64> = columns[0].parse().ok();
+            let deleted: Option<u64> = columns[1].parse().ok();
+            let path_field = columns[columns.len() - 1].to_string();
+            // rename 双形态：-z 外的 numstat 用 `old => new` / `dir/{old => new}`。
+            let (path_before, path_after, change_type) =
+                if let Some((before, after)) = split_numstat_rename(&path_field) {
+                    (Some(before), after, GitChangeType::Renamed)
+                } else if columns.len() >= 4 {
+                    (
+                        Some(columns[2].to_string()),
+                        path_field,
+                        GitChangeType::Renamed,
+                    )
+                } else {
+                    (None, path_field, GitChangeType::Modified)
+                };
+            changes.push(GitFileChange {
+                path_before,
+                path_after,
+                change_type,
+                similarity: None,
+                lines_added: added,
+                lines_deleted: deleted,
+            });
+        }
+        out.push(GitFileHistoryEntry { commit, changes });
+    }
+    out
+}
+
+/// `blame --porcelain` 解析：同 commit 连续行归并为区段。
+pub fn parse_blame(output: &str) -> Vec<crate::model::GitBlameRange> {
+    use crate::model::GitBlameRange;
+    let mut ranges: Vec<GitBlameRange> = Vec::new();
+    let mut current_sha = String::new();
+    let mut current_author = String::new();
+    let mut current_time: Option<String> = None;
+    let mut current_start = 0u32;
+    let mut current_end = 0u32;
+    for line in output.lines() {
+        if let Some(rest) = line.strip_prefix('\t') {
+            let _ = rest; // 内容行：计数由 header 承担
+            continue;
+        }
+        if line.is_empty() {
+            continue;
+        }
+        // header 行: <40sha> <orig> <final> [<group-size>]
+        let first = line.split(' ').next().unwrap_or("");
+        if first.len() == 40 && first.bytes().all(|b| b.is_ascii_hexdigit()) {
+            let columns: Vec<&str> = line.split(' ').collect();
+            if columns.len() < 3 {
+                continue;
+            }
+            let Ok(final_line) = columns[2].parse::<u32>() else {
+                continue;
+            };
+            if current_sha == first {
+                current_end = current_end.max(final_line);
+            } else {
+                if !current_sha.is_empty() {
+                    ranges.push(GitBlameRange {
+                        commit: std::mem::take(&mut current_sha),
+                        author: std::mem::take(&mut current_author),
+                        committed_at: current_time.take(),
+                        line_start: current_start,
+                        line_end: current_end,
+                    });
+                }
+                current_sha = first.to_string();
+                current_author = String::new();
+                current_time = None;
+                current_start = final_line;
+                current_end = final_line;
+            }
+            continue;
+        }
+        if let Some(author) = line.strip_prefix("author ") {
+            current_author = author.to_string();
+        } else if let Some(time) = line.strip_prefix("committer-time ") {
+            // RFC3339 化（git 输出 unix 秒）——保留原样秒值转 ISO 由调用方处理；
+            // v1 存 unix 秒字符串，Freshness/展示层解读。
+            current_time = Some(time.to_string());
+        }
+    }
+    if !current_sha.is_empty() {
+        ranges.push(GitBlameRange {
+            commit: current_sha,
+            author: current_author,
+            committed_at: current_time,
+            line_start: current_start,
+            line_end: current_end,
+        });
+    }
+    ranges
+}
+
+/// numstat rename 路径拆分：`old => new` 与 `dir/{old => new}` 双形态。
+fn split_numstat_rename(field: &str) -> Option<(String, String)> {
+    if !field.contains(" => ") {
+        return None;
+    }
+    if let (Some(brace_open), Some(brace_close)) = (field.find('{'), field.find('}')) {
+        let prefix = &field[..brace_open];
+        let suffix = &field[brace_close + 1..];
+        let inner = &field[brace_open + 1..brace_close];
+        let (before, after) = inner.split_once(" => ")?;
+        return Some((
+            format!("{prefix}{before}{suffix}"),
+            format!("{prefix}{after}{suffix}"),
+        ));
+    }
+    field
+        .split_once(" => ")
+        .map(|(before, after)| (before.to_string(), after.to_string()))
+}

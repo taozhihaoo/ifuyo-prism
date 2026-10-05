@@ -2649,6 +2649,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-evolution"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-git",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-git"
 version = "0.1.0"
 dependencies = [

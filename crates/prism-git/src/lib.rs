@@ -21,9 +21,10 @@ pub mod service;
 
 pub use error::{GitError, GitResult};
 pub use model::{
-    GitBranch, GitChangeType, GitCommit, GitDiff, GitDiffFile, GitDiffHunk, GitDiffLine,
-    GitDiffLineKind, GitDiffScope, GitFileState, GitFileStatus, GitHead, GitHeadKind, GitPerson,
-    GitRef, GitRefKind, GitRepository, GitStatus, RevisionBlob,
+    GitBlameRange, GitBranch, GitChangeType, GitCommit, GitDiff, GitDiffFile, GitDiffHunk,
+    GitDiffLine, GitDiffLineKind, GitDiffScope, GitFileChange, GitFileHistoryEntry, GitFileState,
+    GitFileStatus, GitHead, GitHeadKind, GitPerson, GitRef, GitRefKind, GitRepository, GitStatus,
+    RevisionBlob,
 };
 pub use provider::{CliGitProvider, GitProvider};
 pub use service::GitService;

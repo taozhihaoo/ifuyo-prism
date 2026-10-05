@@ -121,6 +121,64 @@ impl GitService {
             .resolve_revision(&repository, revision, cancel)
     }
 
+    /// M211 §13：单 commit 的文件级变更；非 Git 项目返回空。
+    pub fn commit_changes(
+        &self,
+        path: &Path,
+        commit: &str,
+        max_files: usize,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<crate::model::GitFileChange>> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(Vec::new());
+        };
+        self.provider
+            .commit_changes(&repository, commit, max_files, cancel)
+    }
+
+    /// M211 §15：文件历史（--follow 回放）；非 Git 项目返回空。
+    pub fn file_history(
+        &self,
+        path: &Path,
+        relative_path: &str,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<crate::model::GitFileHistoryEntry>> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(Vec::new());
+        };
+        self.provider
+            .file_history(&repository, relative_path, max_commits, cancel)
+    }
+
+    /// M211 §24/§25：全仓库近期历史（numstat）；非 Git 项目返回空。
+    pub fn log_numstat(
+        &self,
+        path: &Path,
+        max_commits: u64,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<crate::model::GitFileHistoryEntry>> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(Vec::new());
+        };
+        self.provider.log_numstat(&repository, max_commits, cancel)
+    }
+
+    /// M211 §22：blame 区段；非 Git 项目返回空。
+    pub fn blame(
+        &self,
+        path: &Path,
+        relative_path: &str,
+        max_lines: u32,
+        cancel: &CancellationToken,
+    ) -> GitResult<Vec<crate::model::GitBlameRange>> {
+        let Some(repository) = self.provider.discover(path, cancel)? else {
+            return Ok(Vec::new());
+        };
+        self.provider
+            .blame(&repository, relative_path, max_lines, cancel)
+    }
+
     /// 读取历史 revision 中某路径的 blob；非 Git 项目返回 Missing。
     /// 调用方应先用 [`GitService::discover`] 确认仓库存在。
     pub fn read_blob(

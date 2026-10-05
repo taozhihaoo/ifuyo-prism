@@ -10,6 +10,7 @@ mod settings_commands;
 mod snapshot_commands;
 mod state;
 mod verify_commands;
+mod viz_commands;
 
 use prism_core::application::app_info::prism_version;
 use prism_core::config::{self, PrismConfig};
@@ -62,6 +63,7 @@ pub fn run() {
             commands::start_graph,
             commands::get_graph_status,
             commands::get_dependency_graph,
+            viz_commands::get_visualization_graph,
             commands::get_git_facts,
             commands::start_changeset,
             commands::get_changeset_status,

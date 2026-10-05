@@ -22,6 +22,7 @@ prism-health2.workspace = true
 prism-supply.workspace = true
 prism-debug.workspace = true
 prism-evolution.workspace = true
+prism-viz.workspace = true
 prism-intel.workspace = true
 prism-l0.workspace = true
 prism-csharp.workspace = true

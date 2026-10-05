@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
 import DependencyView from "../components/DependencyView";
+import VizGraphPanel from "../components/VizGraphPanel";
 import DirectoryTree from "../components/DirectoryTree";
 import FileList from "../components/FileList";
 import PlaceholderPage from "../components/PlaceholderPage";
@@ -64,6 +65,10 @@ export default function UnderstandPage() {
   return (
     <section className="stack">
       {dependencyGraph && <DependencyView />}
+      <div className="card">
+        <h2 className="card-title">Visualization (M212)</h2>
+        <VizGraphPanel />
+      </div>
       <div className="card" data-testid="code-summary">
         <h2 className="card-title">Code understanding</h2>
         <dl className="fact-grid">

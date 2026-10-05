@@ -354,6 +354,17 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Visualization 投影（2.0-M212：与 GUI/MCP 同一 prism-viz 数据面）
+    Viz {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 投影视图：architecture | godot | dependency
+        #[arg(long, default_value = "architecture")]
+        view: String,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
     /// Debug 情报（2.0-M210：日志→事件→错误指纹→栈→Symbol/Scene→Finding）
     Debug {
         #[arg(default_value = ".")]
@@ -530,6 +541,7 @@ impl Command {
             Command::Health { .. } => "health",
             Command::Health2 { .. } => "health2",
             Command::Supply { .. } => "supply",
+            Command::Viz { .. } => "viz",
             Command::Debug { .. } => "debug",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",

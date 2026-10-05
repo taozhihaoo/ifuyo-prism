@@ -26,6 +26,7 @@ mod snapshot_command;
 mod supply_command;
 mod verify_command;
 mod verify_subcommands;
+mod viz_command;
 
 use clap::{CommandFactory, Parser};
 use prism_analysis::{CodeAnalysisOptions, CodeAnalysisService, ProjectCodeModel};
@@ -178,6 +179,7 @@ fn run() -> i32 {
             baseline.as_deref(),
             json,
         ),
+        Some(cli::Command::Viz { path, view, json }) => viz_command::run(&path, &view, json),
         Some(cli::Command::Debug {
             path,
             sources,

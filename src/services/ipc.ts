@@ -32,6 +32,7 @@ import type {
   RuntimeInfo,
   ScanStatus,
 } from "../types/prism";
+import type { VizGraph, VizView } from "../types/viz";
 
 /** 把 IPC rejection 归一化为 PrismErrorDto（对应 Rust PrismErrorDto）。 */
 export function toPrismError(err: unknown): PrismErrorDto {
@@ -327,4 +328,10 @@ export function getStorageInfo(): Promise<{ db_path: string; db_exists: boolean 
 
 export function getCurrentProjectPath(): Promise<{ root: string } | null> {
   return invoke<{ root: string } | null>("get_current_project_path");
+}
+
+// ---------- M212：Visualization 投影（§39 VisualizationQueryService） ----------
+
+export function getVisualizationGraph(view: VizView, path?: string): Promise<VizGraph> {
+  return invoke<VizGraph>("get_visualization_graph", { view, path });
 }

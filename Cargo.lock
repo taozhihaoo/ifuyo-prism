@@ -2622,6 +2622,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-debug"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-csharp",
+ "prism-godot",
+ "prism-intel",
+ "prism-supply",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-env"
 version = "0.1.0"
 dependencies = [

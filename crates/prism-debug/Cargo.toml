@@ -1,0 +1,16 @@
+[package]
+name = "prism-debug"
+description = "Prism Debug Intelligence (2.0-M210): debug source/event/error models, stable fingerprints, stack traces with M23 symbol resolution, error clustering, Godot runtime log parsing, redaction via M29"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-csharp.workspace = true
+prism-godot.workspace = true
+prism-intel.workspace = true
+prism-supply.workspace = true
+serde.workspace = true
+serde_json.workspace = true

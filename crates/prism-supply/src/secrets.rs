@@ -192,6 +192,8 @@ pub fn scan_secrets(files: &[(String, String)], limits: &SecretScanLimits) -> Se
 }
 
 struct Hit {
+    /// 命中 token 在行内的字节区间（供行级 redaction 替换）。
+    span: (usize, usize),
     /// redacted 表示（不含原文）。
     redacted_context: String,
     reason: String,
@@ -214,6 +216,7 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
                 let token = &line[start..end];
                 if token.len() >= *min_len {
                     return Some(Hit {
+                        span: (start, end),
                         redacted_context: redact(token),
                         reason: format!(
                             "known credential prefix `{prefix}` followed by {} chars",
@@ -244,6 +247,7 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
                 return None;
             }
             Some(Hit {
+                span: (value_start, value_start + value.len()),
                 redacted_context: format!("{} = {}", keyword, redact(value)),
                 reason: format!(
                     "credential-like assignment `{keyword}=` with {}-char value",
@@ -253,7 +257,10 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
         }
         DetectorKind::Jwt => {
             // 按 token 检测（行前缀如 `Authorization: Bearer` 不参与）。
+            let mut offset = 0usize;
             for token in line.split_whitespace() {
+                let token_start = offset + line[offset..].find(token).unwrap_or(0);
+                offset = token_start + token.len();
                 let parts: Vec<&str> = token.split('.').collect();
                 if parts.len() == 3
                     && parts[0].starts_with("eyJ")
@@ -266,6 +273,7 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
                     })
                 {
                     return Some(Hit {
+                        span: (token_start, token_start + token.len()),
                         redacted_context: format!("JWT {} chars", token.len()),
                         reason: "three-segment base64url token with `eyJ` header".to_string(),
                     });
@@ -279,7 +287,9 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
                 && trimmed.contains("PRIVATE KEY")
                 && trimmed.ends_with("-----")
             {
+                let lead = line.len() - line.trim_start().len();
                 return Some(Hit {
+                    span: (lead, lead + trimmed.len()),
                     redacted_context: trimmed.to_string(),
                     reason: "PEM private key header".to_string(),
                 });
@@ -287,6 +297,31 @@ fn detect(detector: &Detector, line: &str) -> Option<Hit> {
             None
         }
     }
+}
+
+/// 行级脱敏（M210 §28/§29 复用点）：一行内所有候选 token 替换为
+/// redacted 表示，返回 (脱敏文本, 替换数)。secret 原文不返回。
+pub fn redact_line(line: &str) -> (String, usize) {
+    let mut hits: Vec<(usize, usize, String)> = Vec::new();
+    for detector in DETECTORS {
+        if let Some(hit) = detect(detector, line) {
+            hits.push((hit.span.0, hit.span.1, hit.redacted_context));
+        }
+    }
+    if hits.is_empty() {
+        return (line.to_string(), 0);
+    }
+    hits.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
+    hits.dedup_by(|a, b| a.0 == b.0 && a.1 == b.1);
+    let mut redacted = line.to_string();
+    let mut count = 0usize;
+    for (start, end, context) in hits {
+        if start <= end && end <= redacted.len() && redacted.is_char_boundary(start) {
+            redacted.replace_range(start..end, &context);
+            count += 1;
+        }
+    }
+    (redacted, count)
 }
 
 /// redact（§36）：保留前 4 字符 + 长度——不足以还原，足以人工定位。
@@ -413,6 +448,17 @@ mod tests {
         let outcome = scan_secrets(&files, &limits);
         assert_eq!(outcome.candidates.len(), 2);
         assert!(outcome.truncated, "§69：截断必须可见");
+    }
+
+    #[test]
+    fn redact_line_replaces_without_leaking() {
+        let (redacted, count) = redact_line("token = AKIAABCDEFGHIJKLMNOP; ok");
+        assert_eq!(count, 1);
+        assert!(!redacted.contains("ABCDEFGHIJKLMNOP"));
+        assert!(redacted.contains("…(20 chars)"));
+        let (plain, zero) = redact_line("nothing suspicious here");
+        assert_eq!(zero, 0);
+        assert_eq!(plain, "nothing suspicious here");
     }
 
     #[test]

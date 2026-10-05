@@ -495,18 +495,6 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             warnings.push("no working-tree symbol changes detected; impact empty".to_string());
         }
         let policy = prism_intel::ImpactPolicy::default();
-        eprintln!(
-            "[impact] graph_edges={} changes={} rels={}",
-            graph.edge_count(),
-            entity_changes.len(),
-            semantic_relations.len()
-        );
-        for edge in &graph.edges {
-            eprintln!("[impact-edge] src={} tgt={}", edge.source, edge.target);
-        }
-        for change in &entity_changes {
-            eprintln!("[impact-change] id={}", change.entity_id);
-        }
         let result = prism_intel::analyze_impact(&graph, &entity_changes, &policy);
 
         // 输出（§39 报告形态）。

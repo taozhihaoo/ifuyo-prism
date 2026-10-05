@@ -143,7 +143,7 @@ impl fmt::Display for EntityId {
 }
 
 /// fnv1a64 → 16 字符小写十六进制。
-pub(crate) fn fnv1a_hex16(input: &str) -> String {
+pub fn fnv1a_hex16(input: &str) -> String {
     let mut hash: u64 = 0xcbf29ce484222325;
     for byte in input.as_bytes() {
         hash ^= u64::from(*byte);

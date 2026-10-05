@@ -2803,6 +2803,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-supply"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-intel",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "prism-verify"
 version = "0.1.0"
 dependencies = [

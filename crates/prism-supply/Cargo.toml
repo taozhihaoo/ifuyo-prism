@@ -1,0 +1,13 @@
+[package]
+name = "prism-supply"
+description = "Prism Supply Intelligence (2.0-M29): dependency declaration/resolution, lockfile, license, secret-candidate detection, offline advisory matching, SBOM export, declared-vs-observed environment"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-intel.workspace = true
+serde.workspace = true
+serde_json.workspace = true

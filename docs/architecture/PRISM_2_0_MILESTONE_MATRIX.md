@@ -35,7 +35,10 @@
   ↓ 依赖：M21 数据模型（达成）+ M29 redaction（达成）+ 威胁建模（SSRF guard + localhost-first 已实测）
 2.0-M214 Developer Deploy（✅ 2026-10-06 完成——prism-deploy crate + CLI deploy 命令族 + 垂直切片实测；契约见 PRISM_2_0_DEPLOYMENT.md）
   ↓ 依赖：M213 前置（达成——M213 API 可为 health-check provider）；威胁建模（SSH=Unsupported 如实；Local transport 真实路径；路径逃逸/凭证边界测试锁定）
-2.0-M215 Final 2.0 Audit ── 依赖：全部
+2.0-M215 Final 2.0 Audit（✅ 2026-10-06 完成——全量回归 804 Rust+61 vitest/clippy 0/fmt 0/release 二进制 E2E 实测/断链审计无孤儿/Final Gate 清单核对/Release Decision=READY_WITH_KNOWN_LIMITATIONS；报告见 docs/audits/2.0-M215-final-audit.md）
+  ↓ 依赖：全部（达成——M20-M214 全部 Gate PASS）
+
+**2.0 主线完成。** 后续候选（2.1）：MCP stdio server/2.0 域 SQLite 化/SFTP transport/GUI Deploy View/https 观测/增量缓存等价。
 ```
 
 ## 2. 依赖纪律

@@ -3,8 +3,8 @@
 //! 未来里程碑在此追加子命令的真实实现与参数；
 //! M0 阶段除 `info` 外均为占位，明确输出未实现而不是伪造数据。
 
-use clap::{Parser, Subcommand, ValueEnum};
 use crate::api_command::ApiCommand;
+use clap::{Parser, Subcommand, ValueEnum};
 use prism_core::config::OutputFormat;
 
 #[derive(Debug, Parser)]

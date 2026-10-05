@@ -18,9 +18,8 @@ pub fn run(
     match command {
         ApiCommand::Endpoints { json, .. } => {
             let files = collect_sources(path, &cancel);
-            let endpoints = prism_api::discover_endpoints(&prism_api::DiscoverInput {
-                files: &files,
-            });
+            let endpoints =
+                prism_api::discover_endpoints(&prism_api::DiscoverInput { files: &files });
             if *json {
                 match serde_json::to_string_pretty(&endpoints) {
                     Ok(text) => println!("{text}"),
@@ -44,7 +43,12 @@ pub fn run(
             }
             crate::EXIT_OK
         }
-        ApiCommand::Observe { url, method, header, json } => {
+        ApiCommand::Observe {
+            url,
+            method,
+            header,
+            json,
+        } => {
             // §55/§19：显式 URL + SSRF guard；headers 显式传入。
             let method = match HttpMethod::parse(method) {
                 Some(method) => method,
@@ -91,7 +95,13 @@ pub fn run(
             }
             crate::EXIT_OK
         }
-        ApiCommand::WebhookListen { port, secret, signature_header, duration_secs, json } => {
+        ApiCommand::WebhookListen {
+            port,
+            secret,
+            signature_header,
+            duration_secs,
+            json,
+        } => {
             let config = prism_api::WebhookReceiverConfig {
                 port: *port,
                 secret: secret.clone(),
@@ -145,7 +155,9 @@ pub fn run(
                 }
             }
         }
-        ApiCommand::Correlate { url, method, max, .. } => {
+        ApiCommand::Correlate {
+            url, method, max, ..
+        } => {
             // 垂直切片（§70）：endpoint 匹配 → handler symbol → 近期 git 变更。
             let method = match HttpMethod::parse(method) {
                 Some(method) => method,
@@ -155,9 +167,8 @@ pub fn run(
                 }
             };
             let files = collect_sources(path, &cancel);
-            let endpoints = prism_api::discover_endpoints(&prism_api::DiscoverInput {
-                files: &files,
-            });
+            let endpoints =
+                prism_api::discover_endpoints(&prism_api::DiscoverInput { files: &files });
             let path_part: &str = url
                 .split_once("://")
                 .map(|(_, rest)| rest)
@@ -174,7 +185,12 @@ pub fn run(
                 endpoint.evidence
             );
             // handler symbol（M23 by_file 首类型，INFERENCE）。
-            let handler_file = endpoint.evidence.split(':').next().unwrap_or_default().to_string();
+            let handler_file = endpoint
+                .evidence
+                .split(':')
+                .next()
+                .unwrap_or_default()
+                .to_string();
             let mut engine = prism_csharp::SymbolEngine::new();
             let mut symbol_index: Option<prism_csharp::SymbolIndex> = None;
             if handler_file.ends_with(".cs") {
@@ -184,9 +200,7 @@ pub fn run(
                 }
             }
             if let Some(index) = &symbol_index {
-                if let Some(handler) =
-                    prism_api::correlate_handler_symbol(endpoint, index)
-                {
+                if let Some(handler) = prism_api::correlate_handler_symbol(endpoint, index) {
                     println!("handler (inference): {handler}");
                 }
             }
@@ -214,10 +228,7 @@ pub fn run(
     }
 }
 
-fn collect_sources(
-    path: &Path,
-    cancel: &CancellationToken,
-) -> Vec<(String, String)> {
+fn collect_sources(path: &Path, cancel: &CancellationToken) -> Vec<(String, String)> {
     let mut files = Vec::new();
     if let Ok(discovery) = prism_project::DiscoveryService::new().discover(
         path,

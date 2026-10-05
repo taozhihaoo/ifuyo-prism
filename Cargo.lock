@@ -2588,6 +2588,7 @@ dependencies = [
  "prism-graph",
  "prism-health",
  "prism-impact",
+ "prism-intel",
  "prism-project",
  "prism-verify",
  "serde",

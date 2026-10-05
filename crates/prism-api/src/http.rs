@@ -242,7 +242,10 @@ fn execute(
     ))
 }
 
-/// 解析状态行 + headers，返回 (status, headers, body 起始字节)。
+/// parse_response_head 的返回（status, headers, body 起始字节）。
+type ResponseHead = (Option<u16>, BTreeMap<String, String>, usize);
+
+/// 解析状态行 + headers，返回 ResponseHead。
 fn parse_response_head(
     raw: &str,
 ) -> Result<ResponseHead, String> {

@@ -18,7 +18,7 @@
 | prism-parser/analysis（Python L1） | prism-parser/analysis | 无持久 | L1 Symbol Engine 参照实现 | **KEEP + 并行**（M2 旧 Symbol 契约保持；C# 新引擎 prism-csharp 独立成 crate，不污染 M2） | 现有 health/context 行为回归保护 | 低 | ✅ 2.0-M23 落地 |
 | prism-graph（模块依赖） | prism-graph | 无持久 | 统一 Relation 层 | **Migrate**（依赖事实转为 Relation+Evidence） | graph 命令 JSON 保持 | 中 | ✅ 2.0-M21 首切片落地（translate::dependencies_to_intel + `prism intel`）；后续域继续沿用 |
 | prism-changes（M5） | prism-changes | 无持久 | Change 域 | **Extend** | — | 低 | M26 前 |
-| prism-impact（M6） | prism-impact | 无持久 | Evidence-backed Impact | **Migrate**（结论补 origin/evidence） | impact 命令 JSON 增量加字段 | 中 | M26 |
+| prism-impact（M6） | prism-impact | 无持久 | Evidence-backed Impact | **Migrate**（结论补 origin/evidence） | impact 命令 JSON 增量加字段 | 中 | M26（L2 语义关系已由 2.0-M25 备好） |
 | prism-health（M7） | prism-health | 无持久 | Finding Engine | **Extend**（Finding→统一模型映射） | 13+ 规则行为回归保护 | 低 | M28 |
 | prism-verify（M8） | prism-verify | 无持久 | Validate | **Retain** | — | 无 | （既役） |
 | prism-context（M10） | prism-context | 导出文件 | Context Intelligence | **Extend**（消费 Core 关系图） | --json/--markdown 契约不变 | 低 | M27 |

@@ -15,7 +15,7 @@
   ↓ 依赖：M21；M22 的 File Identity
 2.0-M24 Godot Adapter（✅ 2026-10-05 完成——prism-godot crate + `prism intel --domain godot`）
   ↓ 依赖：M21 契约 + M22 L0 + M23 的 Symbol 接口（Script→Symbol 层可后接）
-2.0-M25 C# L2 Semantic
+2.0-M25 C# L2 Semantic（✅ 2026-10-05 完成——prism-csharp semantic.rs 作用域规则解析 + `prism intel --domain semantic`）
   ↓ 依赖：M23 L1；后端选型（Roslyn 环境依赖须显式决策）
 2.0-M26 Evidence Graph & Impact
   ↓ 依赖：M21 Core + M23/M24 关系源

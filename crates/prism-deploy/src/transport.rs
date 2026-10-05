@@ -236,7 +236,10 @@ mod tests {
             credential: None,
             transport_capability: TransportCapability::Unsupported,
         };
-        let err = open_transport(&target).err().map(|e| e.to_string()).unwrap_or_default();
+        let err = open_transport(&target)
+            .err()
+            .map(|e| e.to_string())
+            .unwrap_or_default();
         assert!(err.contains("Unsupported"), "§19 如实 Unsupported: {err}");
     }
 }

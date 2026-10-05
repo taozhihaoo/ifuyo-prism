@@ -21,15 +21,25 @@
 //!   `..`/绝对路径/符号链接逃逸拒绝。
 
 pub mod artifact;
+pub mod history;
 pub mod model;
 pub mod path_safety;
+pub mod plan;
+pub mod state;
 pub mod transport;
 
+pub use history::{rollback, DeploymentDiff, DeploymentStore};
 pub use model::{
     ArtifactIdentity, ArtifactKind, ArtifactManifest, ArtifactSource, CredentialRef,
     DeploymentProfile, FileEntry, Sha256Hex, Target, TargetKind, TransportCapability,
 };
 pub use path_safety::{resolve_under_root, PathViolation};
+pub use plan::{
+    build_plan, DeploymentPlan, PolicyDecision, PolicyRule, PreflightCheck, PreflightReport,
+};
+pub use plan::{DeploymentState, FailureStage};
+pub use state::DeploymentRecord;
+pub use state::{execute, ExecuteInput, ExecuteResult, TransferItem};
 pub use transport::{LocalTransport, Transport};
 
 /// M214 输出契约版本。

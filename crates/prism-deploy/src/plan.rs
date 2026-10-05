@@ -163,7 +163,7 @@ pub fn build_plan(
     plan_id: &str,
     manifest: &ArtifactManifest,
     target: &Target,
-    profile: &DeploymentProfile,
+    _profile: &DeploymentProfile,
     preflight: &PreflightReport,
     policy: &DeploymentPolicy,
     git_dirty: Option<bool>,

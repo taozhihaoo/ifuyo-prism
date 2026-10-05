@@ -8,7 +8,6 @@ use crate::plan::FailureStage;
 use crate::state::DeploymentRecord;
 use crate::transport::Transport;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 /// History 存储（JSON 文件；确定性排序：插入序，§四十三）。

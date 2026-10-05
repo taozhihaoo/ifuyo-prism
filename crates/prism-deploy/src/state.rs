@@ -211,7 +211,7 @@ pub fn execute(input: &ExecuteInput, cancel: &CancellationToken) -> ExecuteResul
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::model::{ArtifactIdentity, ArtifactKind, ArtifactSource};
+    
     use crate::transport::LocalTransport;
     use std::path::PathBuf;
 

@@ -27,7 +27,8 @@
   ↓ 依赖：M21 契约（达成）+ M28 Registry（达成）+ M9 env 探测（达成）
 2.0-M210 Debug Intelligence（✅ 2026-10-06 完成——prism-debug crate + 3 条 Debug 规则 + `prism debug [--source] [--baseline]`；契约见 PRISM_2_0_DEBUG.md）
   ↓ 依赖：M27（达成——Symbol 链实为 M23/M24 直连）+ M28 Registry（达成）+ M29 redaction（达成）
-2.0-M211 Git Intelligence & Evolution ── 依赖：M21/M22（可与 M28/M29 并行）
+2.0-M211 Git Intelligence & Evolution（✅ 2026-10-06 完成——prism-evolution crate + prism-git 4 只读扩展 + git 子命令族 + commit-impact 切片；契约见 PRISM_2_0_GIT.md）
+  ↓ 依赖：M21/M22（达成）+ M23/M26 change_mapping/impact（达成）+ M28 生命周期（达成）
 2.0-M212 Visualization ── 依赖：M26/M27/M211 的只读查询面（禁止反向要求改 Core）
 2.0-M213 API/Webhook Debugging ── 独立子系统；依赖 M21 数据模型；需威胁建模
 2.0-M214 Developer Deploy ── 独立子系统；依赖 M213 前置；需威胁建模（SSH/远程执行）

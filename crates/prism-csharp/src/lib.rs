@@ -13,6 +13,7 @@
 //! 归 M25；`[Export]` 等特性只记录名称，Godot 语义归 M24；不执行源码、
 //! 无 shell/网络；Identity 与位置分离（行号变化不换 id）。
 
+pub mod change_mapping;
 pub mod extract;
 pub mod identity;
 pub mod index;
@@ -20,6 +21,7 @@ pub mod intel;
 pub mod model;
 pub mod semantic;
 
+pub use change_mapping::{map_file_change, ChangedSymbol, FileChangeKind};
 pub use extract::extract;
 pub use identity::symbol_id;
 pub use index::{SymbolEngine, SymbolIndex};

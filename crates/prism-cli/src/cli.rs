@@ -58,6 +58,7 @@ pub enum IntelDomain {
     Symbols,
     Semantic,
     Godot,
+    Impact,
     All,
 }
 
@@ -208,7 +209,7 @@ pub enum Command {
         #[arg(long, value_enum, default_value_t = FormatArg::Text)]
         format: FormatArg,
     },
-    /// 项目智能核心视图（2.0-M21/M22：依赖域 + L0 结构域 → 统一 Core 模型）
+    /// 项目智能核心视图（2.0-M21..M26：依赖/L0/符号/语义/Godot/Impact 域）
     Intel {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,

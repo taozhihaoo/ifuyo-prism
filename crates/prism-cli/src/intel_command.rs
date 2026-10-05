@@ -33,6 +33,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     let mut warnings: Vec<String> = Vec::new();
     let mut merged: Option<IntelOutcome<IntelBundle>> = None;
     let mut domain_label = "";
+    let mut semantic_relations: Vec<prism_csharp::SemanticRelation> = Vec::new();
 
     // ---- M21 依赖域 ----
     if matches!(domain, IntelDomain::Dependency | IntelDomain::All) {
@@ -77,6 +78,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
         IntelDomain::Structural
             | IntelDomain::Symbols
             | IntelDomain::Semantic
+            | IntelDomain::Impact
             | IntelDomain::Godot
             | IntelDomain::All
     );
@@ -111,7 +113,11 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     let mut symbol_index: Option<prism_csharp::SymbolIndex> = None;
     if matches!(
         domain,
-        IntelDomain::Symbols | IntelDomain::Semantic | IntelDomain::Godot | IntelDomain::All
+        IntelDomain::Symbols
+            | IntelDomain::Semantic
+            | IntelDomain::Impact
+            | IntelDomain::Godot
+            | IntelDomain::All
     ) {
         let Some(l0) = l0_bundle
             .clone()
@@ -180,6 +186,7 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             return crate::EXIT_OK;
         }
         // godot 域只需要符号**索引**（backed_by 查询），不吸收 symbols bundle。
+        // impact 域同理——只需要 L2 关系图（§七 Evidence Graph 复用）。
         if matches!(domain, IntelDomain::Symbols) {
             absorb(
                 &mut merged,
@@ -193,7 +200,11 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
     }
 
     // ---- M25 L2 语义域（消费 L0 清单 + M23 符号索引；§45 垂直切片）----
-    if matches!(domain, IntelDomain::Semantic | IntelDomain::All) {
+    // Impact 域同样依赖 L2 关系图（§七 Evidence Graph 复用 M25 产物）。
+    if matches!(
+        domain,
+        IntelDomain::Semantic | IntelDomain::Impact | IntelDomain::All
+    ) {
         let Some(l0) = l0_bundle
             .clone()
             .or_else(|| merged.as_ref().and_then(|outcome| outcome.data.clone()))
@@ -226,6 +237,37 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             semantic.update_source(&index, relative_path, source);
         }
         semantic.rebuild(&index);
+        if std::env::var("PRISM_DBG_SEM").is_ok() {
+            eprintln!(
+                "[sem] files={} rels={}",
+                sources.len(),
+                semantic.relations().count()
+            );
+            for relation in semantic.relations() {
+                eprintln!(
+                    "[sem-rel] {:?} {} -> {:?}",
+                    relation.kind, relation.source_symbol_id, relation.target
+                );
+            }
+            for extraction in engine.extraction_map().values() {
+                eprintln!(
+                    "[sem-ext] {} symbols={} usings={:?}",
+                    extraction.file,
+                    extraction.symbols.len(),
+                    extraction.usings
+                );
+                for symbol in &extraction.symbols {
+                    eprintln!(
+                        "[sym] {} {} params={}",
+                        symbol.qualified_name,
+                        symbol.kind.as_str(),
+                        symbol.parameters.len()
+                    );
+                }
+            }
+        }
+        // Impact 域复用 L2 关系图（§七 Evidence Graph 复用 M21/M25）。
+        semantic_relations = semantic.relations().cloned().collect::<Vec<_>>();
         // 查询输出（§52 callers/callees/references）。
         if let Some(needle) = search {
             let hits: Vec<_> = semantic
@@ -292,13 +334,16 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             &identity,
             &prism_core::Timestamp::now_utc().to_string(),
         );
-        absorb(
-            &mut merged,
-            &mut domain_label,
-            outcome,
-            "semantic",
-            "dependency+l0_structural+symbols+semantic+godot",
-        );
+        // impact 域只复用 L2 关系（§七），不吸收 semantic bundle。
+        if matches!(domain, IntelDomain::Semantic) {
+            absorb(
+                &mut merged,
+                &mut domain_label,
+                outcome,
+                "semantic",
+                "dependency+l0_structural+symbols+semantic+godot",
+            );
+        }
     }
 
     // ---- M24 Godot 域（消费 L0 清单 + M23 符号索引；§61-§63）----
@@ -352,6 +397,164 @@ pub fn run(path: &Path, domain: IntelDomain, search: Option<&str>, json: bool) -
             "godot",
             "dependency+l0_structural+symbols+godot",
         );
+    }
+
+    // ---- M26 Impact 域（Evidence Graph 反向遍历；§33-§41）----
+    if matches!(domain, IntelDomain::Impact) {
+        let mut graph = prism_intel::EvidenceGraph::new();
+        for relation in &semantic_relations {
+            let target = match &relation.target {
+                prism_csharp::SemanticTarget::Resolved { symbol_id, .. } => symbol_id.clone(),
+                prism_csharp::SemanticTarget::Unresolved { name, .. }
+                | prism_csharp::SemanticTarget::External { name, .. }
+                | prism_csharp::SemanticTarget::Ambiguous { name, .. } => {
+                    format!("unresolved:{name}")
+                }
+                prism_csharp::SemanticTarget::Unknown { reason } => {
+                    format!("unknown:{reason}")
+                }
+            };
+            graph.push(prism_intel::GraphEdge {
+                source: relation.source_symbol_id.clone(),
+                target,
+                relation: relation.kind.as_str().to_string(),
+                file: relation.file.clone(),
+                line: relation.range.start_line,
+                resolution: Some(format!("{:?}", relation.resolution).to_lowercase()),
+            });
+        }
+        // 变更源（§10/§43）：Working Tree——git status 逐文件映射符号。
+        let runner: std::sync::Arc<dyn prism_core::runtime::command::CommandRunner> =
+            std::sync::Arc::new(prism_core::runtime::command::StdCommandRunner::new());
+        let git = prism_git::GitService::new(runner);
+        let status = match git.status(&project.root_path, false, &cancel) {
+            Ok(status) => status,
+            Err(err) => {
+                eprintln!("prism: impact git status failed: {err}");
+                return crate::EXIT_ERROR;
+            }
+        };
+        let mut entity_changes: Vec<prism_intel::EntityChange> = Vec::new();
+        for entry in &status.entries {
+            if entry.is_ignored || !entry.path.ends_with(".cs") {
+                continue;
+            }
+            let removed = format!("{:?}", entry.working_tree_state).to_lowercase() == "deleted";
+            let old_source = git
+                .read_blob(
+                    &project.root_path,
+                    "HEAD",
+                    &entry.path,
+                    4 * 1_048_576,
+                    &cancel,
+                )
+                .ok()
+                .and_then(|blob| match blob {
+                    prism_git::RevisionBlob::Text { content } => Some(content),
+                    // TooLarge/EncodingUnsupported/Missing ⇒ 无法做符号级对比
+                    //（§26 诚实降级：文件级变更仍进入，符号级跳过）。
+                    _ => None,
+                });
+            let new_source = std::fs::read_to_string(project.root_path.join(&entry.path)).ok();
+            let old_extraction = old_source
+                .as_deref()
+                .map(|c| prism_csharp::extract::extract(&entry.path, c));
+            let new_extraction = new_source
+                .as_deref()
+                .map(|c| prism_csharp::extract::extract(&entry.path, c));
+            for changed in
+                prism_csharp::map_file_change(old_extraction.as_ref(), new_extraction.as_ref())
+            {
+                // 删除的文件 ⇒ 全部 ContractRemoved；修改/新增 ⇒ 按 mapping 判定。
+                let change_type = if removed {
+                    prism_intel::ImpactChangeType::ContractRemoved
+                } else {
+                    changed.change_type
+                };
+                entity_changes.push(prism_intel::EntityChange {
+                    entity_id: changed.symbol_id.clone(),
+                    change_type,
+                });
+                // §26 ContractRemoved 名字面种子：unresolved 调用点以
+                // `unresolved:{成员名}` 为伪目标——移除同名成员时这些
+                // 调用点 Potential/Low（名字面 = 候选级证据 §63）。
+                if change_type == prism_intel::ImpactChangeType::ContractRemoved {
+                    let member = changed
+                        .qualified_name
+                        .rsplit('.')
+                        .next()
+                        .unwrap_or(changed.qualified_name.as_str());
+                    entity_changes.push(prism_intel::EntityChange {
+                        entity_id: format!("unresolved:{member}"),
+                        change_type,
+                    });
+                }
+            }
+        }
+        if entity_changes.is_empty() {
+            warnings.push("no working-tree symbol changes detected; impact empty".to_string());
+        }
+        let policy = prism_intel::ImpactPolicy::default();
+        eprintln!(
+            "[impact] graph_edges={} changes={} rels={}",
+            graph.edge_count(),
+            entity_changes.len(),
+            semantic_relations.len()
+        );
+        for edge in &graph.edges {
+            eprintln!("[impact-edge] src={} tgt={}", edge.source, edge.target);
+        }
+        for change in &entity_changes {
+            eprintln!("[impact-change] id={}", change.entity_id);
+        }
+        let result = prism_intel::analyze_impact(&graph, &entity_changes, &policy);
+
+        // 输出（§39 报告形态）。
+        if json {
+            match serde_json::to_string_pretty(&serde_json::json!({
+                "changed": entity_changes,
+                "affected": result.affected,
+                "metadata": result.metadata,
+            })) {
+                Ok(text) => println!("{text}"),
+                Err(err) => {
+                    eprintln!("prism: failed to serialize impact result: {err}");
+                    return crate::EXIT_ERROR;
+                }
+            }
+        } else {
+            println!("Impact (working tree, {} change(s))", entity_changes.len());
+            println!();
+            let direct: Vec<_> = result
+                .affected
+                .iter()
+                .filter(|a| a.impact == prism_intel::ImpactType::Direct)
+                .collect();
+            let transitive: Vec<_> = result
+                .affected
+                .iter()
+                .filter(|a| a.impact == prism_intel::ImpactType::Transitive)
+                .collect();
+            println!("Direct: {}", direct.len());
+            for entity in &direct {
+                println!("  {} [{:?}]", entity.entity_id, entity.category);
+            }
+            println!("Transitive: {}", transitive.len());
+            for entity in transitive.iter().take(10) {
+                println!(
+                    "  {} ({})",
+                    entity.entity_id,
+                    entity.primary_path.join(" -> ")
+                );
+            }
+            if result.metadata.cycles_detected > 0 {
+                println!("Cycles detected: {}", result.metadata.cycles_detected);
+            }
+            if result.metadata.truncated_by_entity_limit > 0 {
+                println!("Truncated at entity limit");
+            }
+        }
+        return crate::EXIT_OK;
     }
 
     let outcome = merged.expect("at least one domain selected");

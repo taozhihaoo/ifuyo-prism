@@ -20,7 +20,9 @@ pub mod entity;
 pub mod evidence;
 pub mod fact;
 pub mod finding;
+pub mod graph;
 pub mod identity;
+pub mod impact;
 pub mod meta;
 pub mod relation;
 pub mod translate;
@@ -31,7 +33,12 @@ pub use entity::{Entity, EntityLocation, EntityScope};
 pub use evidence::{Evidence, EvidenceAnchor, EvidenceId, EvidenceKind, SourceRange};
 pub use fact::{Fact, FactType, FactValue};
 pub use finding::{Finding, FindingStatus};
+pub use graph::{EvidenceGraph, GraphEdge};
 pub use identity::{EntityId, EntityKind, ProjectIdentity};
+pub use impact::{
+    analyze as analyze_impact, AffectedEntity, ChangeType as ImpactChangeType, EntityChange,
+    ImpactCategory, ImpactPolicy, ImpactResult, ImpactType, TraversalMetadata,
+};
 pub use meta::{Confidence, ConfidenceReason, Freshness, Origin, Provenance};
 pub use relation::{Relation, RelationTarget, RelationType, UnresolvedReference};
 

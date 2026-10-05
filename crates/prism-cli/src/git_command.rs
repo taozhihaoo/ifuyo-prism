@@ -495,14 +495,12 @@ fn commit_impact(
     let parent = format!("{commit}^");
     let mut changed: BTreeSet<String> = BTreeSet::new();
     let mut changed_files = 0usize;
-    let mut cs_changed = 0usize;
     for change in &changes {
         changed_files += 1;
         let after = &change.path_after;
         if !after.ends_with(".cs") {
             continue;
         }
-        cs_changed += 1;
         let read = |revision: &str, file: &str| -> Option<String> {
             match service.read_blob(path, revision, file, 4 * 1_048_576, cancel) {
                 Ok(prism_git::RevisionBlob::Text { content }) => Some(content),

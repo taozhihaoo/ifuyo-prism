@@ -53,7 +53,15 @@ const EXIT_WARNINGS: i32 = 5;
 const EXIT_NOT_GIT: i32 = 6;
 
 fn main() {
-    let exit_code = run();
+    // clap 在 debug 构建下为整棵命令树递归生成 augment_args（子命令随
+    // 里程碑增长），主线程默认 1MB 栈已不够——把真实入口放到大栈线程
+    // 上运行（Windows 主线程栈不可调）。
+    let exit_code = std::thread::Builder::new()
+        .stack_size(64 * 1024 * 1024)
+        .spawn(run)
+        .expect("spawn main worker")
+        .join()
+        .unwrap_or(crate::EXIT_ERROR);
     std::process::exit(exit_code);
 }
 

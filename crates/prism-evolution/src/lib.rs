@@ -17,10 +17,15 @@
 
 pub mod analysis;
 pub mod model;
+pub mod symbol_history;
 
 pub use analysis::{
     build_report, change_couplings, file_evolution, hotspots, scan_repo, EvolutionQuery,
 };
 pub use model::{
-    ChangeCoupling, EvolutionReport, FileEvolution, Hotspot, EVOLUTION_SCHEMA_VERSION,
+    ChangeCoupling, EvolutionReport, FileEvolution, HistoryWindow, Hotspot,
+    EVOLUTION_SCHEMA_VERSION,
+};
+pub use symbol_history::{
+    symbol_history, SymbolChange, SymbolChangeKind, SymbolHistory, SymbolHistoryEntry,
 };

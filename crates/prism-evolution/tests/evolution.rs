@@ -105,7 +105,7 @@ fn file_evolution_tracks_renames_and_contributors() {
     let (service, cancel) = fixture.service();
     let evolution = file_evolution(&service, fixture.root(), "src/combat.rs", 50, &cancel).unwrap();
     assert_eq!(evolution.commit_count, 3, "--follow 穿透 rename");
-    assert_eq!(evolution.lines_added + evolution.lines_deleted > 0, true);
+    assert!(evolution.lines_added + evolution.lines_deleted > 0);
     assert_eq!(evolution.contributors, vec!["Alice", "Bob"], "去重排序");
     assert_eq!(evolution.renames.len(), 1, "rename 链一条");
     assert!(evolution.renames[0].contains("src/battle.rs -> src/combat.rs"));
@@ -175,6 +175,85 @@ fn non_git_project_is_empty_not_error() {
     let scan = scan_repo(&service, &outside, 10, &cancel).unwrap();
     assert!(scan.hotspots(10).is_empty(), "非仓库 ⇒ 空（非错误）");
     std::fs::remove_dir_all(&outside).ok();
+}
+
+#[test]
+fn symbol_history_replays_signature_change() {
+    let fixture = Fixture::new("symbol-history");
+    fixture.write(
+        "Scripts/Battle.cs",
+        "namespace App {
+public class Battle {
+public void Attack(int v) {
+}
+}
+}
+",
+    );
+    fixture.commit_all("add battle");
+    fixture.write(
+        "Scripts/Battle.cs",
+        "namespace App {
+public class Battle {
+public int Attack(int v, bool critical) {
+return v;
+}
+}
+}
+",
+    );
+    fixture.commit_all("extend attack signature");
+    fixture.write(
+        "Scripts/Battle.cs",
+        "namespace App {
+public class Battle {
+}
+}
+",
+    );
+    fixture.commit_all("remove attack");
+
+    let (service, cancel) = fixture.service();
+    let history =
+        prism_evolution::symbol_history(&service, fixture.root(), "Scripts/Battle.cs", 20, &cancel)
+            .unwrap();
+    assert_eq!(history.entries.len(), 3);
+    let kinds: Vec<_> = history
+        .entries
+        .iter()
+        .map(|entry| {
+            entry
+                .changes
+                .iter()
+                .map(|change| (change.qualified_name.clone(), change.kind))
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    // 最新在前：删除 => Deleted；签名扩展 => SignatureChanged；首次 => Added。
+    assert!(
+        kinds[0]
+            .iter()
+            .any(|(name, kind)| name.ends_with("Battle.Attack")
+                && *kind == prism_evolution::SymbolChangeKind::Deleted),
+        "删除: {:?}",
+        kinds[0]
+    );
+    assert!(
+        kinds[1]
+            .iter()
+            .any(|(name, kind)| name.ends_with("Battle.Attack")
+                && *kind == prism_evolution::SymbolChangeKind::SignatureChanged),
+        "签名变化: {:?}",
+        kinds[1]
+    );
+    assert!(
+        kinds[2]
+            .iter()
+            .any(|(name, kind)| name.ends_with("Battle.Attack")
+                && *kind == prism_evolution::SymbolChangeKind::Added),
+        "新增: {:?}",
+        kinds[2]
+    );
 }
 
 #[test]

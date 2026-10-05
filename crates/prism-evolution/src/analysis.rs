@@ -166,13 +166,13 @@ fn raw_log_numstat(
     Ok(commits)
 }
 
+/// 热点聚合的中间行（commits, changes, added, deleted, authors, last）。
+type FileTally = (u64, u64, u64, u64, BTreeSet<String>, Option<String>);
+
 impl RepoScan {
     /// 热点（§25 原始指标；排序确定性 §50）。
     pub fn hotspots(&self, top: usize) -> Vec<Hotspot> {
-        let mut per_file: BTreeMap<
-            String,
-            (u64, u64, u64, u64, BTreeMap<String, ()>, Option<String>),
-        > = BTreeMap::new();
+        let mut per_file: BTreeMap<String, FileTally> = BTreeMap::new();
         for commit in &self.commits {
             for path in &commit.paths {
                 if path.is_empty() {
@@ -181,10 +181,10 @@ impl RepoScan {
                 let entry =
                     per_file
                         .entry(path.clone())
-                        .or_insert((0, 0, 0, 0, BTreeMap::new(), None));
+                        .or_insert((0, 0, 0, 0, BTreeSet::new(), None));
                 entry.0 += 1; // commit_count（同 commit 双端只计一次——paths dedup）
                 entry.1 += 1; // change_count（rename 双端各记一次变更记录）
-                entry.4.insert(commit.author.clone(), ());
+                entry.4.insert(commit.author.clone());
                 if let Some((added, deleted)) = commit.churn.get(path) {
                     entry.2 += added;
                     entry.3 += deleted;

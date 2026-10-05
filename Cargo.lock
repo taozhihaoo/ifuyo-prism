@@ -2563,6 +2563,7 @@ dependencies = [
  "prism-csharp",
  "prism-debug",
  "prism-env",
+ "prism-evolution",
  "prism-git",
  "prism-godot",
  "prism-graph",
@@ -2653,7 +2654,9 @@ name = "prism-evolution"
 version = "0.1.0"
 dependencies = [
  "prism-core",
+ "prism-csharp",
  "prism-git",
+ "prism-intel",
  "serde",
  "serde_json",
 ]

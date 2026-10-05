@@ -29,7 +29,8 @@
   ↓ 依赖：M27（达成——Symbol 链实为 M23/M24 直连）+ M28 Registry（达成）+ M29 redaction（达成）
 2.0-M211 Git Intelligence & Evolution（✅ 2026-10-06 完成——prism-evolution crate + prism-git 4 只读扩展 + git 子命令族 + commit-impact 切片；契约见 PRISM_2_0_GIT.md）
   ↓ 依赖：M21/M22（达成）+ M23/M26 change_mapping/impact（达成）+ M28 生命周期（达成）
-2.0-M212 Visualization ── 依赖：M26/M27/M211 的只读查询面（禁止反向要求改 Core）
+2.0-M212 Visualization（✅ 2026-10-06 完成——prism-viz 投影 crate + get_visualization_graph Tauri + VizGraphPanel GUI + `prism viz`；契约见 PRISM_2_0_VIZ.md）
+  ↓ 依赖：M26/M27/M211 只读查询面（达成——纯消费，未反向改 Core）
 2.0-M213 API/Webhook Debugging ── 独立子系统；依赖 M21 数据模型；需威胁建模
 2.0-M214 Developer Deploy ── 独立子系统；依赖 M213 前置；需威胁建模（SSH/远程执行）
 2.0-M215 Final 2.0 Audit ── 依赖：全部

@@ -2566,6 +2566,7 @@ dependencies = [
  "prism-godot",
  "prism-graph",
  "prism-health",
+ "prism-health2",
  "prism-impact",
  "prism-intel",
  "prism-l0",
@@ -2677,6 +2678,17 @@ dependencies = [
  "prism-impact",
  "prism-parser",
  "prism-project",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "prism-health2"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-godot",
+ "prism-intel",
  "serde",
  "serde_json",
 ]

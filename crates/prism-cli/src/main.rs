@@ -17,6 +17,7 @@ mod cli;
 mod context_command;
 mod env_command;
 mod git_command;
+mod health2_command;
 mod health_command;
 mod impact_command;
 mod intel_command;
@@ -146,6 +147,12 @@ fn run() -> i32 {
                 max_files,
             ),
         },
+        Some(cli::Command::Health2 {
+            path,
+            baseline,
+            max_file_lines,
+            json,
+        }) => health2_command::run(&path, baseline.as_deref(), max_file_lines, json),
         Some(cli::Command::Verify {
             path,
             json,

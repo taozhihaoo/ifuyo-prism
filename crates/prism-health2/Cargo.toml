@@ -1,0 +1,14 @@
+[package]
+name = "prism-health2"
+description = "Prism Health & Engineering Findings 2.0 (2.0-M28): metrics, structural/godot/semantic rules over M21-M26 facts, finding lifecycle (fingerprint/baseline/regression), quality gate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-godot.workspace = true
+prism-intel.workspace = true
+serde.workspace = true
+serde_json.workspace = true

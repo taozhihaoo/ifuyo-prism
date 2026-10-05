@@ -320,6 +320,20 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<HealthCommand>,
     },
+    /// Health & Engineering Findings 2.0（2.0-M28：结构规则 + Metric + 生命周期 + Quality Gate）
+    Health2 {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 基线报告 JSON（对比得 New/Persistent/Resolved；缺省 ⇒ 首轮全 New）
+        #[arg(long)]
+        baseline: Option<std::path::PathBuf>,
+        /// 大文件行数阈值（§11A 可配置）
+        #[arg(long, default_value_t = 1000)]
+        max_file_lines: u64,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
     /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a/M8b）
     Verify {
         #[arg(default_value = ".")]
@@ -480,6 +494,7 @@ impl Command {
             Command::Impact { .. } => "impact",
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
+            Command::Health2 { .. } => "health2",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",
             Command::Context { .. } => "context",

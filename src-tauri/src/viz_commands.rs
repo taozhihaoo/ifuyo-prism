@@ -137,10 +137,11 @@ fn supply_report(
     root: &std::path::Path,
     cancel: &CancellationToken,
 ) -> Result<prism_supply::SupplyReport, String> {
-        let discovery = prism_project::DiscoveryService::new()
+    let discovery = prism_project::DiscoveryService::new()
         .discover(root, prism_project::ScanOptions::default(), cancel, |_| {})
         .map_err(|err| err.to_string())?;
-    let mut manifests: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    let mut manifests: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
     for file in &discovery.files {
         let lower = file.relative_path.to_ascii_lowercase();
         let is_manifest = file.relative_path == "project.godot"

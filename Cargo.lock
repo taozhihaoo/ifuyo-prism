@@ -2515,6 +2515,8 @@ name = "prism-api"
 version = "0.1.0"
 dependencies = [
  "prism-core",
+ "prism-csharp",
+ "prism-git",
  "prism-intel",
  "prism-supply",
  "serde",
@@ -2574,6 +2576,7 @@ dependencies = [
  "clap",
  "log",
  "prism-analysis",
+ "prism-api",
  "prism-changes",
  "prism-context",
  "prism-core",
@@ -2732,6 +2735,7 @@ dependencies = [
 name = "prism-health2"
 version = "0.1.0"
 dependencies = [
+ "prism-api",
  "prism-core",
  "prism-csharp",
  "prism-debug",

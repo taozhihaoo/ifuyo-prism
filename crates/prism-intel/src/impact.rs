@@ -217,15 +217,30 @@ pub fn analyze(
                 .or_insert(change.change_type);
         }
     }
-    // 变更实体本身进入 visited（它是变更源，不是受影响对象）；
-    // 扩展端点（同 qualified 的新签名节点）**不**进 visited——它们是
-    // 真实的受影响目标。
     for (entity, change_type) in &seeds {
         visited.insert(entity.clone(), ());
         queue.push_back((entity.clone(), *change_type, vec![entity.clone()], 0));
     }
 
-    #[cfg(test)]
+    // §63 名字面候选：ContractRemoved ⇒ unresolved 调用点（伪目标
+    // `unresolved:{成员名}`）为 Potential/Low 候选——单跳直查，不进
+    // visited 主遍历（名字面 = 候选级证据，不与图遍历混淆）。
+    let mut name_seeds: BTreeMap<String, ChangeType> = BTreeMap::new();
+    for change in changes {
+        if change.change_type == ChangeType::ContractRemoved {
+            let stripped = change.entity_id.trim_start_matches("cs:");
+            if let Some(member) = stripped
+                .split('#')
+                .next()
+                .and_then(|q| q.rsplit('.').next())
+            {
+                name_seeds
+                    .entry(format!("unresolved:{member}"))
+                    .or_insert(change.change_type);
+            }
+        }
+    }
+
     if std::env::var("PRISM_DBG_IMPACT").is_ok() {
         eprintln!(
             "[analyze] seeds={:?} visited={:?}",
@@ -242,12 +257,13 @@ pub fn analyze(
         );
     }
     while let Some((current, change_type, path, hop)) = queue.pop_front() {
+        // 出队即标记：防环 + 防同实体重复扩展（§59）。
+        visited.insert(current.clone(), ());
         if hop >= policy.max_hops {
             metadata.truncated_by_hop_limit += 1;
             continue;
         }
         for edge in graph.edges_into(&current) {
-            #[cfg(test)]
             if std::env::var("PRISM_DBG_IMPACT").is_ok() {
                 eprintln!(
                     "[impact] hop={hop} current={current} edge {} {}->{} visited_src={}",
@@ -306,6 +322,26 @@ pub fn analyze(
                 metadata.truncated_by_entity_limit += 1;
                 break;
             }
+        }
+    }
+
+    // 名字面候选（§63）：主遍历后补录——unresolved 调用点为 Potential/Low。
+    for pseudo in name_seeds.keys() {
+        for edge in graph.edges_into(pseudo) {
+            if affected.contains_key(&edge.source) {
+                continue;
+            }
+            let entry = AffectedEntity {
+                entity_id: edge.source.clone(),
+                impact: ImpactType::Potential,
+                category: rule_for(ChangeType::ContractRemoved, &edge.relation)
+                    .map(|(category, _)| category)
+                    .unwrap_or(ImpactCategory::Unknown),
+                confidence: Confidence::Low,
+                primary_path: vec![pseudo.clone(), edge.relation.clone(), edge.source.clone()],
+                alternative_paths: 0,
+            };
+            affected.insert(edge.source.clone(), entry);
         }
     }
 

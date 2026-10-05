@@ -264,6 +264,7 @@ fn run() -> i32 {
             profile,
             max_items,
             max_bytes,
+            impact_aware,
         }) => context_command::run(
             &path,
             task,
@@ -278,6 +279,7 @@ fn run() -> i32 {
             profile,
             max_items,
             max_bytes,
+            impact_aware,
         ),
         Some(command) => not_implemented_yet(command.name()),
     }

@@ -421,6 +421,9 @@ pub enum Command {
     Context {
         #[arg(default_value = ".")]
         path: std::path::PathBuf,
+        /// M27 Impact/Change-aware：消费 M26 Evidence Graph（工作区变更）
+        #[arg(long)]
+        impact_aware: bool,
         /// 任务文本（确定性分类，§12）
         #[arg(long)]
         task: Option<String>,

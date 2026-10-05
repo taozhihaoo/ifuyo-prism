@@ -2511,6 +2511,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "prism-api"
+version = "0.1.0"
+dependencies = [
+ "prism-core",
+ "prism-intel",
+ "prism-supply",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "prism-app"
 version = "0.1.0"
 dependencies = [

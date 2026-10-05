@@ -19,6 +19,7 @@ members = [
     "crates/prism-debug",
     "crates/prism-evolution",
     "crates/prism-viz",
+    "crates/prism-api",
     "crates/prism-verify",
     "crates/prism-env",
     "crates/prism-context",
@@ -35,6 +36,7 @@ edition = "2021"
 rust-version = "1.85"
 
 [workspace.dependencies]
+sha2 = "0.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -61,6 +63,7 @@ prism-supply = { path = "crates/prism-supply" }
 prism-debug = { path = "crates/prism-debug" }
 prism-evolution = { path = "crates/prism-evolution" }
 prism-viz = { path = "crates/prism-viz" }
+prism-api = { path = "crates/prism-api" }
 prism-verify = { path = "crates/prism-verify" }
 prism-env = { path = "crates/prism-env" }
 prism-context = { path = "crates/prism-context" }

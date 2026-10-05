@@ -1,0 +1,15 @@
+[package]
+name = "prism-api"
+description = "Prism API/Webhook Debugging (2.0-M213): endpoint discovery, bounded HTTP/1.1 observation with SSRF guard, local webhook receiver, HMAC signature validation, M29 redaction reuse, correlation to logs/symbols/git"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+prism-core.workspace = true
+prism-intel.workspace = true
+prism-supply.workspace = true
+sha2.workspace = true
+serde.workspace = true
+serde_json.workspace = true

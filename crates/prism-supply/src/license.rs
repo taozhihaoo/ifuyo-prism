@@ -90,7 +90,7 @@ pub fn is_known_spdx(expression: &str) -> bool {
 }
 
 /// policy 判定（§22 模型：fact × policy ⇒ finding 结论 + 解释链）。
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LicensePolicyOutcome {
     pub subject: String,
     pub violated: bool,

@@ -2573,6 +2573,7 @@ dependencies = [
  "prism-project",
  "prism-snapshot",
  "prism-store",
+ "prism-supply",
  "prism-verify",
  "serde",
  "serde_json",
@@ -2690,6 +2691,7 @@ dependencies = [
  "prism-csharp",
  "prism-godot",
  "prism-intel",
+ "prism-supply",
  "serde",
  "serde_json",
 ]

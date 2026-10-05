@@ -152,6 +152,7 @@ mod tests {
             observed_at: "t",
             csharp: None,
             godot: Some(analysis),
+            supply: None,
             cancel,
         }
     }
@@ -276,6 +277,7 @@ mod tests {
             observed_at: "t",
             csharp: None,
             godot: None,
+            supply: None,
             cancel: &cancel,
         };
         let outcome = scene_wiring_rule(&ctx);

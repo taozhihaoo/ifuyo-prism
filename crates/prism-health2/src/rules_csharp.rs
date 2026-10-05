@@ -288,6 +288,7 @@ mod tests {
                 semantics,
             }),
             godot: None,
+            supply: None,
             cancel,
         }
     }

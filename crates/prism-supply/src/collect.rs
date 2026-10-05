@@ -29,6 +29,8 @@ pub struct SupplyInputs<'a> {
     pub observed_tools: &'a BTreeMap<String, String>,
     /// advisory provider（None ⇒ Unavailable，§29）。
     pub advisory_provider: Option<&'a dyn AdvisoryProvider>,
+    /// license policy（None ⇒ 不做 policy 判定；§65 M28 Gate 的数据）。
+    pub license_policy: Option<&'a crate::license::LicensePolicy>,
     pub secret_limits: &'a SecretScanLimits,
 }
 
@@ -245,6 +247,12 @@ pub fn collect(inputs: &SupplyInputs) -> SupplyReport {
     // license SPDX 判定补全（前面内联时 subject 未定）。
     for license in &mut licenses {
         license.spdx_known = crate::license::is_known_spdx(&license.expression);
+    }
+    // license policy 判定（§65：policy 数据 + fact ⇒ 可解释结论）。
+    if let Some(policy) = inputs.license_policy {
+        report.license_policy = Some(policy.clone());
+        report.license_policy_violations =
+            crate::license::evaluate_license_policy(&licenses, policy);
     }
 
     // secret 扫描（§67：扫描面由调用方决定）。
@@ -518,6 +526,7 @@ mod tests {
             text_files: &[],
             observed_tools: observed,
             advisory_provider: None,
+            license_policy: None,
             secret_limits: Box::leak(Box::new(SecretScanLimits::default())),
         }
     }

@@ -11,5 +11,6 @@ prism-core.workspace = true
 prism-csharp.workspace = true
 prism-godot.workspace = true
 prism-intel.workspace = true
+prism-supply.workspace = true
 serde.workspace = true
 serde_json.workspace = true

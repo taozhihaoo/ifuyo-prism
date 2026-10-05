@@ -22,6 +22,7 @@ mod health_command;
 mod impact_command;
 mod intel_command;
 mod snapshot_command;
+mod supply_command;
 mod verify_command;
 mod verify_subcommands;
 
@@ -153,6 +154,21 @@ fn run() -> i32 {
             max_file_lines,
             json,
         }) => health2_command::run(&path, baseline.as_deref(), max_file_lines, json),
+        Some(cli::Command::Supply {
+            path,
+            advisories,
+            policy,
+            sbom,
+            baseline,
+            json,
+        }) => supply_command::run(
+            &path,
+            advisories.as_deref(),
+            policy.as_deref(),
+            sbom.as_deref(),
+            baseline.as_deref(),
+            json,
+        ),
         Some(cli::Command::Verify {
             path,
             json,

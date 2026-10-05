@@ -19,6 +19,7 @@ pub mod registry;
 pub mod rules;
 pub mod rules_csharp;
 pub mod rules_godot;
+pub mod rules_supply;
 
 pub use baseline::{diff_against_baseline, mark_regressed};
 pub use gate::{evaluate_gate, GateVerdict, QualityGatePolicy, QualityGateResult};

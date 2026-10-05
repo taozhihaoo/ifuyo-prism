@@ -166,6 +166,7 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
         observed_at: &observed_at,
         csharp: Some(csharp_facts),
         godot: godot_analysis.as_ref(),
+        supply: None,
         cancel: &cancel,
     };
     let mut report = registry.evaluate(&rule_context);

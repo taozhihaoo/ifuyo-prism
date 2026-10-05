@@ -25,6 +25,8 @@ pub struct RuleThresholds {
     pub large_method_lines: u64,
     /// 语义诊断聚合组上限（finding 爆炸防护）。
     pub max_semantic_groups: usize,
+    /// M29 供给规则单条 finding 上限（§69 爆炸防护）。
+    pub max_supply_findings: usize,
 }
 
 impl Default for RuleThresholds {
@@ -34,6 +36,7 @@ impl Default for RuleThresholds {
             large_type_lines: 400,
             large_method_lines: 100,
             max_semantic_groups: 200,
+            max_supply_findings: 200,
         }
     }
 }

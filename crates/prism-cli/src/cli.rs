@@ -334,6 +334,26 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// 供给情报（2.0-M29：Dependency/Security/License/Environment/SBOM；offline-first）
+    Supply {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 本地 advisory 库 JSON（缺省 ⇒ 漏洞分析 Unavailable，不是 0）
+        #[arg(long)]
+        advisories: Option<std::path::PathBuf>,
+        /// license policy JSON（blocked/allowed/require_known）
+        #[arg(long)]
+        policy: Option<std::path::PathBuf>,
+        /// 输出确定性 SBOM（prism-sbom/1）到指定文件
+        #[arg(long)]
+        sbom: Option<std::path::PathBuf>,
+        /// 基线报告 JSON（M28 生命周期复用）
+        #[arg(long)]
+        baseline: Option<std::path::PathBuf>,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
     /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a/M8b）
     Verify {
         #[arg(default_value = ".")]
@@ -495,6 +515,7 @@ impl Command {
             Command::Changes { .. } => "changes",
             Command::Health { .. } => "health",
             Command::Health2 { .. } => "health2",
+            Command::Supply { .. } => "supply",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",
             Command::Context { .. } => "context",

@@ -191,6 +191,10 @@ pub struct SupplyReport {
     pub project_references: Vec<ProjectReferenceEdge>,
     pub cycles: Vec<DependencyCycle>,
     pub licenses: Vec<crate::license::LicenseFact>,
+    /// 已应用的 license policy 判定（§65：policy 是 M28 Gate 的数据）。
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license_policy: Option<crate::license::LicensePolicy>,
+    pub license_policy_violations: Vec<crate::license::LicensePolicyOutcome>,
     pub secret_candidates: Vec<crate::secrets::SecretCandidate>,
     /// 候选达到 cap 被截断（§69：报告 truncated，不假装扫完）。
     pub secret_scan_truncated: bool,

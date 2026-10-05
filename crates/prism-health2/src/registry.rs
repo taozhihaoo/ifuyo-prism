@@ -13,13 +13,18 @@ use prism_intel::evidence::Evidence;
 use prism_intel::finding::Finding;
 use std::collections::BTreeMap;
 
-/// 规则分类（§A-§D 目录的顶层：Structural / Complexity / Semantic / Godot）。
+/// 规则分类（§A-§D + M29 §44-§46：Structural / Complexity / Semantic /
+/// Godot / Dependency / Security / License / Environment）。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RuleCategory {
     Structural,
     Complexity,
     Semantic,
     Godot,
+    Dependency,
+    Security,
+    License,
+    Environment,
 }
 
 impl RuleCategory {
@@ -29,6 +34,10 @@ impl RuleCategory {
             RuleCategory::Complexity => "complexity",
             RuleCategory::Semantic => "semantic",
             RuleCategory::Godot => "godot",
+            RuleCategory::Dependency => "dependency",
+            RuleCategory::Security => "security",
+            RuleCategory::License => "license",
+            RuleCategory::Environment => "environment",
         }
     }
 }
@@ -59,13 +68,16 @@ pub struct CSharpFacts<'a> {
     pub semantics: Option<&'a prism_csharp::SemanticEngine>,
 }
 
-/// 规则上下文：一次评估的全部注入事实（§C RuleContext）。
+/// 规则上下文：一次评估的全部注入事实（§C RuleContext；M29 §47 增加
+/// supply 事实——Dependency/Security/License/Environment 规则同挂载点）。
 pub struct RuleContext<'a> {
     pub files: &'a [SourceFileInput],
     pub thresholds: &'a crate::RuleThresholds,
     pub observed_at: &'a str,
     pub csharp: Option<CSharpFacts<'a>>,
     pub godot: Option<&'a prism_godot::GodotAnalysis>,
+    /// M29 供给事实（None ⇒ 供给规则记诊断跳过，§48 prerequisite）。
+    pub supply: Option<&'a prism_supply::SupplyReport>,
     pub cancel: &'a CancellationToken,
 }
 
@@ -133,6 +145,77 @@ impl RuleRegistry {
                 category: RuleCategory::Godot,
             },
             crate::rules_godot::scene_wiring_rule,
+        );
+        registry
+    }
+
+    /// 仅 M29 供给规则（`prism supply` 轻量面：dependency/security/
+    /// license/environment，不引导代码引擎）。
+    pub fn with_supply_builtins() -> Self {
+        let mut registry = Self::with_all_builtins();
+        registry.entries.retain(|(definition, _)| {
+            !matches!(
+                definition.category,
+                RuleCategory::Structural
+                    | RuleCategory::Complexity
+                    | RuleCategory::Semantic
+                    | RuleCategory::Godot
+            )
+        });
+        registry
+    }
+
+    /// 全量内建 = M28 四条 + M29 供给规则（§47：同一 Registry/RuleContext/
+    /// Finding，M29 只增 category 与能力）。
+    pub fn with_all_builtins() -> Self {
+        let mut registry = Self::with_builtins();
+        registry.register(
+            RuleDefinition {
+                id: "DEP/RESOLUTION",
+                name: "Dependency resolution problems",
+                category: RuleCategory::Dependency,
+            },
+            crate::rules_supply::dependency_resolution_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "DEP/CYCLE",
+                name: "Project reference cycle",
+                category: RuleCategory::Dependency,
+            },
+            crate::rules_supply::dependency_cycle_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "SEC/SECRET_CANDIDATE",
+                name: "Secret candidate in source",
+                category: RuleCategory::Security,
+            },
+            crate::rules_supply::secret_candidate_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "SEC/KNOWN_VULNERABILITY",
+                name: "Known vulnerable dependency",
+                category: RuleCategory::Security,
+            },
+            crate::rules_supply::known_vulnerability_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "LIC/POLICY",
+                name: "License fact/policy problems",
+                category: RuleCategory::License,
+            },
+            crate::rules_supply::license_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "ENV/TOOLCHAIN",
+                name: "Toolchain declared vs observed",
+                category: RuleCategory::Environment,
+            },
+            crate::rules_supply::toolchain_rule,
         );
         registry
     }

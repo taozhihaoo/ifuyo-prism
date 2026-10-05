@@ -33,7 +33,8 @@
   ↓ 依赖：M26/M27/M211 只读查询面（达成——纯消费，未反向改 Core）
 2.0-M213 API/Webhook Debugging（✅ 2026-10-06 完成——prism-api crate + CLI api 命令族 + health2 Api 规则；契约见 PRISM_2_0_M213_API_WEBHOOK.md）
   ↓ 依赖：M21 数据模型（达成）+ M29 redaction（达成）+ 威胁建模（SSRF guard + localhost-first 已实测）
-2.0-M214 Developer Deploy ── 独立子系统；依赖 M213 前置；需威胁建模（SSH/远程执行）
+2.0-M214 Developer Deploy（✅ 2026-10-06 完成——prism-deploy crate + CLI deploy 命令族 + 垂直切片实测；契约见 PRISM_2_0_DEPLOYMENT.md）
+  ↓ 依赖：M213 前置（达成——M213 API 可为 health-check provider）；威胁建模（SSH=Unsupported 如实；Local transport 真实路径；路径逃逸/凭证边界测试锁定）
 2.0-M215 Final 2.0 Audit ── 依赖：全部
 ```
 

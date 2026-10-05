@@ -50,9 +50,9 @@ pub fn unexpected_status_rule(ctx: &RuleContext) -> RuleOutcome {
         return outcome;
     };
     if observations.is_empty() {
-        outcome
-            .diagnostics
-            .push("api observations empty; status analysis unavailable (not zero failures)".to_string());
+        outcome.diagnostics.push(
+            "api observations empty; status analysis unavailable (not zero failures)".to_string(),
+        );
         return outcome;
     }
     for observation in observations {
@@ -138,17 +138,21 @@ pub fn repeated_failure_rule(ctx: &RuleContext) -> RuleOutcome {
     };
     let mut failures: BTreeMap<String, u64> = BTreeMap::new();
     if observations.is_empty() {
-        outcome
-            .diagnostics
-            .push("api observations empty; failure aggregation unavailable (not zero failures)".to_string());
+        outcome.diagnostics.push(
+            "api observations empty; failure aggregation unavailable (not zero failures)"
+                .to_string(),
+        );
         return outcome;
     }
     for observation in observations {
-        if observation.failure != FailureKind::None
-            && observation.failure != FailureKind::Cancelled
+        if observation.failure != FailureKind::None && observation.failure != FailureKind::Cancelled
         {
             *failures
-                .entry(format!("{} {}", observation.method.as_str(), observation.url))
+                .entry(format!(
+                    "{} {}",
+                    observation.method.as_str(),
+                    observation.url
+                ))
                 .or_insert(0) += 1;
         }
     }
@@ -195,7 +199,6 @@ pub fn repeated_failure_rule(ctx: &RuleContext) -> RuleOutcome {
 mod tests {
     use super::*;
     use crate::registry::RuleContext;
-    use crate::rules::SourceFileInput;
     use crate::RuleThresholds;
     use prism_api::HttpMethod;
     use prism_core::task::CancellationToken;
@@ -219,7 +222,11 @@ mod tests {
         }
     }
 
-    fn observation(url: &str, status: Option<u16>, failure: FailureKind) -> prism_api::ApiObservation {
+    fn observation(
+        url: &str,
+        status: Option<u16>,
+        failure: FailureKind,
+    ) -> prism_api::ApiObservation {
         prism_api::ApiObservation {
             observation_id: format!("obs:{url}:{status:?}"),
             method: HttpMethod::Get,
@@ -255,14 +262,21 @@ mod tests {
     fn http_500_produces_unexpected_status_finding() {
         let cancel = CancellationToken::new();
         let thresholds = RuleThresholds::default();
-        let observations = vec![observation("/api/cards/draw", Some(500), FailureKind::HttpStatus)];
+        let observations = vec![observation(
+            "/api/cards/draw",
+            Some(500),
+            FailureKind::HttpStatus,
+        )];
         let ctx = context(&observations, &thresholds, &cancel);
         let outcome = unexpected_status_rule(&ctx);
         assert_eq!(outcome.findings.len(), 1);
         assert_eq!(outcome.findings[0].finding_type, "API/UNEXPECTED_STATUS");
         assert_eq!(outcome.findings[0].severity, prism_core::Severity::Warning);
         assert_eq!(
-            outcome.findings[0].metadata.get("status").map(String::as_str),
+            outcome.findings[0]
+                .metadata
+                .get("status")
+                .map(String::as_str),
             Some("500")
         );
         assert_eq!(

@@ -17,10 +17,10 @@ pub mod gate;
 pub mod model;
 pub mod registry;
 pub mod rules;
+pub mod rules_api;
 pub mod rules_csharp;
 pub mod rules_debug;
 pub mod rules_evolution;
-pub mod rules_api;
 pub mod rules_godot;
 pub mod rules_supply;
 

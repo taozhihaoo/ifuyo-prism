@@ -18,6 +18,8 @@
 //! - **不重建事实体系**（§79/§80）：Observation/Finding/Correlation 全走
 //!   M21/M28/M210 模型；红action 复用 M29。
 
+pub mod correlate;
+pub mod discover;
 pub mod http;
 pub mod model;
 pub mod redaction;
@@ -25,6 +27,11 @@ pub mod server;
 pub mod signature;
 pub mod ssrf;
 
+pub use correlate::{
+    correlate_error_cluster, correlate_handler_symbol, correlate_recent_change,
+    correlate_request_logs, match_endpoint,
+};
+pub use discover::{discover_endpoints, normalize_route, DiscoverInput};
 pub use http::{observe, HttpObservation};
 pub use model::{
     ApiEndpoint, ApiObservation, FailureKind, HttpMethod, SignatureState, WebhookEvent,

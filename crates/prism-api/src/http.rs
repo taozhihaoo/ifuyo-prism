@@ -126,7 +126,6 @@ type Executed = (
     Option<String>,
 );
 
-
 fn execute(
     target: &crate::ssrf::Target,
     method: HttpMethod,
@@ -154,8 +153,7 @@ fn execute(
             Err(err)
                 if matches!(
                     err.kind(),
-                    std::io::ErrorKind::ConnectionRefused
-                        | std::io::ErrorKind::TimedOut
+                    std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::TimedOut
                 ) =>
             {
                 return Err(format!("{address}: {err}"));
@@ -246,9 +244,7 @@ fn execute(
 type ResponseHead = (Option<u16>, BTreeMap<String, String>, usize);
 
 /// 解析状态行 + headers，返回 ResponseHead。
-fn parse_response_head(
-    raw: &str,
-) -> Result<ResponseHead, String> {
+fn parse_response_head(raw: &str) -> Result<ResponseHead, String> {
     let split = raw
         .find("\r\n\r\n")
         .ok_or_else(|| "malformed response: no header terminator".to_string())?;

@@ -31,7 +31,8 @@
   ↓ 依赖：M21/M22（达成）+ M23/M26 change_mapping/impact（达成）+ M28 生命周期（达成）
 2.0-M212 Visualization（✅ 2026-10-06 完成——prism-viz 投影 crate + get_visualization_graph Tauri + VizGraphPanel GUI + `prism viz`；契约见 PRISM_2_0_VIZ.md）
   ↓ 依赖：M26/M27/M211 只读查询面（达成——纯消费，未反向改 Core）
-2.0-M213 API/Webhook Debugging ── 独立子系统；依赖 M21 数据模型；需威胁建模
+2.0-M213 API/Webhook Debugging（✅ 2026-10-06 完成——prism-api crate + CLI api 命令族 + health2 Api 规则；契约见 PRISM_2_0_M213_API_WEBHOOK.md）
+  ↓ 依赖：M21 数据模型（达成）+ M29 redaction（达成）+ 威胁建模（SSRF guard + localhost-first 已实测）
 2.0-M214 Developer Deploy ── 独立子系统；依赖 M213 前置；需威胁建模（SSH/远程执行）
 2.0-M215 Final 2.0 Audit ── 依赖：全部
 ```

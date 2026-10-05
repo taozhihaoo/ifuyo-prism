@@ -125,7 +125,7 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
     let mut signature_state = SignatureState::Unknown;
     let mut event_type: Option<String> = None;
     let mut correlation_id: Option<String> = None;
-    let mut processing = ProcessingState::Received;
+    let mut processing: Option<ProcessingState> = None;
     loop {
         match stream.read(&mut chunk) {
             Ok(0) => break,
@@ -133,7 +133,7 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
                 buffer.extend_from_slice(&chunk[..count]);
                 if buffer.len() > config.max_payload_bytes {
                     // §47：超限 ⇒ 截断 + Rejected（不静默）。
-                    processing = ProcessingState::Rejected;
+                    processing = Some(ProcessingState::Rejected);
                     break;
                 }
             }
@@ -147,7 +147,6 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
                     let (parsed_type, parsed_correlation) = parse_event_meta(text);
                     event_type = parsed_type;
                     correlation_id = parsed_correlation;
-                    processing = ProcessingState::Parsed;
                     // 签名状态（§11 六态）。
                     let header_signature = header_value(text, &config.signature_header);
                     signature_state = match (
@@ -174,12 +173,12 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
                             }
                         }
                     };
-                    processing = match signature_state {
+                    processing = Some(match signature_state {
                         SignatureState::Invalid | SignatureState::NotPresent => {
                             ProcessingState::Rejected
                         }
                         _ => ProcessingState::Succeeded,
-                    };
+                    });
                     break;
                 }
             }
@@ -187,7 +186,7 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
     }
     // 处理失败（Rejected）仍返回 200 之外的语义由调用方决定——这里回 500
     // 表示 Rejected（§22 Processing Result 有真实输出）。
-    let status_line = if processing == ProcessingState::Rejected {
+    let status_line = if processing == Some(ProcessingState::Rejected) {
         "HTTP/1.1 500 REJECTED\r\nContent-Length: 0\r\n\r\n"
     } else {
         "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"
@@ -215,9 +214,9 @@ fn receive_one(stream: &mut std::net::TcpStream, config: &WebhookReceiverConfig)
             let (redacted, _) = prism_supply::secrets::redact_line(&payload);
             Some(redacted)
         },
-        payload_truncated: processing == ProcessingState::Rejected,
+        payload_truncated: processing == Some(ProcessingState::Rejected),
         signature: signature_state,
-        processing,
+        processing: processing.unwrap_or(ProcessingState::Unknown),
         received_at,
         correlation_id,
         handler_symbol: None,
@@ -267,7 +266,6 @@ fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write as _;
 
     fn post(
         port: u16,

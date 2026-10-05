@@ -7,7 +7,7 @@
 //! - https ⇒ FailureKind::Transport + Unsupported 诊断（零 TLS 依赖，
 //!   P1 升级 reqwest，§18 Protocol Allowlist）；
 //! - 读/写超时 + 取消令牌（§66）。
-//! 响应/请求体全部经 M29 redaction（§12-§14）。
+//! - 响应/请求体全部经 M29 redaction（§12-§14）。
 
 use crate::model::{FailureKind, HttpMethod};
 use crate::redaction::redact_headers;
@@ -64,7 +64,6 @@ pub fn observe(
 ) -> HttpObservation {
     let started = Instant::now();
     let mut failure = FailureKind::None;
-    let mut diagnostic = None;
 
     let target = match guard.check(url) {
         Ok(target) => target,
@@ -89,7 +88,7 @@ pub fn observe(
         response_headers,
         response_body,
         response_truncated,
-        local_failure,
+        _local_failure,
         local_diagnostic,
     ) = match result {
         Ok(parsed) => parsed,
@@ -103,7 +102,7 @@ pub fn observe(
             failure = FailureKind::HttpStatus;
         }
     }
-    diagnostic = local_diagnostic;
+    let diagnostic = local_diagnostic;
     HttpObservation {
         method,
         url: url.to_string(),
@@ -117,6 +116,7 @@ pub fn observe(
     }
 }
 
+/// execute 返回元组（status, headers, body, truncated, failure, diagnostic）。
 type Executed = (
     Option<u16>,
     BTreeMap<String, String>,
@@ -125,6 +125,7 @@ type Executed = (
     FailureKind,
     Option<String>,
 );
+
 
 fn execute(
     target: &crate::ssrf::Target,
@@ -137,6 +138,7 @@ fn execute(
     let host = target.host.trim_start_matches('[').trim_end_matches(']');
     let address = format!("{host}:{}", target.port);
     let connect_deadline = Instant::now() + Duration::from_millis(limits.connect_timeout_ms);
+    // 瞬时连接错误（WouldBlock 等）重试至 deadline；refused/timedout 立即如实失败。
     let mut stream = loop {
         if cancel.is_cancelled() {
             return Err("cancelled".to_string());
@@ -149,15 +151,17 @@ fn execute(
         }
         match TcpStream::connect(&address) {
             Ok(stream) => break stream,
-            Err(err) if err.kind() == std::io::ErrorKind::ConnectionRefused => {
-                return Err(format!("connection refused: {address}"));
+            Err(err)
+                if matches!(
+                    err.kind(),
+                    std::io::ErrorKind::ConnectionRefused
+                        | std::io::ErrorKind::TimedOut
+                ) =>
+            {
+                return Err(format!("{address}: {err}"));
             }
-            Err(err) if err.kind() == std::io::ErrorKind::TimedOut => {
-                return Err(format!("connect timeout: {address}"));
-            }
-            Err(err) => return Err(format!("connect failed: {err}")),
+            Err(_) => std::thread::sleep(Duration::from_millis(50)),
         }
-        std::thread::sleep(Duration::from_millis(50));
     };
     stream
         .set_read_timeout(Some(Duration::from_millis(limits.timeout_ms)))
@@ -241,7 +245,7 @@ fn execute(
 /// 解析状态行 + headers，返回 (status, headers, body 起始字节)。
 fn parse_response_head(
     raw: &str,
-) -> Result<(Option<u16>, BTreeMap<String, String>, usize), String> {
+) -> Result<ResponseHead, String> {
     let split = raw
         .find("\r\n\r\n")
         .ok_or_else(|| "malformed response: no header terminator".to_string())?;
@@ -265,6 +269,7 @@ fn parse_response_head(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
     /// 本地回显 fixture server（§63：本地测试 server，禁止公网）。
     struct FixtureServer {

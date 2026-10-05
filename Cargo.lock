@@ -2582,6 +2582,7 @@ dependencies = [
  "prism-core",
  "prism-csharp",
  "prism-debug",
+ "prism-deploy",
  "prism-env",
  "prism-evolution",
  "prism-git",

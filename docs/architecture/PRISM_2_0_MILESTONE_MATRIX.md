@@ -17,7 +17,7 @@
   ↓ 依赖：M21 契约 + M22 L0 + M23 的 Symbol 接口（Script→Symbol 层可后接）
 2.0-M25 C# L2 Semantic（✅ 2026-10-05 完成——prism-csharp semantic.rs 作用域规则解析 + `prism intel --domain semantic`）
   ↓ 依赖：M23 L1；后端选型（Roslyn 环境依赖须显式决策）
-2.0-M26 Evidence Graph & Impact
+2.0-M26 Evidence Graph & Impact Intelligence（✅ 2026-10-05 完成——prism-intel graph/impact + `prism intel --domain impact`）
   ↓ 依赖：M21 Core + M23/M24 关系源
 2.0-M27 Context Intelligence 2.0
   ↓ 依赖：M26 关系图；MCP 候选承载点

@@ -17,6 +17,7 @@ mod changes_command;
 mod cli;
 mod context_command;
 mod debug_command;
+mod deploy_command;
 mod env_command;
 mod git_command;
 mod health2_command;
@@ -181,6 +182,11 @@ fn run() -> i32 {
             json,
         ),
         Some(cli::Command::Viz { path, view, json }) => viz_command::run(&path, &view, json),
+        Some(cli::Command::Deploy { path, command }) => {
+            let _ = &path;
+            let cancel = CancellationToken::new();
+            deploy_command::run(&command, &cancel)
+        }
         Some(cli::Command::Api { path, command }) => {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
             api_command::run(&path, &command, runner)

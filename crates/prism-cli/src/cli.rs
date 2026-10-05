@@ -4,6 +4,7 @@
 //! M0 阶段除 `info` 外均为占位，明确输出未实现而不是伪造数据。
 
 use crate::api_command::ApiCommand;
+use crate::deploy_command::DeployCommand;
 use clap::{Parser, Subcommand, ValueEnum};
 use prism_core::config::OutputFormat;
 
@@ -355,6 +356,13 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Developer Deploy（2.0-M214：Plan 与 Execute 分离；受控部署）
+    Deploy {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        #[command(subcommand)]
+        command: DeployCommand,
+    },
     /// API / Webhook 调试（2.0-M213：端点发现/观测/关联；网络动作显式）
     Api {
         #[arg(default_value = ".")]
@@ -551,6 +559,7 @@ impl Command {
             Command::Supply { .. } => "supply",
             Command::Viz { .. } => "viz",
             Command::Api { .. } => "api",
+            Command::Deploy { .. } => "deploy",
             Command::Debug { .. } => "debug",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",

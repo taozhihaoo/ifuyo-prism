@@ -26,6 +26,7 @@ pub enum RuleCategory {
     License,
     Environment,
     Debug,
+    Evolution,
 }
 
 impl RuleCategory {
@@ -40,6 +41,7 @@ impl RuleCategory {
             RuleCategory::License => "license",
             RuleCategory::Environment => "environment",
             RuleCategory::Debug => "debug",
+            RuleCategory::Evolution => "evolution",
         }
     }
 }
@@ -82,6 +84,8 @@ pub struct RuleContext<'a> {
     pub supply: Option<&'a prism_supply::SupplyReport>,
     /// M210 Debug 事实（None ⇒ Debug 规则记诊断跳过）。
     pub debug: Option<&'a prism_debug::DebugReport>,
+    /// M211 演化事实（None ⇒ Evolution 规则记诊断跳过）。
+    pub evolution: Option<&'a prism_evolution::EvolutionReport>,
     pub cancel: &'a CancellationToken,
 }
 
@@ -244,6 +248,22 @@ impl RuleRegistry {
                 category: RuleCategory::Debug,
             },
             crate::rules_debug::stack_resolution_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "EVOLUTION/HOTSPOT",
+                name: "High-change file",
+                category: RuleCategory::Evolution,
+            },
+            crate::rules_evolution::hotspot_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "EVOLUTION/CHANGE_COUPLING",
+                name: "Co-changed files",
+                category: RuleCategory::Evolution,
+            },
+            crate::rules_evolution::coupling_rule,
         );
         registry
     }

@@ -4,7 +4,7 @@
 //! （调用方决定窗口与上限，§47/§52）。
 
 use crate::model::{
-    ChangeCoupling, EvolutionReport, FileEvolution, HistoryWindow, Hotspot,
+    ChangeCoupling, CorrelationType, EvolutionReport, FileEvolution, HistoryWindow, Hotspot,
     EVOLUTION_SCHEMA_VERSION,
 };
 use prism_git::model::GitFileChange;
@@ -307,9 +307,54 @@ pub fn build_report(
         files,
         hotspots,
         couplings,
+        correlations: Vec::new(),
         truncated: false,
         diagnostics: Vec::new(),
     }
+}
+
+/// 历史关联（§65 v1 = Touched/CoChanged）：热点 top-N 文件的
+/// CoChanged 对 + 每个热点文件的 Touched commit（cap 3）。
+pub fn correlations(
+    scan: &RepoScan,
+    hotspots: &[Hotspot],
+    couplings: &[ChangeCoupling],
+    max: usize,
+) -> Vec<crate::model::HistoricalCorrelation> {
+    let mut out = Vec::new();
+    for coupling in couplings {
+        if out.len() >= max {
+            break;
+        }
+        out.push(crate::model::HistoricalCorrelation {
+            source: coupling.path_a.clone(),
+            target: coupling.path_b.clone(),
+            kind: CorrelationType::CoChanged,
+            evidence: coupling.evidence_commits.clone(),
+        });
+    }
+    for hotspot in hotspots {
+        if out.len() >= max {
+            break;
+        }
+        let touched = scan
+            .commits
+            .iter()
+            .filter(|commit| commit.paths.iter().any(|path| path == &hotspot.path))
+            .take(3)
+            .map(|commit| commit.id.clone())
+            .collect::<Vec<_>>();
+        if touched.is_empty() {
+            continue;
+        }
+        out.push(crate::model::HistoricalCorrelation {
+            source: hotspot.path.clone(),
+            target: "commits".to_string(),
+            kind: CorrelationType::Touched,
+            evidence: touched,
+        });
+    }
+    out
 }
 
 /// change 类型是否为 rename 的便捷判定（供上层 Symbol 历史使用）。

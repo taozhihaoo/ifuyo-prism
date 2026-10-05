@@ -154,6 +154,7 @@ mod tests {
             godot: Some(analysis),
             supply: None,
             debug: None,
+            evolution: None,
             cancel,
         }
     }
@@ -280,6 +281,7 @@ mod tests {
             godot: None,
             supply: None,
             debug: None,
+            evolution: None,
             cancel: &cancel,
         };
         let outcome = scene_wiring_rule(&ctx);

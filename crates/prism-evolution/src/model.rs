@@ -71,6 +71,31 @@ pub struct ChangeCoupling {
     pub evidence_commits: Vec<String>,
 }
 
+/// 历史关联（§65/§66：统一结构，不做 CommitCausedX 专用家族）。
+/// Introduced/Resolved/Regressed 属强语义——**只在** M28 基线链提供足够
+/// 证据时使用（v1 由基线轮转承担，本 crate 只产 Touched/CoChanged）。
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct HistoricalCorrelation {
+    pub source: String,
+    pub target: String,
+    pub kind: CorrelationType,
+    /// 证据（commit id / 路径对）。
+    pub evidence: Vec<String>,
+}
+
+/// 关联类型（§66；强语义项留位但 v1 不产）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CorrelationType {
+    Introduced,
+    Resolved,
+    Regressed,
+    Touched,
+    CoChanged,
+    TemporallyCorrelated,
+    Unknown,
+}
+
 /// 分析报告（M28 规则层/CLI 的注入对象）。
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct EvolutionReport {
@@ -83,6 +108,9 @@ pub struct EvolutionReport {
     pub hotspots: Vec<Hotspot>,
     /// 耦合按 (co_change_count desc, path_a, path_b) 排序。
     pub couplings: Vec<ChangeCoupling>,
+    /// 历史关联（Touched/CoChanged；§65 统一结构）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub correlations: Vec<HistoricalCorrelation>,
     /// 被截断标记（§70：不能静默丢数据）。
     pub truncated: bool,
     pub diagnostics: Vec<String>,

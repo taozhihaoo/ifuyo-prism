@@ -31,6 +31,10 @@ pub struct RuleThresholds {
     pub repeated_error_occurrences: u64,
     /// M210：是否上报未解析栈帧（DEBUG/UNRESOLVED_STACK_FRAME）。
     pub report_unresolved_frames: bool,
+    /// M211：热点判定阈值（窗口内 commit 数）。
+    pub evolution_hotspot_min_commits: u64,
+    /// M211：耦合判定阈值（共同变更次数）。
+    pub evolution_min_co_change: u64,
 }
 
 impl Default for RuleThresholds {
@@ -43,6 +47,8 @@ impl Default for RuleThresholds {
             max_supply_findings: 200,
             repeated_error_occurrences: 10,
             report_unresolved_frames: true,
+            evolution_hotspot_min_commits: 10,
+            evolution_min_co_change: 5,
         }
     }
 }

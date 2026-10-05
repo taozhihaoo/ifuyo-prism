@@ -25,6 +25,7 @@ pub enum RuleCategory {
     Security,
     License,
     Environment,
+    Debug,
 }
 
 impl RuleCategory {
@@ -38,6 +39,7 @@ impl RuleCategory {
             RuleCategory::Security => "security",
             RuleCategory::License => "license",
             RuleCategory::Environment => "environment",
+            RuleCategory::Debug => "debug",
         }
     }
 }
@@ -78,6 +80,8 @@ pub struct RuleContext<'a> {
     pub godot: Option<&'a prism_godot::GodotAnalysis>,
     /// M29 供给事实（None ⇒ 供给规则记诊断跳过，§48 prerequisite）。
     pub supply: Option<&'a prism_supply::SupplyReport>,
+    /// M210 Debug 事实（None ⇒ Debug 规则记诊断跳过）。
+    pub debug: Option<&'a prism_debug::DebugReport>,
     pub cancel: &'a CancellationToken,
 }
 
@@ -216,6 +220,30 @@ impl RuleRegistry {
                 category: RuleCategory::Environment,
             },
             crate::rules_supply::toolchain_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "DEBUG/RUNTIME_ERROR",
+                name: "Repeated runtime error",
+                category: RuleCategory::Debug,
+            },
+            crate::rules_debug::runtime_error_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "DEBUG/BUILD_TEST",
+                name: "Build/test failure",
+                category: RuleCategory::Debug,
+            },
+            crate::rules_debug::build_test_failure_rule,
+        );
+        registry.register(
+            RuleDefinition {
+                id: "DEBUG/STACK",
+                name: "Stack resolution gaps",
+                category: RuleCategory::Debug,
+            },
+            crate::rules_debug::stack_resolution_rule,
         );
         registry
     }

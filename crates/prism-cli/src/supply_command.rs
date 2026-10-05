@@ -212,6 +212,7 @@ pub fn run(
         csharp: None,
         godot: None,
         supply: Some(&report),
+        debug: None,
         cancel: &cancel,
     };
     let mut health_report = registry.evaluate(&rule_context);

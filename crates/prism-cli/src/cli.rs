@@ -354,6 +354,20 @@ pub enum Command {
         #[arg(long)]
         json: bool,
     },
+    /// Debug 情报（2.0-M210：日志→事件→错误指纹→栈→Symbol/Scene→Finding）
+    Debug {
+        #[arg(default_value = ".")]
+        path: std::path::PathBuf,
+        /// 显式日志源（项目相对或绝对；可多次；缺省自动发现 *.log）
+        #[arg(long = "source")]
+        sources: Vec<std::path::PathBuf>,
+        /// 基线报告 JSON（M28 生命周期复用）
+        #[arg(long)]
+        baseline: Option<std::path::PathBuf>,
+        /// JSON 输出
+        #[arg(long)]
+        json: bool,
+    },
     /// 验证项目：发现入口 → 计划 → 真实执行 → 汇总（M8a/M8b）
     Verify {
         #[arg(default_value = ".")]
@@ -516,6 +530,7 @@ impl Command {
             Command::Health { .. } => "health",
             Command::Health2 { .. } => "health2",
             Command::Supply { .. } => "supply",
+            Command::Debug { .. } => "debug",
             Command::Verify { .. } => "verify",
             Command::Env { .. } => "env",
             Command::Context { .. } => "context",

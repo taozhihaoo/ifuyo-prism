@@ -141,12 +141,24 @@ pub fn rebuild_errors_and_clusters(report: &mut DebugReport) {
 /// 异常形态消息拆分：`Unhandled exception. TYPE: MSG` / `---> TYPE: MSG`。
 fn split_exception(message: &str) -> (Option<String>, String) {
     let first_line = message.lines().next().unwrap_or(message);
-    for prefix in ["Unhandled exception. ", "---> "] {
+    for prefix in ["Unhandled exception. ", "---> ", "SCRIPT ERROR: "] {
         if let Some(rest) = first_line.strip_prefix(prefix) {
             if let Some((type_part, msg)) = rest.split_once(": ") {
                 return (Some(type_part.trim().to_string()), msg.to_string());
             }
             return (Some(rest.trim().to_string()), String::new());
+        }
+    }
+    // Godot/运行时日志常直接以 `TYPE: MSG` 开头（级别前缀已剥）。
+    if let Some((type_part, msg)) = first_line.split_once(": ") {
+        let candidate = type_part.trim();
+        let dotted = !candidate.is_empty()
+            && candidate.contains('.')
+            && candidate
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'+' || b == b'_');
+        if dotted {
+            return (Some(candidate.to_string()), msg.to_string());
         }
     }
     (None, message.to_string())

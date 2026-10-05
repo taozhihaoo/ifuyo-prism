@@ -2561,6 +2561,7 @@ dependencies = [
  "prism-context",
  "prism-core",
  "prism-csharp",
+ "prism-debug",
  "prism-env",
  "prism-git",
  "prism-godot",
@@ -2702,6 +2703,7 @@ version = "0.1.0"
 dependencies = [
  "prism-core",
  "prism-csharp",
+ "prism-debug",
  "prism-godot",
  "prism-intel",
  "prism-supply",

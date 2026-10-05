@@ -8,6 +8,9 @@ use crate::model::{DebugEvent, DebugSource, EventDomain, NormalizedLevel, ParseS
 use prism_intel::identity::fnv1a_hex16;
 use std::collections::BTreeMap;
 
+/// 消息内换行（以数值形式构造，避免工具链转义歧义）。
+const NEWLINE_CHAR: char = '\u{000a}';
+
 /// 事件/消息上限（§四十七 资源限制；超出 ⇒ truncated + 诊断）。
 pub const MAX_MESSAGE_CHARS: usize = 2000;
 pub const MAX_EVENTS: usize = 50_000;
@@ -93,12 +96,14 @@ pub fn parse_source(
         _ => detect_parser(content),
     };
     let mut diagnostics = Vec::new();
+    let source_id: String = format!("src:{}", fnv1a_hex16(logical_path));
     let (mut events, state, redactions) = match kind {
-        ParserKind::DotNetException => parse_dotnet(content, &mut diagnostics),
-        ParserKind::Godot => parse_godot(content, &mut diagnostics),
-        ParserKind::BuildOutput => parse_build(content, &mut diagnostics),
-        ParserKind::TestOutput => parse_test(content, &mut diagnostics),
-        ParserKind::GenericTextLog => parse_generic(content, &mut diagnostics),
+        // 注意：source_id 以 &str 借用传入（所有权留在 DebugSource）。
+        ParserKind::DotNetException => parse_dotnet(source_id.as_str(), content, &mut diagnostics),
+        ParserKind::Godot => parse_godot(source_id.as_str(), content, &mut diagnostics),
+        ParserKind::BuildOutput => parse_build(source_id.as_str(), content, &mut diagnostics),
+        ParserKind::TestOutput => parse_test(source_id.as_str(), content, &mut diagnostics),
+        ParserKind::GenericTextLog => parse_generic(source_id.as_str(), content, &mut diagnostics),
     };
     if events.len() >= MAX_EVENTS {
         events.truncate(MAX_EVENTS);
@@ -108,7 +113,7 @@ pub fn parse_source(
         diagnostics.push("source is empty".to_string());
     }
     let source = DebugSource {
-        source_id: format!("src:{}", fnv1a_hex16(logical_path)),
+        source_id: source_id.to_string(),
         source_type: kind.source_type(),
         logical_path: logical_path.to_string(),
         physical_path: physical_path.to_string(),
@@ -257,6 +262,7 @@ fn split_level(rest: &str) -> (NormalizedLevel, Option<String>, &str) {
 /// 通用文本日志（兜底；逐行事件，无级别行并入上一条消息——§三十三
 /// 多行消息/交错输出）。
 fn parse_generic(
+    source_id: &str,
     content: &str,
     diagnostics: &mut Vec<String>,
 ) -> (Vec<DebugEvent>, ParseState, u64) {
@@ -273,12 +279,12 @@ fn parse_generic(
             // 无级别/时间戳 ⇒ 上一条事件的续行（多行消息）。
             let last = events.last_mut().expect("non-empty checked");
             if last.message.chars().count() < MAX_MESSAGE_CHARS {
-                last.message.push(' ');
+                // 续行独立成行（dotnet 帧解析按行切分）。
+                last.message.push(NEWLINE_CHAR);
                 last.message.push_str(&truncate_message(message));
             }
             continue;
         }
-        let source_id = "generic";
         let (event, count) = make_event(
             source_id,
             index + 1,
@@ -302,6 +308,7 @@ fn parse_generic(
 /// `Unhandled exception. TYPE: MSG` + `   at Frame`（`in path:line` 可选）
 /// + `---> INNER TYPE: MSG` 嵌套。
 pub fn parse_dotnet(
+    source_id: &str,
     content: &str,
     diagnostics: &mut Vec<String>,
 ) -> (Vec<DebugEvent>, ParseState, u64) {
@@ -328,7 +335,7 @@ pub fn parse_dotnet(
         }
         seen_exception = true;
         let (event, count) = make_event(
-            "dotnet",
+            source_id,
             line_no,
             None,
             NormalizedLevel::Error,
@@ -362,7 +369,11 @@ fn looks_like_exception_type(line: &str) -> bool {
 /// Godot 日志（§十二/§十三）：`ERROR:`/`SCRIPT ERROR:`/`WARNING:` +
 /// `at: Func (res://path:line)` 尾缀；常见运行时错误原文保留在消息里
 /// （规则层按前缀识别，不硬编码控制台文本清单——§十三）。
-fn parse_godot(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>, ParseState, u64) {
+fn parse_godot(
+    source_id: &str,
+    content: &str,
+    diagnostics: &mut Vec<String>,
+) -> (Vec<DebugEvent>, ParseState, u64) {
     let mut events: Vec<DebugEvent> = Vec::new();
     let mut matched = 0usize;
     let mut redactions = 0u64;
@@ -385,16 +396,15 @@ fn parse_godot(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
         if !is_godot {
             // 引擎日志里的杂项行：并入上一条（如有），否则跳过。
             if let Some(last) = events.last_mut() {
-                if is_frame_continuation || last.message.len() < MAX_MESSAGE_CHARS / 2 {
-                    last.message.push(' ');
-                    last.message.push_str(trimmed);
-                }
+                // 帧行独立成行（帧解析按行切分）。
+                last.message.push(NEWLINE_CHAR);
+                last.message.push_str(trimmed);
             }
             continue;
         }
         matched += 1;
         let (event, count) = make_event(
-            "godot",
+            source_id,
             index + 1,
             None,
             level,
@@ -414,7 +424,11 @@ fn parse_godot(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
 
 /// 构建输出（§十四/§十五）：`path(line,col): error CS0246: msg`（MSBuild）
 /// 与 `error[E0308]: msg` + ` --> path:line:col`（cargo）。
-fn parse_build(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>, ParseState, u64) {
+fn parse_build(
+    source_id: &str,
+    content: &str,
+    diagnostics: &mut Vec<String>,
+) -> (Vec<DebugEvent>, ParseState, u64) {
     let mut events: Vec<DebugEvent> = Vec::new();
     let mut matched = 0usize;
     let mut redactions = 0u64;
@@ -439,7 +453,7 @@ fn parse_build(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
                         matched += 1;
                         let (code, message) = after.split_once(": ").unwrap_or(("", after));
                         let (mut event, count) = make_event(
-                            "build",
+                            source_id,
                             line_no,
                             None,
                             if is_error {
@@ -471,7 +485,7 @@ fn parse_build(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
             matched += 1;
             let (code, message) = rest.split_once("]: ").unwrap_or(("", rest));
             let (mut event, count) = make_event(
-                "build",
+                source_id,
                 line_no,
                 None,
                 NormalizedLevel::Error,
@@ -487,7 +501,7 @@ fn parse_build(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
         if let Some(rest) = trimmed.strip_prefix("warning: ") {
             matched += 1;
             let (event, count) = make_event(
-                "build",
+                source_id,
                 line_no,
                 None,
                 NormalizedLevel::Warning,
@@ -528,7 +542,11 @@ fn parse_build(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>
 
 /// 测试输出（§十六）：`Failed <name>`（xUnit）与 `FAIL <name>`（pytest/
 /// node 形态）；错误详情并入消息。
-fn parse_test(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>, ParseState, u64) {
+fn parse_test(
+    source_id: &str,
+    content: &str,
+    diagnostics: &mut Vec<String>,
+) -> (Vec<DebugEvent>, ParseState, u64) {
     let mut events: Vec<DebugEvent> = Vec::new();
     let mut matched = 0usize;
     let mut redactions = 0u64;
@@ -550,7 +568,7 @@ fn parse_test(content: &str, diagnostics: &mut Vec<String>) -> (Vec<DebugEvent>,
         if let Some(name) = failed_name {
             matched += 1;
             let (mut event, count) = make_event(
-                "test",
+                source_id,
                 index + 1,
                 None,
                 NormalizedLevel::Error,
@@ -586,14 +604,25 @@ pub fn parse_frames_from_message(message: &str) -> Vec<(String, Option<String>, 
     let mut frames = Vec::new();
     for line in message.lines() {
         let trimmed = line.trim();
-        let Some(rest) = trimmed.strip_prefix("at ") else {
-            continue;
+        // dotnet at 帧行 + Godot at: 帧行（res:// 位置）双形态。
+        let rest = match trimmed
+            .strip_prefix("at ")
+            .or_else(|| trimmed.strip_prefix("at: "))
+        {
+            Some(rest) => rest,
+            None => continue,
         };
         // `Namespace.Type.Method(args) in C:\path\File.cs:line 218`
         // `Namespace.Type.Method(args) in /path/File.cs:218`
         let (call, location) = match rest.split_once(" in ") {
             Some((call, location)) => (call.trim(), Some(location.trim())),
-            None => (rest.trim(), None),
+            None => match rest.rfind('(') {
+                // Godot 形态：`Func (res://path:line)` —— 尾括号组即位置。
+                Some(at) if rest.ends_with(')') => {
+                    (rest[..at].trim(), Some(&rest[at + 1..rest.len() - 1]))
+                }
+                _ => (rest.trim(), None),
+            },
         };
         let (file_path, line_no) = parse_frame_location(location);
         frames.push((call.to_string(), file_path, line_no));

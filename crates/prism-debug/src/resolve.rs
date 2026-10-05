@@ -12,6 +12,10 @@ use std::path::Path;
 
 /// 帧路径 → 项目相对路径（绝对路径剥根、反斜杠转斜杠）。
 pub fn to_project_relative(file_path: &str, project_root: &Path) -> String {
+    // Godot 资源路径（res://）即项目相对路径（§12 M24 口径）。
+    if let Some(rest) = file_path.strip_prefix("res://") {
+        return rest.to_string();
+    }
     let normalized = file_path.replace('\\', "/");
     let root = project_root.to_string_lossy().replace('\\', "/");
     let root = root.trim_end_matches('/');
@@ -112,7 +116,7 @@ fn resolve_one(
                 node_path,
                 reasoning: format!(
                     "file `{relative}` + method `{}` matched single M23 symbol{}",
-                    by_method[0],
+                    frame.method.as_deref().unwrap_or(""),
                     if line_in_range == Some(true) {
                         " with line inside declaration range"
                     } else {

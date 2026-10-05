@@ -15,6 +15,7 @@
 mod changes_command;
 mod cli;
 mod context_command;
+mod debug_command;
 mod env_command;
 mod git_command;
 mod health2_command;
@@ -169,6 +170,12 @@ fn run() -> i32 {
             baseline.as_deref(),
             json,
         ),
+        Some(cli::Command::Debug {
+            path,
+            sources,
+            baseline,
+            json,
+        }) => debug_command::run(&path, &sources, baseline.as_deref(), json),
         Some(cli::Command::Verify {
             path,
             json,

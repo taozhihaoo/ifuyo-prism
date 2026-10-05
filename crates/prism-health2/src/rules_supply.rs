@@ -527,6 +527,7 @@ mod tests {
             csharp: None,
             godot: None,
             supply,
+            debug: None,
             cancel,
         }
     }

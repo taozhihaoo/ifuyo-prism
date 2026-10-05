@@ -27,6 +27,10 @@ pub struct RuleThresholds {
     pub max_semantic_groups: usize,
     /// M29 供给规则单条 finding 上限（§69 爆炸防护）。
     pub max_supply_findings: usize,
+    /// M210：运行时错误重复次数阈值（RepeatedRuntimeError）。
+    pub repeated_error_occurrences: u64,
+    /// M210：是否上报未解析栈帧（DEBUG/UNRESOLVED_STACK_FRAME）。
+    pub report_unresolved_frames: bool,
 }
 
 impl Default for RuleThresholds {
@@ -37,6 +41,8 @@ impl Default for RuleThresholds {
             large_method_lines: 100,
             max_semantic_groups: 200,
             max_supply_findings: 200,
+            repeated_error_occurrences: 10,
+            report_unresolved_frames: true,
         }
     }
 }

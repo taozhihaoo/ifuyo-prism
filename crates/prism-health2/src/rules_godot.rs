@@ -153,6 +153,7 @@ mod tests {
             csharp: None,
             godot: Some(analysis),
             supply: None,
+            debug: None,
             cancel,
         }
     }
@@ -278,6 +279,7 @@ mod tests {
             csharp: None,
             godot: None,
             supply: None,
+            debug: None,
             cancel: &cancel,
         };
         let outcome = scene_wiring_rule(&ctx);

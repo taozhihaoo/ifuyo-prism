@@ -19,12 +19,21 @@ pub struct SourceFileInput {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RuleThresholds {
     pub large_file_lines: u64,
+    /// 类型声明行数上限（§B Symbol/Complexity）。
+    pub large_type_lines: u64,
+    /// 方法类声明行数上限（§B）。
+    pub large_method_lines: u64,
+    /// 语义诊断聚合组上限（finding 爆炸防护）。
+    pub max_semantic_groups: usize,
 }
 
 impl Default for RuleThresholds {
     fn default() -> Self {
         RuleThresholds {
             large_file_lines: 1000,
+            large_type_lines: 400,
+            large_method_lines: 100,
+            max_semantic_groups: 200,
         }
     }
 }
@@ -68,6 +77,61 @@ pub fn large_file_findings(
         out.push(finding);
     }
     out
+}
+
+/// 注册表形态的结构规则（§C）：在 `large_file_findings` 之上补
+/// Metric（files/lines/large_files）与每条 Finding 的 File 证据。
+pub fn large_file_rule(ctx: &crate::registry::RuleContext) -> crate::registry::RuleOutcome {
+    let mut outcome = crate::registry::RuleOutcome::default();
+    if ctx.files.is_empty() {
+        outcome
+            .diagnostics
+            .push("no file inventory injected; rule skipped".to_string());
+        return outcome;
+    }
+    let total_lines: u64 = ctx.files.iter().map(|f| f.lines).sum();
+    let findings = large_file_findings(ctx.files, ctx.thresholds, ctx.observed_at);
+    let large_files = findings.len() as u64;
+    for mut finding in findings {
+        let path = finding.metadata.get("path").cloned().unwrap_or_default();
+        let lines = finding.metadata.get("lines").cloned().unwrap_or_default();
+        let evidence = prism_intel::evidence::Evidence::new(
+            prism_intel::evidence::EvidenceKind::File,
+            Some(path.clone()),
+            None,
+            None,
+            format!("L0 inventory: {lines} lines"),
+        );
+        finding.evidence = vec![evidence.id.clone()];
+        outcome.evidence.push(evidence);
+        outcome.findings.push(finding);
+    }
+    for (key, value, definition) in [
+        (
+            "files_total",
+            ctx.files.len() as u64,
+            "number of inventoried source files",
+        ),
+        (
+            "lines_total",
+            total_lines,
+            "total lines across inventoried files",
+        ),
+        (
+            "large_files",
+            large_files,
+            "files over the large-file threshold",
+        ),
+    ] {
+        outcome.metrics.push(crate::model::Metric {
+            key: key.to_string(),
+            value,
+            unit: "count".to_string(),
+            definition: definition.to_string(),
+            producer: "prism-health2::rules".to_string(),
+        });
+    }
+    outcome
 }
 
 #[cfg(test)]

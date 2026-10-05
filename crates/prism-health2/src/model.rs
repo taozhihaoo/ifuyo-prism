@@ -32,6 +32,9 @@ pub struct Health2Report {
     pub metrics: BTreeMap<String, Metric>,
     /// Evidence-backed Findings（M21 Finding SoT，§4）。
     pub findings: Vec<Finding>,
+    /// 证据库：findings[].evidence 引用的 Evidence 全集（§37 可追溯）。
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub evidence: Vec<prism_intel::evidence::Evidence>,
     /// 规则执行诊断（prerequisite 失败/跳过，§37）。
     pub diagnostics: Vec<String>,
 }

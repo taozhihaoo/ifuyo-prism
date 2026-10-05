@@ -15,11 +15,17 @@
 pub mod baseline;
 pub mod gate;
 pub mod model;
+pub mod registry;
 pub mod rules;
+pub mod rules_csharp;
+pub mod rules_godot;
 
 pub use baseline::{diff_against_baseline, mark_regressed};
 pub use gate::{evaluate_gate, GateVerdict, QualityGatePolicy, QualityGateResult};
 pub use model::{Health2Report, LifecycleDiff, Metric};
+pub use registry::{
+    CSharpFacts, RuleCategory, RuleContext, RuleDefinition, RuleOutcome, RuleRegistry,
+};
 pub use rules::{large_file_findings, RuleThresholds, SourceFileInput};
 
 /// M28 输出契约版本（§71）。
@@ -39,6 +45,7 @@ pub fn analyze_inventory(
         schema_version: HEALTH2_SCHEMA_VERSION,
         metrics: metrics_from_counts(files.len() as u64, total_lines, findings.len() as u64),
         findings,
+        evidence: Vec::new(),
         diagnostics: Vec::new(),
     }
 }

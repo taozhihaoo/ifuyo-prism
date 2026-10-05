@@ -1,16 +1,20 @@
 //! `prism health2`（2.0-M28）：Health & Engineering Findings 2.0。
 //!
-//! 流程（§73 Vertical Slice）：M1 Discovery 清单 → 结构面规则（大文件，
-//! 阈值可配置）→ Metric + Finding 报告 → 生命周期（`--baseline` 对比，
-//! 缺省 ⇒ 首轮全 New）→ Quality Gate（默认 policy）。规则只消费既有
-//! 清单事实，不重新扫描文件系统（§2）；无网络/shell。
+//! 流程（§73 Vertical Slice）：M1 Discovery 清单 → 注入既有引擎事实
+//! （L0 行数 / M23-M25 C# / M24 Godot）→ RuleRegistry 四类规则
+//! （Structural/Complexity/Semantic/Godot）→ Metric + Finding + Evidence
+//! 报告 → 生命周期（`--baseline` 对比，缺省 ⇒ 首轮全 New）→ Quality
+//! Gate（默认 policy）。规则不自扫描文件系统、不重跑分析器（§2）；
+//! 无网络/shell。
 
 use prism_core::config::PrismConfig;
 use prism_core::task::CancellationToken;
+use prism_csharp::{SemanticEngine, SymbolEngine};
 use prism_health2::{
-    analyze_inventory, diff_against_baseline, evaluate_gate, Health2Report, RuleThresholds,
-    SourceFileInput,
+    diff_against_baseline, evaluate_gate, CSharpFacts, Health2Report, RuleContext, RuleRegistry,
+    RuleThresholds, SourceFileInput,
 };
+use std::collections::BTreeMap;
 use std::path::Path;
 
 /// 行数统计的有界读取上限（与 M23/M25 上下文路径一致的 4 MiB 预算）。
@@ -42,8 +46,10 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
     };
 
     // ---- 清单 → 行数输入（有界读取；跳过者记诊断，§36/§59）----
+    // .cs 内容顺手缓存（同一次有界读取复用给 M23/M25 引擎，不二次读盘）。
     let root = path;
     let mut inputs: Vec<SourceFileInput> = Vec::new();
+    let mut cs_sources: BTreeMap<String, String> = BTreeMap::new();
     let mut diagnostics: Vec<String> = Vec::new();
     for file in &discovery.files {
         // 结构规则只看源/测试文本；资产/二进制/配置不参与（§11A）。
@@ -68,6 +74,18 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
                 if !bytes.is_empty() && *bytes.last().unwrap() != b'\n' {
                     lines += 1;
                 }
+                if file
+                    .relative_path
+                    .rsplit('/')
+                    .next()
+                    .map(|name| name.ends_with(".cs"))
+                    .unwrap_or(false)
+                {
+                    cs_sources.insert(
+                        file.relative_path.clone(),
+                        String::from_utf8_lossy(&bytes).into_owned(),
+                    );
+                }
                 inputs.push(SourceFileInput {
                     path: file.relative_path.clone(),
                     lines,
@@ -82,9 +100,76 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
     let observed_at = prism_core::Timestamp::now_utc().to_string();
     let thresholds = RuleThresholds {
         large_file_lines: max_file_lines,
+        ..RuleThresholds::default()
     };
-    let mut report = analyze_inventory(&inputs, &thresholds, &observed_at);
-    report.diagnostics = diagnostics;
+
+    // ---- C# 引擎事实（M23 抽取 + M25 语义；注入规则，不自解析 §2）----
+    let mut symbol_engine = SymbolEngine::new();
+    for (path, source) in &cs_sources {
+        symbol_engine.update_file(path, source);
+    }
+    let symbol_index = symbol_engine.build_index();
+    let mut semantic_engine = SemanticEngine::new();
+    for (path, source) in &cs_sources {
+        semantic_engine.update_source(&symbol_index, path, source);
+    }
+    semantic_engine.rebuild(&symbol_index);
+    let csharp_facts = CSharpFacts {
+        extractions: symbol_engine.extraction_map(),
+        semantics: if cs_sources.is_empty() {
+            None
+        } else {
+            Some(&semantic_engine)
+        },
+    };
+
+    // ---- Godot 事实（M24 Adapter；有 godot 文件才分析）----
+    let godot_files: Vec<(String, String)> = discovery
+        .files
+        .iter()
+        .filter(|f| {
+            f.relative_path == "project.godot"
+                || f.relative_path.ends_with(".tscn")
+                || f.relative_path.ends_with(".tres")
+                || f.relative_path.ends_with(".res")
+        })
+        .map(|f| (f.relative_path.clone(), String::new()))
+        .collect();
+    let godot_analysis = if godot_files.is_empty() {
+        None
+    } else {
+        let project = match prism_project::Project::from_root(path) {
+            Ok(project) => project,
+            Err(err) => {
+                eprintln!("prism: health2 failed opening project: {err}");
+                return crate::EXIT_ERROR;
+            }
+        };
+        let context = prism_intel::AnalysisContext::new(
+            prism_intel::ProjectIdentity::from_project(&project),
+            prism_intel::AnalysisScope::Domain("godot".to_string()),
+            vec!["godot".to_string()],
+            cancel.clone(),
+        );
+        let outcome = prism_godot::analyze(&godot_files, &project.root_path, &context);
+        for warning in &outcome.warnings {
+            diagnostics.push(format!("godot: {warning}"));
+        }
+        outcome.data
+    };
+
+    // ---- RuleRegistry 评估（§C：确定性顺序；取消保留部分并记诊断）----
+    let registry = RuleRegistry::with_builtins();
+    let rule_context = RuleContext {
+        files: &inputs,
+        thresholds: &thresholds,
+        observed_at: &observed_at,
+        csharp: Some(csharp_facts),
+        godot: godot_analysis.as_ref(),
+        cancel: &cancel,
+    };
+    let mut report = registry.evaluate(&rule_context);
+    report.diagnostics.extend(diagnostics);
 
     // ---- 生命周期（§26/§31/§33）：baseline 缺省 ⇒ 首轮全 New ----
     // 基线文件 = 上一次 `prism health2 --json` 的完整输出：报告字段 +
@@ -146,8 +231,10 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
     };
 
     // ---- Quality Gate（§29-§30：策略判断；默认 policy，breaking=0）----
+    // 无基线 = 与空基线对比（首轮全 New，可判定）；仅 schema 不兼容
+    // 才 UNKNOWN（无对比依据，不伪造）。
     let gate = evaluate_gate(
-        comparable.map(|_| &diff),
+        if schema_mismatch { None } else { Some(&diff) },
         0,
         &prism_health2::QualityGatePolicy::default(),
     );
@@ -157,6 +244,7 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
             "schema_version": report.schema_version,
             "metrics": report.metrics,
             "findings": report.findings,
+            "evidence": report.evidence,
             "diagnostics": report.diagnostics,
             "lifecycle": {
                 "new": diff.new_findings,

@@ -2717,6 +2717,7 @@ dependencies = [
  "prism-core",
  "prism-csharp",
  "prism-debug",
+ "prism-evolution",
  "prism-godot",
  "prism-intel",
  "prism-supply",

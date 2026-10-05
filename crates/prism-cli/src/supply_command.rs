@@ -213,6 +213,7 @@ pub fn run(
         godot: None,
         supply: Some(&report),
         debug: None,
+        evolution: None,
         cancel: &cancel,
     };
     let mut health_report = registry.evaluate(&rule_context);

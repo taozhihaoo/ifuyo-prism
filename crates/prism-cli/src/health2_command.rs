@@ -168,6 +168,7 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
         godot: godot_analysis.as_ref(),
         supply: None,
         debug: None,
+        evolution: None,
         cancel: &cancel,
     };
     let mut report = registry.evaluate(&rule_context);

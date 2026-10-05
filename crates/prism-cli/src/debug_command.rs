@@ -189,6 +189,7 @@ pub fn run(path: &Path, sources: &[PathBuf], baseline: Option<&Path>, json: bool
         godot: None,
         supply: None,
         debug: Some(&report),
+        evolution: None,
         cancel: &cancel,
     };
     let health_report = registry.evaluate(&rule_context);

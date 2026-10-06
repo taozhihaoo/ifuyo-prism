@@ -48,7 +48,7 @@ fn stage_rows() -> Vec<FullStageState> {
 }
 
 fn set_stage(
-    stages: &mut Vec<FullStageState>,
+    stages: &mut [FullStageState],
     index: usize,
     status: &str,
     duration_ms: Option<u64>,
@@ -124,13 +124,13 @@ fn run_pipeline(
     };
 
     let mut carried = Carried::default();
-    for index in 0..STAGE_KEYS.len() {
+    for (index, key) in STAGE_KEYS.iter().enumerate() {
         {
             let mut session = lock_session(&session_arc);
             set_stage(&mut session.full_stages, index, "running", None, None);
         }
         let started = Instant::now();
-        let outcome = run_stage(index, &root, &token, &session_arc, &mut carried, &cache);
+        let outcome = run_stage(key, &root, &token, &session_arc, &mut carried, &cache);
         let duration = started.elapsed().as_millis() as u64;
         match outcome {
             StageOutcome::Completed => {
@@ -199,14 +199,14 @@ enum StageOutcome {
 }
 
 fn run_stage(
-    index: usize,
+    stage_key: &str,
     root: &std::path::Path,
     token: &CancellationToken,
     session_arc: &std::sync::Arc<std::sync::Mutex<crate::state::ScanSession>>,
     carried: &mut Carried,
     cache: &std::sync::Arc<crate::session_cache::SessionCache>,
 ) -> StageOutcome {
-    match STAGE_KEYS[index] {
+    match stage_key {
         "scan" => {
             let progress_arc = session_arc.clone();
             let result = prism_project::DiscoveryService::new().discover(

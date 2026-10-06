@@ -65,7 +65,9 @@ export default function HealthPage() {
           timer = setTimeout(poll, 300);
           return;
         }
-        if (status.status === "idle") {
+        if (status.status === "idle" || status.status === "cancelled") {
+          // cancelled = 上次离开页面时按 §102/§160 取消的后台分析——
+          // 回到本页应自动重启，而不是永久卡在 cancelled 错误上。
           await startHealth();
           timer = setTimeout(poll, 300);
           return;

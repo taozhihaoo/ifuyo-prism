@@ -3,6 +3,7 @@ import { useProjectStore } from "../app/ProjectStore";
 import CompletenessBanner from "./CompletenessBanner";
 import {
   cancelHealth2,
+  getCachedDomain,
   getHealth2Results,
   getHealth2Status,
   startHealth2,
@@ -14,6 +15,7 @@ type LoadState =
   | { kind: "loading" }
   | { kind: "running" }
   | { kind: "loaded"; report: Health2ReportDto }
+  | { kind: "cached"; report: Health2ReportDto; completedAt: string; stale: boolean }
   | { kind: "error"; message: string };
 
 const GATE_LABEL: Record<string, string> = {
@@ -35,15 +37,17 @@ const LIFECYCLE_ROWS: { key: keyof Health2ReportDto["lifecycle"]; label: string 
  * 健康页 2.0 health2 轨道（P1-1）。
  *
  * 数据 = `prism_health2::analyze_project`——与 CLI `prism health2` **同一
- * 函数**（§71：GUI 与 CLI 输出一致由构造保证）。进面板自动运行（与 1.0
- * 轨道同 UX）；离面板取消（§102/§160）；cancelled 回来自动重启。
- * 无健康分（§21/§38）；Gate 是策略判断不是评分（§29-§30）。
+ * 函数**（§71：GUI 与 CLI 输出一致由构造保证）。离面板取消（§102/§160）。
+ * P2-2：会话无结果时先查会话缓存——命中显示"上次结果 + 重新运行"，
+ * 不自动重跑（重开项目后秒级回显）；未命中才自动启动。
  */
 export default function Health2Panel() {
   const { project } = useProjectStore();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [showAllDiagnostics, setShowAllDiagnostics] = useState(false);
+  // 「重新运行」后跳过缓存（否则 idle 分支又命中缓存，永远不真跑）。
+  const [skipCache, setSkipCache] = useState(false);
+  // 触发轮询重启。
+  const [pollTick, setPollTick] = useState(0);
 
   useEffect(() => {
     if (!project) {
@@ -71,6 +75,22 @@ export default function Health2Panel() {
           return;
         }
         if (status.status === "idle" || status.status === "cancelled") {
+          if (!skipCache) {
+            try {
+              const cached = await getCachedDomain("health2");
+              if (!disposed && cached?.data.kind === "health2") {
+                setState({
+                  kind: "cached",
+                  report: cached.data.report,
+                  completedAt: cached.completed_at,
+                  stale: cached.stale,
+                });
+                return;
+              }
+            } catch {
+              /* 缓存读取失败 ⇒ 走原自动启动路径 */
+            }
+          }
           await startHealth2();
           timer = setTimeout(poll, 300);
           return;
@@ -98,8 +118,15 @@ export default function Health2Panel() {
       disposed = true;
       if (timer) clearTimeout(timer);
     };
-  }, [project?.root_path]);
+  }, [project?.root_path, pollTick, skipCache]);
 
+  if (!project) {
+    return (
+      <div className="card" data-testid="health2-needs-project">
+        <p className="muted">Open a project to run health2 here.</p>
+      </div>
+    );
+  }
   if (state.kind === "loading" || state.kind === "running") {
     return (
       <div className="card" data-testid="health2-loading">
@@ -115,7 +142,41 @@ export default function Health2Panel() {
     );
   }
 
-  const { report } = state;
+  return (
+    <section className="stack">
+      {state.kind === "cached" && (
+        <div className="warning-box" data-testid="health2-cached-banner">
+          <p>
+            上次 health2 结果（本会话缓存） · 完成于{" "}
+            {new Date(state.completedAt).toLocaleString()}
+            {state.stale
+              ? " · 工作区已变化，结果可能过期"
+              : " · 工作区基线未变化"}
+          </p>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setSkipCache(true);
+              setState({ kind: "loading" });
+              setPollTick((tick) => tick + 1);
+            }}
+            data-testid="health2-rerun"
+          >
+            重新运行
+          </button>
+        </div>
+      )}
+      <Health2Results report={state.report} />
+    </section>
+  );
+}
+
+/** 结果视图（fresh 与 cached 共用）。 */
+function Health2Results({ report }: { report: Health2ReportDto }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAllDiagnostics, setShowAllDiagnostics] = useState(false);
+
   // 规则执行诊断（前提跳过/读取跳过）⇒ 完整度横幅（P2-5 组件复用）。
   const diagnostics = report.diagnostics.map((detail) => ({
     kind: "health2-diagnostic",

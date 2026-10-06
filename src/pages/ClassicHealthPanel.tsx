@@ -3,6 +3,7 @@ import { useProjectStore } from "../app/ProjectStore";
 import CompletenessBanner from "../components/CompletenessBanner";
 import {
   cancelHealth,
+  getCachedDomain,
   getHealthAnalysis,
   getHealthStatus,
   startHealth,
@@ -13,6 +14,7 @@ import type { FindingDto, HealthAnalysisDto } from "../types/prism";
 type LoadState =
   | { kind: "loading" }
   | { kind: "loaded"; analysis: HealthAnalysisDto }
+  | { kind: "cached"; analysis: HealthAnalysisDto; completedAt: string; stale: boolean }
   | { kind: "error"; message: string };
 
 type SeverityFilter = "all" | "critical" | "warning" | "info";
@@ -30,15 +32,17 @@ const CATEGORIES: { key: string; label: string }[] = [
  * 健康页 1.0 轨道（M7，规格 §81–§86/§141–§144；P1-1 双轨化后由 HealthPage
  * 以轨道切换挂载）。证据化 findings + 过滤 + 明细展开；无健康分（§4/§145）。
  * 规则来源标注见 health-rule-source（P2-4a/§71）。
+ *
+ * P2-2：会话无结果时先查会话缓存——命中显示"上次结果 + 重新运行"，
+ * 不自动重跑（重开项目后秒级回显）；未命中才自动启动。
  */
 export default function ClassicHealthPanel() {
   const { project } = useProjectStore();
   const [state, setState] = useState<LoadState>({ kind: "loading" });
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [changedOnly, setChangedOnly] = useState(false);
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [showAll, setShowAll] = useState(false);
+  // 「重新运行」后跳过缓存（否则 idle 分支又命中缓存，永远不真跑）。
+  const [skipCache, setSkipCache] = useState(false);
+  // 触发轮询重启：重新运行/跳过缓存后需要重新拉起。
+  const [pollTick, setPollTick] = useState(0);
 
   useEffect(() => {
     if (!project) {
@@ -69,7 +73,23 @@ export default function ClassicHealthPanel() {
         }
         if (status.status === "idle" || status.status === "cancelled") {
           // cancelled = 上次离开页面时按 §102/§160 取消的后台分析——
-          // 回到本页应自动重启，而不是永久卡在 cancelled 错误上。
+          // 回到本页先看缓存，未命中再自动重启（不永久卡在 cancelled 上）。
+          if (!skipCache) {
+            try {
+              const cached = await getCachedDomain("health");
+              if (!disposed && cached?.data.kind === "health") {
+                setState({
+                  kind: "cached",
+                  analysis: cached.data.analysis,
+                  completedAt: cached.completed_at,
+                  stale: cached.stale,
+                });
+                return;
+              }
+            } catch {
+              /* 缓存读取失败 ⇒ 走原自动运行路径 */
+            }
+          }
           await startHealth();
           timer = setTimeout(poll, 300);
           return;
@@ -98,7 +118,7 @@ export default function ClassicHealthPanel() {
       disposed = true;
       if (timer) clearTimeout(timer);
     };
-  }, [project?.root_path]);
+  }, [project?.root_path, pollTick, skipCache]);
 
   if (!project) {
     return (
@@ -124,7 +144,44 @@ export default function ClassicHealthPanel() {
     );
   }
 
-  const { analysis } = state;
+  return (
+    <section className="stack">
+      {state.kind === "cached" && (
+        <div className="warning-box" data-testid="health-cached-banner">
+          <p>
+            上次健康结果（本会话缓存） · 完成于{" "}
+            {new Date(state.completedAt).toLocaleString()}
+            {state.stale
+              ? " · 工作区已变化，结果可能过期"
+              : " · 工作区基线未变化"}
+          </p>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setSkipCache(true);
+              setState({ kind: "loading" });
+              setPollTick((tick) => tick + 1);
+            }}
+            data-testid="health-rerun"
+          >
+            重新运行
+          </button>
+        </div>
+      )}
+      <ClassicHealthResults analysis={state.analysis} />
+    </section>
+  );
+}
+
+/** 结果视图（fresh 与 cached 共用；过滤状态属于视图，不属于加载流程）。 */
+function ClassicHealthResults({ analysis }: { analysis: HealthAnalysisDto }) {
+  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [changedOnly, setChangedOnly] = useState(false);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
+
   const summary = analysis.summary;
   // P2-4a：规则来源标注。1.0 注册表全量 = 本次检查（含失败）+ 禁用，
   // 由报告派生、不硬编码；与 CLI `prism health2`（2.0 增强规则集）区分。
@@ -139,7 +196,7 @@ export default function ClassicHealthPanel() {
   const visible = showAll ? filtered : filtered.slice(0, 50);
 
   return (
-    <section className="stack">
+    <>
       <CompletenessBanner
         testId="health-completeness"
         data={{
@@ -322,6 +379,6 @@ export default function ClassicHealthPanel() {
             ` · Disabled: ${analysis.disabled_rules.join(", ")}`}
         </p>
       </div>
-    </section>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { useUiSettings } from "../app/SettingsProvider";
 import ScanProgressCard from "../components/ScanProgressCard";
 import ProjectTypesCard from "../components/ProjectTypesCard";
 import IntelligenceSummaryCard from "../components/IntelligenceSummaryCard";
+import FullAnalysisCard from "../components/FullAnalysisCard";
 import {
   getGitFacts,
   getHealthStatus,
@@ -213,6 +214,8 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
           )}
 
           <ProjectTypesCard candidates={discovery.project_types} />
+
+          <FullAnalysisCard />
 
           <IntelligenceSummaryCard />
 

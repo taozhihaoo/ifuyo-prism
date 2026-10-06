@@ -16,6 +16,8 @@ import type {
   Health2StatusDto,
   EvolutionReportDto,
   IntelligenceSummaryDto,
+  FullAnalysisStatusDto,
+  CachedDomainDto,
   VerifyPlanDto,
   VerificationReportDto,
   VerifyStatusDto,
@@ -364,4 +366,25 @@ export function getEvolutionReport(): Promise<EvolutionReportDto> {
 
 export function getIntelligenceSummary(): Promise<IntelligenceSummaryDto> {
   return invoke<IntelligenceSummaryDto>("get_intelligence_summary");
+}
+
+// ---------- 批3：全面分析编排（P2-1）+ 会话缓存（P2-2） ----------
+
+export function startFullAnalysis(): Promise<string> {
+  return invoke<string>("start_full_analysis");
+}
+
+export function getFullAnalysisStatus(): Promise<FullAnalysisStatusDto> {
+  return invoke<FullAnalysisStatusDto>("get_full_analysis_status");
+}
+
+export function cancelFullAnalysis(): Promise<void> {
+  return invoke<void>("cancel_full_analysis");
+}
+
+/** 会话缓存读取（P2-2）；无缓存返回 null。stale 由后端按工作区基线判定。 */
+export function getCachedDomain(
+  domain: "health" | "health2",
+): Promise<CachedDomainDto | null> {
+  return invoke<CachedDomainDto | null>("get_cached_domain", { domain });
 }

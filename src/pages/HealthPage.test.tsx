@@ -13,6 +13,7 @@ const ipc = vi.hoisted(() => ({
   getHealth2Results: vi.fn(),
   cancelHealth2: vi.fn(),
   getEvolutionReport: vi.fn(),
+  getCachedDomain: vi.fn(),
   toPrismError: (err: unknown) => ({ code: "internal", message: String(err) }),
 }));
 
@@ -191,6 +192,7 @@ describe("HealthPage (M7 GUI)", () => {  beforeEach(() => {
     ipc.getHealth2Results.mockReset();
     ipc.cancelHealth2.mockReset().mockResolvedValue(undefined);
     ipc.getEvolutionReport.mockReset();
+    ipc.getCachedDomain.mockReset().mockResolvedValue(null);
   });
 
   it("renders summary, category groups and findings list", async () => {
@@ -399,6 +401,33 @@ describe("HealthPage (M7 GUI)", () => {  beforeEach(() => {
       expect(ipc.cancelHealth2).toHaveBeenCalled();
     });
     expect(screen.getByTestId("health-summary")).toBeInTheDocument();
+  });
+
+  it("shows cached results with a rerun entry instead of auto-running (P2-2)", async () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "idle", error: null });
+    ipc.getCachedDomain.mockResolvedValue({
+      domain: "health",
+      completed_at: "2026-10-04T00:00:00Z",
+      basis: "abc|0",
+      stale: true,
+      data: { kind: "health", analysis: analysisFixture },
+    });
+
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-cached-banner")).toBeInTheDocument();
+    });
+    // 命中缓存 ⇒ 不自动重跑，结果秒级可见。
+    expect(ipc.startHealth).not.toHaveBeenCalled();
+    expect(screen.getByTestId("health-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("health-cached-banner")).toHaveTextContent("工作区已变化");
+
+    // 重新运行 ⇒ 跳过缓存真正执行（后端保持 idle ⇒ 面板调 startHealth）。
+    fireEvent.click(screen.getByTestId("health-rerun"));
+    await waitFor(() => {
+      expect(ipc.startHealth).toHaveBeenCalled();
+    });
+    expect(screen.queryByTestId("health-cached-banner")).not.toBeInTheDocument();
   });
 
   it("shows the dual-track note on the health page (P2-4b)", () => {

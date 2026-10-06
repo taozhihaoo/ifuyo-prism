@@ -8,6 +8,7 @@ const ipc = vi.hoisted(() => ({
   getHealth2Status: vi.fn(),
   getHealth2Results: vi.fn(),
   cancelHealth2: vi.fn(),
+  getCachedDomain: vi.fn(),
   toPrismError: (err: unknown) => ({ code: "internal", message: String(err) }),
 }));
 
@@ -84,6 +85,7 @@ describe("Health2Panel (P1-1 GUI health2 rail)", () => {
     ipc.getHealth2Status.mockReset();
     ipc.getHealth2Results.mockReset();
     ipc.cancelHealth2.mockReset().mockResolvedValue(undefined);
+    ipc.getCachedDomain.mockReset().mockResolvedValue(null);
   });
 
   it("auto-starts and renders findings, gate, metrics and lifecycle", async () => {
@@ -162,5 +164,40 @@ describe("Health2Panel (P1-1 GUI health2 rail)", () => {
     await waitFor(() => {
       expect(ipc.cancelHealth2).toHaveBeenCalled();
     });
+  });
+});
+
+describe("Health2Panel cached rail (P2-2)", () => {
+  beforeEach(() => {
+    ipc.startHealth2.mockReset().mockResolvedValue("started");
+    ipc.getHealth2Status.mockReset();
+    ipc.getHealth2Results.mockReset();
+    ipc.cancelHealth2.mockReset().mockResolvedValue(undefined);
+    ipc.getCachedDomain.mockReset().mockResolvedValue(null);
+  });
+
+  it("shows cached health2 results with rerun instead of auto-running", async () => {
+    ipc.getHealth2Status.mockResolvedValue({ status: "idle", error: null });
+    ipc.getCachedDomain.mockResolvedValue({
+      domain: "health2",
+      completed_at: "2026-10-04T00:00:00Z",
+      basis: "abc|0",
+      stale: false,
+      data: { kind: "health2", report: report },
+    });
+
+    render(<Health2Panel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health2-cached-banner")).toBeInTheDocument();
+    });
+    expect(ipc.startHealth2).not.toHaveBeenCalled();
+    expect(screen.getByTestId("health2-summary")).toBeInTheDocument();
+    expect(screen.getByTestId("health2-cached-banner")).toHaveTextContent("基线未变化");
+
+    fireEvent.click(screen.getByTestId("health2-rerun"));
+    await waitFor(() => {
+      expect(ipc.startHealth2).toHaveBeenCalled();
+    });
+    expect(screen.queryByTestId("health2-cached-banner")).not.toBeInTheDocument();
   });
 });

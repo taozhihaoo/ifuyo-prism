@@ -1331,3 +1331,31 @@ export interface IntelligenceSummaryDto {
   godot: IntelligenceGodotDto | null;
   deps: IntelligenceDepsDto | null;
 }
+
+// ---------- 批3：全面分析编排（P2-1）+ 会话缓存（P2-2）----------
+
+export interface FullAnalysisStageDto {
+  key: string;
+  status: "pending" | "running" | "completed" | "failed" | "cancelled" | "skipped";
+  duration_ms: number | null;
+  error: string | null;
+}
+
+export interface FullAnalysisStatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  stages: FullAnalysisStageDto[];
+  error: string | null;
+}
+
+export type CachedDomainDataDto =
+  | { kind: "health"; analysis: HealthAnalysisDto }
+  | { kind: "health2"; report: Health2ReportDto };
+
+export interface CachedDomainDto {
+  domain: string;
+  completed_at: string;
+  basis: string;
+  /** 当前工作区基线 ≠ 写入时基线 ⇒ 结果可能过期（如实标注）。 */
+  stale: boolean;
+  data: CachedDomainDataDto;
+}

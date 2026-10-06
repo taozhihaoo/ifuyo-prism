@@ -15,6 +15,13 @@ const ipc = vi.hoisted(() => ({
     godot: null,
     deps: null,
   }),
+  startFullAnalysis: vi.fn().mockResolvedValue("started"),
+  getFullAnalysisStatus: vi.fn().mockResolvedValue({
+    status: "idle",
+    stages: [],
+    error: null,
+  }),
+  cancelFullAnalysis: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../services/ipc", () => ({

@@ -121,6 +121,9 @@ pub fn start_verify(
         match outcome {
             Ok(report) => {
                 session.verify_status = Some(TaskState::Completed);
+                // begin_verify 清空了 verify_plan——完成时必须从报告恢复，
+                // 否则 get_verify_results 返回 None（前端显示"无结果"）。
+                session.verify_plan = Some(report.plan.clone());
                 session.verify_report = Some(report);
             }
             Err(prism_core::PrismError::Cancelled) => {

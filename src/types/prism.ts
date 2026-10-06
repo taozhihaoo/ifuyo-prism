@@ -1202,3 +1202,132 @@ export interface RecentProjectDto {
   canonical_root: string;
   last_seen_at: string;
 }
+
+// ---------- 2.0 Intelligence（P1-1/P1-2：health2 轨道/演化/概览摘要）----------
+
+export interface Health2MetricDto {
+  key: string;
+  value: number;
+  unit: string;
+  definition: string;
+  producer: string;
+}
+
+export interface Health2FindingDto {
+  id: string;
+  finding_type: string;
+  severity: "info" | "warning" | "critical";
+  status: "open" | "resolved" | "suppressed" | "stale" | "unknown";
+  title: string;
+  description?: string;
+  origin: "fact" | "inference" | "hypothesis";
+  confidence: "low" | "medium" | "high";
+  target?: string | null;
+  evidence: string[];
+  remediation?: string | null;
+  metadata?: Record<string, string>;
+}
+
+export interface Health2EvidenceDto {
+  id: string;
+  kind: string;
+  path?: string | null;
+  range?: {
+    start_line: number;
+    start_column: number;
+    end_line: number;
+    end_column: number;
+  } | null;
+  reference?: string | null;
+  note: string;
+}
+
+export interface Health2LifecycleDto {
+  new_findings: string[];
+  persistent_findings: string[];
+  resolved_findings: string[];
+  regressed_findings: string[];
+  suppressed_findings: string[];
+}
+
+export interface Health2GateDto {
+  verdict: "pass" | "warn" | "fail" | "unknown";
+  new_count: number;
+  breaking_count: number;
+  reasons: string[];
+}
+
+export interface Health2RuleSourceDto {
+  engine: string;
+  builtin_rules: number;
+}
+
+/** 与 CLI `prism health2 --json` 同构（§71）+ rule_source 标注（P2-4b）。 */
+export interface Health2ReportDto {
+  schema_version: number;
+  metrics: Record<string, Health2MetricDto>;
+  findings: Health2FindingDto[];
+  evidence: Health2EvidenceDto[];
+  diagnostics: string[];
+  lifecycle: Health2LifecycleDto;
+  quality_gate: Health2GateDto;
+  rule_source: Health2RuleSourceDto;
+}
+
+export interface Health2StatusDto {
+  status: "idle" | "running" | "completed" | "failed" | "cancelled";
+  error: string | null;
+}
+
+export interface EvolutionHotspotDto {
+  path: string;
+  commit_count: number;
+  change_count: number;
+  churn: number;
+  lines_added: number;
+  lines_deleted: number;
+  author_count: number;
+  last_committed_at: string | null;
+}
+
+export interface EvolutionCouplingDto {
+  path_a: string;
+  path_b: string;
+  co_change_count: number;
+  evidence_commits: string[];
+}
+
+export interface EvolutionReportDto {
+  available: boolean;
+  unavailable_reason: string | null;
+  window: string;
+  commits_scanned: number;
+  hotspots: EvolutionHotspotDto[];
+  couplings: EvolutionCouplingDto[];
+}
+
+export interface IntelligenceSeverityDto {
+  critical: number;
+  warning: number;
+  info: number;
+}
+
+export interface IntelligenceGodotDto {
+  scenes: number;
+  resources: number;
+  nodes: number;
+}
+
+export interface IntelligenceDepsDto {
+  declarations: number;
+  resolved: number;
+  cycles: number;
+}
+
+/** 概览 Intelligence 摘要；`null` 域 = 本会话无事实 ⇒ GUI 显 Unknown。 */
+export interface IntelligenceSummaryDto {
+  health2: IntelligenceSeverityDto | null;
+  health: number | null;
+  godot: IntelligenceGodotDto | null;
+  deps: IntelligenceDepsDto | null;
+}

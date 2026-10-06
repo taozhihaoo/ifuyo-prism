@@ -12,6 +12,10 @@ import type {
   ChangesetStatusDto,
   HealthAnalysisDto,
   HealthStatusDto,
+  Health2ReportDto,
+  Health2StatusDto,
+  EvolutionReportDto,
+  IntelligenceSummaryDto,
   VerifyPlanDto,
   VerificationReportDto,
   VerifyStatusDto,
@@ -334,4 +338,30 @@ export function getCurrentProjectPath(): Promise<{ root: string } | null> {
 
 export function getVisualizationGraph(view: VizView, path?: string): Promise<VizGraph> {
   return invoke<VizGraph>("get_visualization_graph", { view, path });
+}
+
+// ---------- 2.0 Intelligence（P1-1/P1-2：health2 轨道/演化/概览摘要） ----------
+
+export function startHealth2(): Promise<string> {
+  return invoke<string>("start_health2");
+}
+
+export function getHealth2Status(): Promise<Health2StatusDto> {
+  return invoke<Health2StatusDto>("get_health2_status");
+}
+
+export function getHealth2Results(): Promise<Health2ReportDto | null> {
+  return invoke<Health2ReportDto | null>("get_health2_results");
+}
+
+export function cancelHealth2(): Promise<void> {
+  return invoke<void>("cancel_health2");
+}
+
+export function getEvolutionReport(): Promise<EvolutionReportDto> {
+  return invoke<EvolutionReportDto>("get_evolution_report");
+}
+
+export function getIntelligenceSummary(): Promise<IntelligenceSummaryDto> {
+  return invoke<IntelligenceSummaryDto>("get_intelligence_summary");
 }

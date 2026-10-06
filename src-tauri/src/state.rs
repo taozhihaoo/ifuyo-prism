@@ -119,6 +119,15 @@ pub struct ScanSession {
     pub health2_builtin_rules: usize,
     /// health2 Failed 时的错误描述。
     pub health2_error: Option<String>,
+    /// ---- 批3 P2-1：全面分析编排（scan→inspect→graph→health 串行）----
+    /// 编排取消令牌（贯穿全部阶段）。
+    pub full_token: CancellationToken,
+    /// 编排阶段状态；None = idle。见 full_analysis.rs。
+    pub full_stages: Vec<crate::full_analysis::FullStageState>,
+    /// 编排整体状态：None = idle，否则 idle 语义外的 running/completed/failed/cancelled。
+    pub full_status: Option<TaskState>,
+    /// 编排 Failed 时的错误描述（首个失败阶段）。
+    pub full_error: Option<String>,
 }
 
 /// inspect 的实时计数（真实统计）。
@@ -268,6 +277,10 @@ pub struct AppState {
     pub app_info: AppInfoService,
     /// 扫描会话；Arc 便于后台扫描线程与 IPC 命令共享同一份状态。
     pub session: std::sync::Arc<Mutex<ScanSession>>,
+    /// 会话级结果缓存（P2-2）：AppState 级——跨 open_project 存活，
+    /// 新鲜度由工作区基线对比判定（见 session_cache.rs）。Arc 便于
+    /// 后台 worker 线程写入。
+    pub cache: std::sync::Arc<crate::session_cache::SessionCache>,
 }
 
 impl AppState {
@@ -276,6 +289,7 @@ impl AppState {
             config,
             app_info: AppInfoService::new(),
             session: std::sync::Arc::new(Mutex::new(ScanSession::default())),
+            cache: std::sync::Arc::new(crate::session_cache::SessionCache::default()),
         }
     }
 }

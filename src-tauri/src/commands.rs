@@ -754,7 +754,7 @@ pub struct HealthAnalysisStatusDto {
 /// 启动一次完整健康分析（自包含：discovery + 代码模型 + M3 图）。
 #[tauri::command]
 pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
-    let (root, token, session_arc) = {
+    let (root, token, session_arc, cache) = {
         let mut session = lock_session(&state.session);
         let Some(project) = session.project.as_ref() else {
             return Err(PrismErrorDto::new(
@@ -771,7 +771,7 @@ pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto>
         let root = project.root_path.clone();
         session.begin_health();
         let token = session.health_token.clone();
-        (root, token, state.session.clone())
+        (root, token, state.session.clone(), state.cache.clone())
     };
 
     std::thread::spawn(move || {
@@ -815,6 +815,8 @@ pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto>
         match outcome {
             Ok(analysis) => {
                 session.health_status = Some(TaskState::Completed);
+                // P2-2：完成即写入会话缓存（重开项目后页面可秒级回显）。
+                crate::session_cache::cache_health(&cache, &root, &analysis);
                 session.health_model = Some(analysis);
             }
             Err(prism_core::PrismError::Cancelled) => {

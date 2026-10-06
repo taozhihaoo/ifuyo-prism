@@ -28,14 +28,14 @@ const COUPLING_LIMIT: usize = 20;
 // ---------- health2（P1-1 GUI 第二轨道；后台任务模式同 1.0 health）----------
 
 /// P2-4b：规则来源标注（条数运行时派生，不硬编码）。
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Health2RuleSourceDto {
     pub engine: String,
     pub builtin_rules: usize,
 }
 
 /// GUI health2 报告 = CLI `prism health2 --json` 同构负载（§71）+ 来源标注。
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Health2GuiReport {
     pub schema_version: u32,
     pub metrics: BTreeMap<String, prism_health2::Metric>,
@@ -50,7 +50,7 @@ pub struct Health2GuiReport {
 /// 启动一次 health2 分析（后台线程；会话内有效，Manual First 按需触发）。
 #[tauri::command]
 pub fn start_health2(state: State<'_, AppState>) -> Result<String, PrismErrorDto> {
-    let (root, token, session_arc) = {
+    let (root, token, session_arc, cache) = {
         let mut session = lock_session(&state.session);
         let Some(project) = session.project.as_ref() else {
             return Err(PrismErrorDto::new(
@@ -67,7 +67,7 @@ pub fn start_health2(state: State<'_, AppState>) -> Result<String, PrismErrorDto
         let root = project.root_path.clone();
         session.begin_health2();
         let token = session.health2_token.clone();
-        (root, token, state.session.clone())
+        (root, token, state.session.clone(), state.cache.clone())
     };
 
     std::thread::spawn(move || {
@@ -76,6 +76,17 @@ pub fn start_health2(state: State<'_, AppState>) -> Result<String, PrismErrorDto
         match outcome {
             Ok(analyzed) => {
                 session.health2_status = Some(prism_core::task::TaskState::Completed);
+                // P2-2：完成即写入会话缓存（重开项目后页面可秒级回显）。
+                crate::session_cache::cache_health2(
+                    &cache,
+                    std::path::Path::new(&root),
+                    &build_health2_gui_report(
+                        &analyzed.report,
+                        Some(&analyzed.lifecycle),
+                        Some(&analyzed.gate),
+                        analyzed.builtin_rules,
+                    ),
+                );
                 session.health2_model = Some(analyzed.report);
                 session.health2_lifecycle = Some(analyzed.lifecycle);
                 session.health2_gate = Some(analyzed.gate);
@@ -119,19 +130,21 @@ pub fn cancel_health2(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
     Ok(())
 }
 
-/// 最近一次完成的 health2 报告（§71：与 CLI --json 同构 + 来源标注）。
-#[tauri::command]
-pub fn get_health2_results(state: State<'_, AppState>) -> Option<Health2GuiReport> {
-    let session = lock_session(&state.session);
-    let report = session.health2_model.as_ref()?;
-    Some(Health2GuiReport {
+/// 会话字段 → GUI 报告（get_health2_results 与缓存写入共用）。
+pub(crate) fn build_health2_gui_report(
+    report: &prism_health2::Health2Report,
+    lifecycle: Option<&LifecycleDiff>,
+    gate: Option<&QualityGateResult>,
+    builtin_rules: usize,
+) -> Health2GuiReport {
+    Health2GuiReport {
         schema_version: report.schema_version,
         metrics: report.metrics.clone(),
         findings: report.findings.clone(),
         evidence: report.evidence.clone(),
         diagnostics: report.diagnostics.clone(),
-        lifecycle: session.health2_lifecycle.clone().unwrap_or_default(),
-        quality_gate: session.health2_gate.clone().unwrap_or(QualityGateResult {
+        lifecycle: lifecycle.cloned().unwrap_or_default(),
+        quality_gate: gate.cloned().unwrap_or(QualityGateResult {
             verdict: prism_health2::GateVerdict::Unknown,
             new_count: 0,
             breaking_count: 0,
@@ -139,9 +152,22 @@ pub fn get_health2_results(state: State<'_, AppState>) -> Option<Health2GuiRepor
         }),
         rule_source: Health2RuleSourceDto {
             engine: "prism-health2".to_string(),
-            builtin_rules: session.health2_builtin_rules,
+            builtin_rules,
         },
-    })
+    }
+}
+
+/// 最近一次完成的 health2 报告（§71：与 CLI --json 同构 + 来源标注）。
+#[tauri::command]
+pub fn get_health2_results(state: State<'_, AppState>) -> Option<Health2GuiReport> {
+    let session = lock_session(&state.session);
+    let report = session.health2_model.as_ref()?;
+    Some(build_health2_gui_report(
+        report,
+        session.health2_lifecycle.as_ref(),
+        session.health2_gate.as_ref(),
+        session.health2_builtin_rules,
+    ))
 }
 
 // ---------- 演化（M211 bounded：hotspots + couplings 表格）----------

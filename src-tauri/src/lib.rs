@@ -6,7 +6,9 @@
 mod commands;
 mod context_commands;
 mod env_commands;
+mod full_analysis;
 mod intel_commands;
+mod session_cache;
 mod settings_commands;
 mod snapshot_commands;
 mod state;
@@ -84,6 +86,10 @@ pub fn run() {
             intel_commands::cancel_health2,
             intel_commands::get_evolution_report,
             intel_commands::get_intelligence_summary,
+            full_analysis::start_full_analysis,
+            full_analysis::get_full_analysis_status,
+            full_analysis::cancel_full_analysis,
+            session_cache::get_cached_domain,
             verify_commands::verify_plan,
             verify_commands::start_verify,
             verify_commands::get_verify_status,

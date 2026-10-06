@@ -36,7 +36,6 @@ pub fn run(path: &Path, baseline: Option<&Path>, max_file_lines: u64, json: bool
     // 线对比（首轮全 New）。基线文件 = 上一次 `prism health2 --json` 的完整
     // 输出：报告字段 + `lifecycle.new`（供 Regressed 判定）。schema 不兼容
     // ⇒ 对比置空（Gate = UNKNOWN，不伪造结论）。
-    let empty_baseline = Health2Report::default();
     let mut baseline_new_ids: Vec<String> = Vec::new();
     let mut schema_mismatch = false;
     let baseline_report: Option<Health2Report> = baseline.map(|p| {

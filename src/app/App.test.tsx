@@ -102,6 +102,12 @@ const ipc = vi.hoisted(() => ({
   getScanStatus: vi.fn(),
   getDiscovery: vi.fn(),
   pickDirectory: vi.fn(),
+  getIntelligenceSummary: vi.fn().mockResolvedValue({
+    health2: null,
+    health: null,
+    godot: null,
+    deps: null,
+  }),
   toPrismError: (err: unknown) => ({
     code: "internal",
     message: String(err),

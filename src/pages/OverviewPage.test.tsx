@@ -9,6 +9,12 @@ const ipc = vi.hoisted(() => ({
   getHealthStatus: vi.fn().mockResolvedValue({ status: "idle", error: null }),
   getVerifyStatus: vi.fn().mockResolvedValue({ status: "idle", error: null }),
   snapshotHistory: vi.fn().mockResolvedValue([]),
+  getIntelligenceSummary: vi.fn().mockResolvedValue({
+    health2: null,
+    health: null,
+    godot: null,
+    deps: null,
+  }),
 }));
 
 vi.mock("../services/ipc", () => ({

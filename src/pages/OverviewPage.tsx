@@ -4,6 +4,7 @@ import { useProjectStore } from "../app/ProjectStore";
 import { useUiSettings } from "../app/SettingsProvider";
 import ScanProgressCard from "../components/ScanProgressCard";
 import ProjectTypesCard from "../components/ProjectTypesCard";
+import IntelligenceSummaryCard from "../components/IntelligenceSummaryCard";
 import {
   getGitFacts,
   getHealthStatus,
@@ -212,6 +213,8 @@ export default function OverviewPage({ appInfo }: OverviewPageProps) {
           )}
 
           <ProjectTypesCard candidates={discovery.project_types} />
+
+          <IntelligenceSummaryCard />
 
           <div className="card" data-testid="overview-verify">
             <h2 className="card-title">Verification</h2>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import CompletenessBanner from "../components/CompletenessBanner";
 import {
   cancelHealth,
   getHealthAnalysis,
@@ -134,6 +135,14 @@ export default function HealthPage() {
 
   return (
     <section className="stack">
+      <CompletenessBanner
+        testId="health-completeness"
+        data={{
+          domain: "健康分析",
+          completeness: analysis.analysis_completeness,
+          diagnostics: analysis.diagnostics,
+        }}
+      />
       <div className="card" data-testid="health-summary">
         <h2 className="card-title">Health Findings · {analysis.analysis_completeness}</h2>
         <dl className="fact-grid">
@@ -287,18 +296,9 @@ export default function HealthPage() {
         <h2 className="card-title">Analysis Limitations</h2>
         <p className="muted small">
           Health analysis is based on resolvable static relationships; some relationships could
-          not be resolved, so results may be incomplete (spec §131).
+          not be resolved, so results may be incomplete (spec §131). Missing pieces are listed in
+          the data completeness banner above.
         </p>
-        {analysis.diagnostics.length > 0 && (
-          <ul>
-            {analysis.diagnostics.map((diagnostic, index) => (
-              <li key={index} className="small">
-                <span className="mono">{diagnostic.kind}</span>{" "}
-                <span className="muted">{diagnostic.subject ?? ""}</span> — {diagnostic.detail}
-              </li>
-            ))}
-          </ul>
-        )}
         <p className="muted small">
           Rules checked: {analysis.checked_rules.length}
           {analysis.disabled_rules.length > 0 &&

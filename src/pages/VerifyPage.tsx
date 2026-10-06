@@ -1,5 +1,8 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import CompletenessBanner, {
+  type CompletenessDiagnostic,
+} from "../components/CompletenessBanner";
 import {
   cancelVerify,
   getVerifyPlan,
@@ -25,6 +28,31 @@ type Phase =
 
 function stateLabel(state: string): string {
   return state.replace("_", " ").toUpperCase();
+}
+
+/** 未产出结论的检查状态——这些是"数据缺了多少"的事实（P2-5）。 */
+const NO_VERDICT_STATES = new Set([
+  "unavailable",
+  "blocked",
+  "skipped",
+  "cancelled",
+  "timed_out",
+  "error",
+]);
+
+function completenessData(report: VerificationReportDto) {
+  const diagnostics: CompletenessDiagnostic[] = report.runs
+    .filter((run) => NO_VERDICT_STATES.has(run.state))
+    .map((run) => ({
+      kind: run.state,
+      subject: run.check_id,
+      detail: run.reason ?? run.command_display,
+    }));
+  return {
+    domain: "验证",
+    completeness: report.completeness,
+    diagnostics,
+  };
 }
 
 /**
@@ -190,6 +218,7 @@ export default function VerifyPage() {
 
   return (
     <section className="stack">
+      <CompletenessBanner testId="verify-completeness" data={completenessData(report)} />
       <div className="card" data-testid="verify-summary">
         <h2 className="card-title">
           Verification · {report.conclusion.toUpperCase()}

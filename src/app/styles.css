@@ -699,3 +699,14 @@ body {
   flex: 1;
   margin-bottom: 0;
 }
+
+
+/* P2-5：数据完整度横幅（§46 Unknown 不得画成正常）。 */
+.completeness-banner-title {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.completeness-banner ul {
+  margin: 0;
+}

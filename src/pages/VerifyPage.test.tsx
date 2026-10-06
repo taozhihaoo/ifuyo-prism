@@ -203,6 +203,38 @@ describe("VerifyPage (M8 GUI)", () => {
     });
   });
 
+  it("aggregates no-verdict checks into the completeness banner (P2-5)", async () => {
+    const withUnavailable: VerificationReportDto = {
+      ...reportFixture,
+      runs: [
+        ...reportFixture.runs,
+        {
+          ...runOf("r4", "build", "unavailable"),
+          reason: "dotnet CLI not found on PATH",
+        },
+      ],
+    };
+    ipc.getVerifyStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getVerifyResults.mockResolvedValue({ plan: planFixture, report: withUnavailable });
+
+    render(<VerifyPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("verify-completeness")).toBeInTheDocument();
+    });
+    const banner = screen.getByTestId("verify-completeness");
+    expect(banner).toHaveTextContent("unavailable");
+    expect(banner).toHaveTextContent("dotnet CLI not found on PATH");
+
+    // 结论完整的报告不渲染横幅（并排渲染：旧实例仍带横幅，新实例没有）。
+    ipc.getVerifyResults.mockResolvedValue({ plan: planFixture, report: reportFixture });
+    const { unmount } = render(<VerifyPage />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId("verify-summary")).toHaveLength(2);
+    });
+    expect(screen.getAllByTestId("verify-completeness")).toHaveLength(1);
+    unmount();
+  });
+
   it("surfaces a failed verification honestly", async () => {
     ipc.getVerifyStatus.mockResolvedValue({
       status: "failed",

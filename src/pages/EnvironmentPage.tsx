@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import CompletenessBanner from "../components/CompletenessBanner";
 import {
   cancelEnvironmentScan,
   getEnvironmentResults,
@@ -162,6 +163,15 @@ export default function EnvironmentPage() {
 
   return (
     <section className="stack">
+      <CompletenessBanner
+        testId="env-completeness"
+        data={{
+          domain: "环境探测",
+          completeness:
+            snapshot.scan_outcome === "completed" ? snapshot.completeness : snapshot.scan_outcome,
+          diagnostics: snapshot.diagnostics,
+        }}
+      />
       <div className="card" data-testid="env-summary">
         <h2 className="card-title">Environment · {STATUS_LABEL[snapshot.status] ?? snapshot.status}</h2>
         <dl className="fact-grid">

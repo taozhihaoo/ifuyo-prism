@@ -206,6 +206,47 @@ describe("HealthPage (M7 GUI)", () => {
     ).toBeInTheDocument();
   });
 
+  it("surfaces the data completeness banner when diagnostics exist (P2-5)", async () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getHealthAnalysis.mockResolvedValue(analysisFixture);
+
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-completeness")).toBeInTheDocument();
+    });
+    const banner = screen.getByTestId("health-completeness");
+    expect(banner).toHaveTextContent("数据完整度");
+    expect(banner).toHaveTextContent("unresolved_relationship");
+  });
+
+  it("labels partial completeness and hides the banner when nothing is missing (P2-5)", async () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
+    // complete 且无诊断 → 横幅不渲染。
+    ipc.getHealthAnalysis.mockResolvedValue({
+      ...analysisFixture,
+      diagnostics: [],
+    });
+    const { unmount } = render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-summary")).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId("health-completeness")).not.toBeInTheDocument();
+    unmount();
+
+    // partial → 横幅标注「部分缺失」。
+    ipc.getHealthAnalysis.mockResolvedValue({
+      ...analysisFixture,
+      analysis_completeness: "partial",
+      diagnostics: [],
+    });
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-completeness")).toHaveTextContent(
+        "部分缺失",
+      );
+    });
+  });
+
   it("cancels on unmount (§102)", async () => {
     ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
     ipc.getHealthAnalysis.mockResolvedValue(analysisFixture);

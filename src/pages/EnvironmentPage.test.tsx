@@ -198,6 +198,31 @@ describe("EnvironmentPage (M9 GUI)", () => {
     expect(screen.getByTestId("env-files")).toHaveTextContent("[secret_candidate]");
     expect(screen.getByTestId("env-files")).toHaveTextContent("[template]");
     expect(screen.getByTestId("env-files")).toHaveTextContent("· tracked");
+    // 完整扫描（complete 且无诊断）不渲染完整度横幅。
+    expect(screen.queryByTestId("env-completeness")).not.toBeInTheDocument();
+  });
+
+  it("surfaces partial scans and diagnostics in the completeness banner (P2-5)", async () => {
+    const partial: EnvironmentSnapshotDto = {
+      ...snapshot,
+      completeness: "partial",
+      scan_outcome: "partial",
+      diagnostics: [
+        { kind: "probe_failed", subject: "dotnet", detail: "probe timed out after 10s" },
+      ],
+    };
+    ipc.getEnvironmentStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getEnvironmentResults.mockResolvedValue(partial);
+
+    render(<EnvironmentPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("env-completeness")).toBeInTheDocument();
+    });
+    const banner = screen.getByTestId("env-completeness");
+    expect(banner).toHaveTextContent("部分缺失");
+    expect(banner).toHaveTextContent("probe_failed");
+    expect(banner).toHaveTextContent("[dotnet]");
+    expect(banner).toHaveTextContent("probe timed out after 10s");
   });
 
   it("refresh re-scans and supports all-tools (§274/§270)", async () => {

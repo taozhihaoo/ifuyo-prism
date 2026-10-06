@@ -289,8 +289,12 @@ pub enum Command {
     },
     /// Git 事实（status/log/diff/refs，M4 只读）
     Git {
-        #[arg(default_value = ".")]
-        path: std::path::PathBuf,
+        /// 仓库路径（位置形态，兼容保留；`prism git evolution <file>` 亦可）
+        #[arg(value_name = "PATH")]
+        repo: Option<std::path::PathBuf>,
+        /// 仓库路径（缺省 "."；与位置形态等价，P1-4）
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
         #[command(subcommand)]
         command: crate::git_command::GitCommand,
     },
@@ -358,22 +362,35 @@ pub enum Command {
     },
     /// Developer Deploy（2.0-M214：Plan 与 Execute 分离；受控部署）
     Deploy {
-        #[arg(default_value = ".")]
-        path: std::path::PathBuf,
+        /// 历史兼容占位：deploy 以各子命令的 source/--target-root 为准，
+        /// 本值不被消费（`prism deploy artifact <source>` 即干净形态）
+        #[arg(value_name = "PATH")]
+        repo: Option<std::path::PathBuf>,
+        /// 同上（兼容占位；不被消费）
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
         #[command(subcommand)]
         command: DeployCommand,
     },
     /// API / Webhook 调试（2.0-M213：端点发现/观测/关联；网络动作显式）
     Api {
-        #[arg(default_value = ".")]
-        path: std::path::PathBuf,
+        /// 项目路径（位置形态，兼容保留；`prism api endpoints` 亦可）
+        #[arg(value_name = "PATH")]
+        repo: Option<std::path::PathBuf>,
+        /// 项目路径（缺省 "."；与位置形态等价，P1-4）
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
         #[command(subcommand)]
         command: ApiCommand,
     },
     /// Visualization 投影（2.0-M212：与 GUI/MCP 同一 prism-viz 数据面）
     Viz {
-        #[arg(default_value = ".")]
-        path: std::path::PathBuf,
+        /// 项目路径（位置形态，兼容保留；`prism viz --view godot` 亦可）
+        #[arg(value_name = "PATH")]
+        repo: Option<std::path::PathBuf>,
+        /// 项目路径（缺省 "."；与位置形态等价，P1-4）
+        #[arg(long)]
+        path: Option<std::path::PathBuf>,
         /// 投影视图：architecture | godot | dependency
         #[arg(long, default_value = "architecture")]
         view: String,

@@ -274,3 +274,31 @@ fn graph_missing_path_is_invalid_input_exit_3() {
     let output = prism(&["graph", missing.to_str().unwrap()]);
     assert_eq!(output.status.code(), Some(3));
 }
+
+#[test]
+fn git_evolution_path_forms_are_equivalent() {
+    // P1-4：`prism git evolution <file>`、`prism git . evolution <file>`、
+    // `prism git --path . evolution <file>` 三者输出一致（位置兼容 + --path）。
+    let clean = prism(&["git", "evolution", "src/main.rs"]);
+    let positional = prism(&["git", ".", "evolution", "src/main.rs"]);
+    let flag = prism(&["git", "--path", ".", "evolution", "src/main.rs"]);
+    assert_eq!(clean.status.code(), Some(0));
+    assert_eq!(positional.status.code(), Some(0));
+    assert_eq!(flag.status.code(), Some(0));
+    assert_eq!(stdout_text(&clean), stdout_text(&positional));
+    assert_eq!(stdout_text(&clean), stdout_text(&flag));
+}
+
+#[test]
+fn viz_path_forms_are_equivalent() {
+    let clean = prism(&["viz", "--view", "architecture", "--json"]);
+    let positional = prism(&["viz", ".", "--view", "architecture", "--json"]);
+    let flag = prism(&["viz", "--path", ".", "--view", "architecture", "--json"]);
+    assert_eq!(clean.status.code(), Some(0));
+    assert_eq!(positional.status.code(), Some(0));
+    assert_eq!(flag.status.code(), Some(0));
+    // 视图内容一致性（同一投影；节点数等关键计数不出现在时间戳字段）。
+    for (a, b) in [(&clean, &positional), (&clean, &flag)] {
+        assert_eq!(stdout_text(a), stdout_text(b));
+    }
+}

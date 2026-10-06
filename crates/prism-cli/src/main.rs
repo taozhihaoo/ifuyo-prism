@@ -68,6 +68,15 @@ fn main() {
     std::process::exit(exit_code);
 }
 
+/// P1-4：仓库路径 = 位置形态优先，其次 `--path`，缺省 "."（三者等价）。
+fn resolve_repo(
+    repo: Option<std::path::PathBuf>,
+    path: Option<std::path::PathBuf>,
+) -> std::path::PathBuf {
+    repo.or(path)
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+}
+
 fn run() -> i32 {
     let cli = cli::Cli::parse();
 
@@ -92,9 +101,13 @@ fn run() -> i32 {
         Some(cli::Command::Graph { path, kind, format }) => {
             run_graph(&path, kind.as_str(), format.into())
         }
-        Some(cli::Command::Git { path, command }) => {
+        Some(cli::Command::Git {
+            repo,
+            path,
+            command,
+        }) => {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
-            git_command::run(&path, &command, runner)
+            git_command::run(&resolve_repo(repo, path), &command, runner)
         }
         Some(cli::Command::Impact {
             path,
@@ -181,15 +194,29 @@ fn run() -> i32 {
             baseline.as_deref(),
             json,
         ),
-        Some(cli::Command::Viz { path, view, json }) => viz_command::run(&path, &view, json),
-        Some(cli::Command::Deploy { path, command }) => {
-            let _ = &path;
+        Some(cli::Command::Viz {
+            repo,
+            path,
+            view,
+            json,
+        }) => viz_command::run(&resolve_repo(repo, path), &view, json),
+        Some(cli::Command::Deploy {
+            repo,
+            path,
+            command,
+        }) => {
+            // P1-4：repo/path 为历史兼容占位（deploy 以子命令 source 为准）。
+            let _ = resolve_repo(repo, path);
             let cancel = CancellationToken::new();
             deploy_command::run(&command, &cancel)
         }
-        Some(cli::Command::Api { path, command }) => {
+        Some(cli::Command::Api {
+            repo,
+            path,
+            command,
+        }) => {
             let runner: Arc<dyn CommandRunner> = Arc::new(StdCommandRunner::new());
-            api_command::run(&path, &command, runner)
+            api_command::run(&resolve_repo(repo, path), &command, runner)
         }
         Some(cli::Command::Debug {
             path,

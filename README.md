@@ -127,14 +127,19 @@ prism health2 <path> [--baseline f.json]   # 统一 Finding + 生命周期 + Gat
 prism supply <path> [--advisories db.json] [--policy p.json] [--sbom out.json]
                                    # 依赖/安全/license/SBOM（M29）
 prism debug <path> [--source f.log]        # 日志→错误指纹→聚类→栈帧（M210）
-prism git . evolution|hotspots|coupling|symbol-history|blame|commit-impact
+prism git evolution|hotspots|coupling|symbol-history|blame|commit-impact <file>
                                    # Git 演化智能（M211）
-prism viz . --view architecture|godot|dependency   # 可视化投影（M212）
-prism api . endpoints|observe|correlate|webhook-listen  # API/Webhook 调试（M213）
-prism deploy . artifact|plan|run|history|rollback    # 受控部署（M214）
+prism viz --view architecture|godot|dependency      # 可视化投影（M212）
+prism api endpoints|observe|correlate|webhook-listen  # API/Webhook 调试（M213）
+prism deploy artifact|plan|run|history|rollback      # 受控部署（M214）
 ```
 
 全部命令支持 `--json`（稳定 schema）与 `--help`。
+
+带子命令的命令族（git/viz/api/deploy）路径可用三种等价形态：省略（缺省
+`.`）、位置参数（`prism git . evolution <file>`，兼容保留）、`--path`
+标志（`prism git --path <repo> evolution <file>`）。deploy 以各子命令的
+`source`/`--target-root` 为准，父级路径仅为兼容占位。
 
 ## Desktop app（打包）
 

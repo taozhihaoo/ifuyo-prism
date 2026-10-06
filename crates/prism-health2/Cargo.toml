@@ -8,6 +8,7 @@ publish = false
 
 [dependencies]
 prism-core.workspace = true
+prism-project.workspace = true
 prism-csharp.workspace = true
 prism-godot.workspace = true
 prism-intel.workspace = true

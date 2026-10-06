@@ -30,6 +30,7 @@ export default function ContextPage() {
   const [scope, setScope] = useState("auto");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [exportState, setExportState] = useState<"idle" | "done" | "fallback">("idle");
   const [pollTick, setPollTick] = useState(0);
 
   useEffect(() => {
@@ -101,6 +102,37 @@ export default function ContextPage() {
       const content = await exportContext(format);
       await navigator.clipboard.writeText(content);
       setCopied(label);
+    } catch (err) {
+      setPhase({ kind: "error", message: toPrismError(err).message });
+    }
+  };
+
+  // P2-3：导出 JSON（§302 显式用户操作）。WebView 支持下载时落盘为文件；
+  // 环境不支持时退化为复制到剪贴板，保证闭环可用。
+  const exportJson = async () => {
+    try {
+      const content = await exportContext("json");
+      const canDownload =
+        typeof URL !== "undefined" &&
+        typeof URL.createObjectURL === "function" &&
+        typeof document !== "undefined";
+      if (canDownload) {
+        const blob = new Blob([content], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `prism-context-${new Date()
+          .toISOString()
+          .replace(/[:.]/g, "-")}.json`;
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+        URL.revokeObjectURL(url);
+        setExportState("done");
+      } else {
+        await navigator.clipboard.writeText(content);
+        setExportState("fallback");
+      }
     } catch (err) {
       setPhase({ kind: "error", message: toPrismError(err).message });
     }
@@ -215,14 +247,25 @@ export default function ContextPage() {
             onClick={() => void copy("markdown", "markdown")}
             data-testid="context-copy-markdown"
           >
-            Copy Markdown{copied === "markdown" ? " ✓" : ""}
+            复制为 Markdown{copied === "markdown" ? " ✓" : ""}
           </button>
           <button
             type="button"
             className="chip"
             onClick={() => void copy("text", "text")}
+            data-testid="context-copy-text"
           >
-            Copy Text{copied === "text" ? " ✓" : ""}
+            复制为文本{copied === "text" ? " ✓" : ""}
+          </button>
+          <button
+            type="button"
+            className="chip"
+            onClick={() => void exportJson()}
+            data-testid="context-export-json"
+          >
+            导出 JSON
+            {exportState === "done" ? " ✓ 已保存" : ""}
+            {exportState === "fallback" ? " ✓ 已复制" : ""}
           </button>
         </div>
         <button type="button" className="linklike" onClick={generate}>

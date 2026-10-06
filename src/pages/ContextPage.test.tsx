@@ -217,4 +217,29 @@ describe("ContextPage (M10b GUI)", () => {
       "# Prism Context Pack\n",
     );
   });
+
+  it("export JSON fetches json format and completes the loop (P2-3)", async () => {
+    ipc.getContextStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getContextResults.mockResolvedValue(pack);
+    ipc.exportContext.mockResolvedValue('{"manifest":{}}');
+
+    // jsdom 无 URL.createObjectURL：验证退化路径（复制到剪贴板），
+    // 保证导出在任何环境下都有可用出口。
+    Object.assign(navigator, {
+      clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+    });
+
+    render(<ContextPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("context-summary")).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId("context-export-json"));
+    await waitFor(() => {
+      expect(ipc.exportContext).toHaveBeenCalledWith("json");
+    });
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('{"manifest":{}}');
+    });
+    expect(screen.getByTestId("context-export-json")).toHaveTextContent("已复制");
+  });
 });

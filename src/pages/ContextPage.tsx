@@ -139,26 +139,34 @@ export default function ContextPage() {
           No context pack in this session. Generation is deterministic and
           read-only — nothing is sent anywhere (§308/§311).
         </p>
-        <textarea
-          data-testid="context-task-input"
-          placeholder="What are you working on?"
-          value={task}
-          onChange={(event) => setTask(event.target.value)}
-          rows={2}
-        />
-        <select
-          data-testid="context-scope"
-          value={scope}
-          onChange={(event) => setScope(event.target.value)}
-        >
-          <option value="auto">auto</option>
-          <option value="current_change">current_change</option>
-          <option value="target">target</option>
-          <option value="full">full</option>
-        </select>
-        <button type="button" className="linklike" onClick={generate}>
-          Generate
-        </button>
+        <label className="context-field">
+          <span className="context-field-label">任务描述（Task）</span>
+          <textarea
+            data-testid="context-task-input"
+            placeholder="你在做什么？例如：重构 CardsController 的抽卡逻辑"
+            value={task}
+            onChange={(event) => setTask(event.target.value)}
+            rows={2}
+          />
+        </label>
+        <div className="context-row">
+          <label className="context-field">
+            <span className="context-field-label">范围（Scope）</span>
+            <select
+              data-testid="context-scope"
+              value={scope}
+              onChange={(event) => setScope(event.target.value)}
+            >
+              <option value="auto">Auto — 按任务自动选择</option>
+              <option value="current_change">当前变更 — 聚焦未提交修改</option>
+              <option value="target">目标符号 — 聚焦指定符号</option>
+              <option value="full">全量 — 完整项目概览</option>
+            </select>
+          </label>
+          <button type="button" className="button button-primary" onClick={generate}>
+            Generate
+          </button>
+        </div>
       </div>
     );
   }

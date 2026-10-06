@@ -664,3 +664,38 @@ body {
   flex-direction: column;
   gap: 2px;
 }
+
+
+/* M213/M212 补充：Context 表单布局（§89 信息层级）。 */
+.context-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.context-field-label {
+  font-size: 12px;
+  color: var(--color-muted);
+}
+
+.context-field textarea,
+.context-field select {
+  background: var(--color-bg, inherit);
+  color: inherit;
+  border: 1px solid var(--color-border, #444);
+  border-radius: 4px;
+  padding: 6px 8px;
+  font: inherit;
+}
+
+.context-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.context-row .context-field {
+  flex: 1;
+  margin-bottom: 0;
+}

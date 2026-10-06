@@ -710,3 +710,30 @@ body {
 .completeness-banner ul {
   margin: 0;
 }
+
+
+/* P1-1：演化/摘要表格（确定性排序由引擎保证，前端不再排序）。 */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 6px 0;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th {
+  color: var(--color-muted);
+  font-weight: 600;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 2px;
+}

@@ -8,6 +8,11 @@ const ipc = vi.hoisted(() => ({
   getHealthStatus: vi.fn(),
   getHealthAnalysis: vi.fn(),
   cancelHealth: vi.fn(),
+  startHealth2: vi.fn(),
+  getHealth2Status: vi.fn(),
+  getHealth2Results: vi.fn(),
+  cancelHealth2: vi.fn(),
+  getEvolutionReport: vi.fn(),
   toPrismError: (err: unknown) => ({ code: "internal", message: String(err) }),
 }));
 
@@ -121,12 +126,71 @@ const analysisFixture: HealthAnalysisDto = {
   risk_signals: [],
 } as never;
 
-describe("HealthPage (M7 GUI)", () => {
-  beforeEach(() => {
+/** 与 CLI `prism health2 --json` 同构的最小 fixture（§71 断言用）。 */
+const health2Fixture: import("../types/prism").Health2ReportDto = {
+  schema_version: 1,
+  metrics: {
+    files_total: {
+      key: "files_total",
+      value: 2,
+      unit: "files",
+      definition: "number of inventoried source files",
+      producer: "STRUCT/LARGE_FILE",
+    },
+  },
+  findings: [
+    {
+      id: "find:abc123",
+      finding_type: "STRUCT/LARGE_FILE",
+      severity: "warning",
+      status: "open",
+      title: "Large source file: src/big.cs (1200 lines > 1000)",
+      description: "file spans 1200 lines",
+      origin: "fact",
+      confidence: "high",
+      target: "file:src/big.cs",
+      evidence: ["ev:1"],
+      remediation: "split the file",
+      metadata: {},
+    },
+  ],
+  evidence: [
+    {
+      id: "ev:1",
+      kind: "metric",
+      path: "src/big.cs",
+      range: null,
+      reference: null,
+      note: "1200 lines counted from bounded read",
+    },
+  ],
+  diagnostics: ["prerequisite unavailable for supply rules (not run in this rail)"],
+  lifecycle: {
+    new_findings: ["find:abc123"],
+    persistent_findings: [],
+    resolved_findings: [],
+    regressed_findings: [],
+    suppressed_findings: [],
+  },
+  quality_gate: {
+    verdict: "fail",
+    new_count: 1,
+    breaking_count: 0,
+    reasons: ["new findings exceed max_new=0"],
+  },
+  rule_source: { engine: "prism-health2", builtin_rules: 4 },
+};
+
+describe("HealthPage (M7 GUI)", () => {  beforeEach(() => {
     ipc.startHealth.mockReset().mockResolvedValue("started");
     ipc.getHealthStatus.mockReset();
     ipc.getHealthAnalysis.mockReset();
     ipc.cancelHealth.mockReset().mockResolvedValue(undefined);
+    ipc.startHealth2.mockReset().mockResolvedValue("started");
+    ipc.getHealth2Status.mockReset();
+    ipc.getHealth2Results.mockReset();
+    ipc.cancelHealth2.mockReset().mockResolvedValue(undefined);
+    ipc.getEvolutionReport.mockReset();
   });
 
   it("renders summary, category groups and findings list", async () => {
@@ -299,5 +363,47 @@ describe("HealthPage (M7 GUI)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("health-error")).toHaveTextContent("graph exploded");
     });
+  });
+
+  it("switches to the health2 rail and runs the same pipeline as the CLI (P1-1)", async () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getHealthAnalysis.mockResolvedValue(analysisFixture);
+    ipc.getHealth2Status
+      .mockResolvedValueOnce({ status: "idle", error: null })
+      .mockResolvedValue({ status: "completed", error: null });
+    ipc.getHealth2Results.mockResolvedValue(health2Fixture);
+
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-rails")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("health-rail-health2"));
+    await waitFor(() => {
+      expect(ipc.startHealth2).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("health2-summary")).toBeInTheDocument();
+    });
+    // §71 标注：与 CLI 同一管线。
+    expect(screen.getByTestId("health2-rule-source")).toHaveTextContent("prism health2");
+    expect(screen.getByTestId("health2-rule-source")).toHaveTextContent("内置 4 条");
+    // Gate 是策略判断不是评分。
+    expect(screen.getByTestId("health2-gate")).toHaveTextContent("FAIL");
+    // Findings 与 CLI --json 同构。
+    expect(screen.getByTestId("health2-findings")).toHaveTextContent("STRUCT/LARGE_FILE");
+
+    // 切回 1.0 轨道：health2 面板卸载（其取消由组件卸载钩子触发）。
+    fireEvent.click(screen.getByTestId("health-rail-classic"));
+    await waitFor(() => {
+      expect(ipc.cancelHealth2).toHaveBeenCalled();
+    });
+    expect(screen.getByTestId("health-summary")).toBeInTheDocument();
+  });
+
+  it("shows the dual-track note on the health page (P2-4b)", () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "idle", error: null });
+    render(<HealthPage />);
+    expect(screen.getByTestId("health-dual-track-note")).toHaveTextContent("双轨说明");
   });
 });

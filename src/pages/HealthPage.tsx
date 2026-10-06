@@ -125,6 +125,10 @@ export default function HealthPage() {
 
   const { analysis } = state;
   const summary = analysis.summary;
+  // P2-4a：规则来源标注。1.0 注册表全量 = 本次检查（含失败）+ 禁用，
+  // 由报告派生、不硬编码；与 CLI `prism health2`（2.0 增强规则集）区分。
+  const ruleSetTotal = analysis.checked_rules.length + analysis.disabled_rules.length;
+  const failedRules = analysis.failed_rules.length;
   const filtered = analysis.findings.filter((finding) => {
     if (severityFilter !== "all" && finding.severity !== severityFilter) return false;
     if (categoryFilter !== "all" && finding.category !== categoryFilter) return false;
@@ -167,6 +171,18 @@ export default function HealthPage() {
             <dd>{analysis.change_related_findings}</dd>
           </div>
         </dl>
+        <p
+          className="muted small"
+          data-testid="health-rule-source"
+        >
+          规则集：1.0 内置（共 {ruleSetTotal} 条 · 本次检查{" "}
+          {analysis.checked_rules.length} 条
+          {failedRules > 0 && ` · 失败 ${failedRules} 条`}
+          {analysis.disabled_rules.length > 0 &&
+            ` · 禁用 ${analysis.disabled_rules.length} 条`}
+          ）。2.0 增强规则集（prism-health2）请用 CLI：<code>prism health2</code>
+          运行。
+        </p>
         <p className="muted small">
           Findings first — no health score (spec §4). Facts only, every finding traceable to
           evidence.

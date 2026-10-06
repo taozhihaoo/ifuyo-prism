@@ -152,6 +152,35 @@ describe("HealthPage (M7 GUI)", () => {
     expect(screen.getByText(/SEC001/)).toBeInTheDocument();
   });
 
+  it("labels the rule source as the 1.0 builtin set (P2-4a)", async () => {
+    ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
+    ipc.getHealthAnalysis.mockResolvedValue(analysisFixture);
+
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health-rule-source")).toBeInTheDocument();
+    });
+    const source = screen.getByTestId("health-rule-source");
+    // checked(3) + disabled(0) = 共 3 条，全部检查；指针指向 2.0 CLI。
+    expect(source).toHaveTextContent("1.0 内置（共 3 条 · 本次检查 3 条）");
+    expect(source).toHaveTextContent("prism health2");
+
+    // 禁用与失败的规则也计入标注。
+    ipc.getHealthAnalysis.mockResolvedValue({
+      ...analysisFixture,
+      checked_rules: ["MAINT001", "SEC001", "DEP001", "CODE001"],
+      disabled_rules: ["DOC001"],
+      failed_rules: ["CODE001"],
+    });
+    render(<HealthPage />);
+    await waitFor(() => {
+      expect(screen.getAllByTestId("health-rule-source")).toHaveLength(2);
+    });
+    expect(screen.getAllByTestId("health-rule-source")[1]).toHaveTextContent(
+      "共 5 条 · 本次检查 4 条 · 失败 1 条 · 禁用 1 条",
+    );
+  });
+
   it("severity filter narrows the findings list", async () => {
     ipc.getHealthStatus.mockResolvedValue({ status: "completed", error: null });
     ipc.getHealthAnalysis.mockResolvedValue(analysisFixture);

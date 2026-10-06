@@ -1,8 +1,8 @@
 import { useUiSettings } from "../app/SettingsProvider";
 import { PAGES, type PageKey } from "../pages/registry";
 
-/** §7 信息架构：导航分组（policy）；标签随语言设置翻译。 */
-const NAV_GROUPS: { titleKey: string; keys: PageKey[] }[] = [
+/** §7 信息架构：导航分组（policy）；标签随语言设置翻译。导出供 i18n 去重测试（P1-3）。 */
+export const NAV_GROUPS: { titleKey: string; keys: PageKey[] }[] = [
   { titleKey: "nav.group.project", keys: ["overview", "understand"] },
   { titleKey: "nav.group.change", keys: ["changes"] },
   { titleKey: "nav.group.quality", keys: ["health", "verify", "environment"] },

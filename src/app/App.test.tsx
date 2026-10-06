@@ -128,12 +128,12 @@ describe("App shell", () => {
     for (const label of [
       "Overview",
       "Understand",
-      "Changes",
+      "Change Analysis",
       "Health",
       "Verify",
       "Environment",
       "Context",
-      "History",
+      "Snapshots",
     ]) {
       expect(screen.getByRole("button", { name: new RegExp(label) })).toBeInTheDocument();
     }

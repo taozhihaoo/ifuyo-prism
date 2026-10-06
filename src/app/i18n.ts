@@ -13,16 +13,16 @@ const DICT: Record<string, LocalizedText> = {
   "nav.group.aiContext": { en: "AI Context", zh: "AI 上下文" },
   "nav.group.history": { en: "History", zh: "历史" },
   "nav.group.system": { en: "System", zh: "系统" },
-  // 页面名（导航/标题/调色板共用）
+  // 页面名（导航/标题/调色板共用）。P1-3：任何两个条目的中文名不得相同
+  // （组名「变更」+页名「变更」曾重名；组名保留、页名去重）。
   "page.overview": { en: "Overview", zh: "概览" },
   "page.understand": { en: "Understand", zh: "代码理解" },
-  "page.changes": { en: "Changes", zh: "变更" },
+  "page.changes": { en: "Change Analysis", zh: "变更分析" },
   "page.health": { en: "Health", zh: "健康" },
   "page.verify": { en: "Verify", zh: "验证" },
   "page.environment": { en: "Environment", zh: "环境" },
   "page.context": { en: "Context", zh: "上下文" },
-  "page.history": { en: "History", zh: "历史" },
-  "page.reports": { en: "History", zh: "历史" },
+  "page.reports": { en: "Snapshots", zh: "快照历史" },
   "page.settings": { en: "Settings", zh: "设置" },
   // 通用
   "palette.openProject": { en: "Open", zh: "打开" },

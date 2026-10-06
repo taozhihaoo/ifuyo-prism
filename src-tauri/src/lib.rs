@@ -6,6 +6,7 @@
 mod commands;
 mod context_commands;
 mod env_commands;
+mod intel_commands;
 mod settings_commands;
 mod snapshot_commands;
 mod state;
@@ -77,6 +78,12 @@ pub fn run() {
             commands::get_health_status,
             commands::get_health_analysis,
             commands::cancel_health,
+            intel_commands::start_health2,
+            intel_commands::get_health2_status,
+            intel_commands::get_health2_results,
+            intel_commands::cancel_health2,
+            intel_commands::get_evolution_report,
+            intel_commands::get_intelligence_summary,
             verify_commands::verify_plan,
             verify_commands::start_verify,
             verify_commands::get_verify_status,

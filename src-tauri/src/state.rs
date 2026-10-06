@@ -108,6 +108,17 @@ pub struct ScanSession {
     pub changeset_model: Option<prism_changes::ChangeSet>,
     /// changeset Failed 时的错误描述。
     pub changeset_error: Option<String>,
+    /// ---- 2.0 Health2（P1-1 GUI 第二轨道；管线与 CLI `prism health2` 同一函数）----
+    pub health2_token: CancellationToken,
+    /// health2 状态：None = 尚未执行。
+    pub health2_status: Option<TaskState>,
+    /// 最近一次完成的 health2 报告 + 生命周期 + Gate + 内置规则数。
+    pub health2_model: Option<prism_health2::Health2Report>,
+    pub health2_lifecycle: Option<prism_health2::LifecycleDiff>,
+    pub health2_gate: Option<prism_health2::QualityGateResult>,
+    pub health2_builtin_rules: usize,
+    /// health2 Failed 时的错误描述。
+    pub health2_error: Option<String>,
 }
 
 /// inspect 的实时计数（真实统计）。
@@ -160,6 +171,12 @@ impl ScanSession {
         self.context_status = None;
         self.context_pack = None;
         self.context_error = None;
+        self.health2_status = None;
+        self.health2_model = None;
+        self.health2_lifecycle = None;
+        self.health2_gate = None;
+        self.health2_builtin_rules = 0;
+        self.health2_error = None;
         self.snapshot_capturing = false;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
@@ -196,6 +213,17 @@ impl ScanSession {
         self.health_status = Some(TaskState::Running);
         self.health_model = None;
         self.health_error = None;
+    }
+
+    /// 准备一次 health2 分析（P1-1 GUI 第二轨道）。
+    pub fn begin_health2(&mut self) {
+        self.health2_token = CancellationToken::new();
+        self.health2_status = Some(TaskState::Running);
+        self.health2_model = None;
+        self.health2_lifecycle = None;
+        self.health2_gate = None;
+        self.health2_builtin_rules = 0;
+        self.health2_error = None;
     }
 
     /// 准备一次 impact 分析。

@@ -272,6 +272,11 @@ impl RepoScan {
     pub fn window(&self) -> HistoryWindow {
         self.window.clone()
     }
+
+    /// 窗口内实际扫描到的 commit 数（GUI 摘要/边界标注用）。
+    pub fn commit_count(&self) -> usize {
+        self.commits.len()
+    }
 }
 
 /// 汇总报告（analysis 入口）。

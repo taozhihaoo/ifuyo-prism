@@ -383,6 +383,8 @@ pub enum Command {
         #[command(subcommand)]
         command: ApiCommand,
     },
+    /// 只读 MCP stdio 服务器（优化清单批 B：AI 客户端消费持久化结果）
+    Mcp,
     /// Visualization 投影（2.0-M212：与 GUI/MCP 同一 prism-viz 数据面）
     Viz {
         /// 项目路径（位置形态，兼容保留；`prism viz --view godot` 亦可）
@@ -567,6 +569,7 @@ impl Command {
             Command::Scan { .. } => "scan",
             Command::Inspect { .. } => "inspect",
             Command::Intel { .. } => "intel",
+            Command::Mcp => "mcp",
             Command::Graph { .. } => "graph",
             Command::Git { .. } => "git",
             Command::Impact { .. } => "impact",

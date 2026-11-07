@@ -141,6 +141,36 @@ prism deploy artifact|plan|run|history|rollback      # 受控部署（M214）
 标志（`prism git --path <repo> evolution <file>`）。deploy 以各子命令的
 `source`/`--target-root` 为准，父级路径仅为兼容占位。
 
+## MCP server（AI 客户端接入）
+
+```bash
+prism mcp   # 只读 JSON-RPC stdio 服务器（newline-delimited）
+```
+
+让本地 AI 客户端（Claude Desktop、Claude Code 等）直接消费 Prism 的
+**持久化分析结果**（与 GUI 共用 SQLite：`analysis_runs`，`PRISM_DB_PATH`
+同口径）。工具：`list_projects` / `list_runs` / `get_report` /
+`get_finding`（含证据展开，§37 可追溯）。不重跑分析、不读项目文件、
+不写任何数据；stdout 只承载协议，日志走 stderr。
+
+客户端配置示例（Claude Desktop `claude_desktop_config.json`）：
+
+```json
+{
+  "mcpServers": {
+    "prism": {
+      "command": "E:/WorkSpace/ifuyo-prism/target/release/prism.exe",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+GUI 每次完成 健康分析（1.0）/ health2 后自动落库（每项目每域保留最近
+50 次运行）；health2 的生命周期基线 = 库中上次运行（跨会话
+Persistent/Resolved/Regressed），首轮或 schema 变更则回退空基线（全部
+New，§26）。
+
 ## Desktop app（打包）
 
 ```bash

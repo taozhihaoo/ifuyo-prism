@@ -302,3 +302,42 @@ fn viz_path_forms_are_equivalent() {
         assert_eq!(stdout_text(a), stdout_text(b));
     }
 }
+
+#[test]
+fn mcp_stdio_initialize_and_tools_list_roundtrip() {
+    use std::io::Write as _;
+    use std::process::{Command, Stdio};
+
+    let mut child = Command::new(env!("CARGO_BIN_EXE_prism"))
+        .arg("mcp")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .expect("spawn prism mcp");
+    {
+        let stdin = child.stdin.as_mut().expect("stdin");
+        writeln!(
+            stdin,
+            r#"{{"jsonrpc":"2.0","id":1,"method":"initialize","params":{{}}}}"#
+        )
+        .unwrap();
+        writeln!(stdin, r#"{{"jsonrpc":"2.0","id":2,"method":"tools/list"}}"#).unwrap();
+    }
+    let mut stdout = std::io::BufReader::new(child.stdout.take().expect("stdout"));
+    let mut line = String::new();
+    std::io::BufRead::read_line(&mut stdout, &mut line).expect("init response");
+    let response: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+    assert_eq!(response["id"], 1);
+    assert_eq!(response["result"]["protocolVersion"], "2024-11-05");
+
+    let mut line = String::new();
+    std::io::BufRead::read_line(&mut stdout, &mut line).expect("tools response");
+    let response: serde_json::Value = serde_json::from_str(line.trim()).unwrap();
+    assert_eq!(response["id"], 2);
+    assert!(response["result"]["tools"].as_array().unwrap().len() >= 4);
+
+    // stdin EOF ⇒ 进程干净退出 0。
+    let status = child.wait().expect("wait");
+    assert_eq!(status.code(), Some(0));
+}

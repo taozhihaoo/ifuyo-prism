@@ -24,6 +24,7 @@ mod health2_command;
 mod health_command;
 mod impact_command;
 mod intel_command;
+mod mcp_command;
 mod snapshot_command;
 mod supply_command;
 mod verify_command;
@@ -194,6 +195,7 @@ fn run() -> i32 {
             baseline.as_deref(),
             json,
         ),
+        Some(cli::Command::Mcp) => mcp_command::run(),
         Some(cli::Command::Viz {
             repo,
             path,

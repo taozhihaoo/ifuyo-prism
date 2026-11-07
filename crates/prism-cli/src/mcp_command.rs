@@ -241,8 +241,7 @@ fn tool_list_projects(connection: &rusqlite::Connection) -> Result<String, Strin
     for row in rows {
         entries.push(row.map_err(|err| err.to_string())?);
     }
-    serde_json::to_string_pretty(&json!({"projects": entries}))
-        .map_err(|err| err.to_string())
+    serde_json::to_string_pretty(&json!({"projects": entries})).map_err(|err| err.to_string())
 }
 
 fn tool_list_runs(connection: &rusqlite::Connection, args: &Value) -> Result<String, String> {

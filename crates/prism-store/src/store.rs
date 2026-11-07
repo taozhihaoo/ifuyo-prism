@@ -122,9 +122,10 @@ pub trait SnapshotStore: Send + Sync {
 }
 
 /// Schema migrations（§64 P0：schema_migrations 表 + 顺序执行 + 失败即停）。
-const MIGRATIONS: &[(&str, &str)] = &[(
-    "0001_initial",
-    "CREATE TABLE projects (
+const MIGRATIONS: &[(&str, &str)] = &[
+    (
+        "0001_initial",
+        "CREATE TABLE projects (
             id TEXT PRIMARY KEY,
             display_name TEXT NOT NULL,
             canonical_root TEXT NOT NULL UNIQUE,
@@ -164,9 +165,25 @@ const MIGRATIONS: &[(&str, &str)] = &[(
             data_json TEXT NOT NULL,
             PRIMARY KEY (snapshot_id, domain)
         );",
-)];
+    ),
+    (
+        "0002_analysis_runs",
+        "CREATE TABLE analysis_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_root TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            schema_version INTEGER NOT NULL,
+            basis TEXT NOT NULL,
+            captured_at TEXT NOT NULL,
+            finding_ids TEXT NOT NULL,
+            lifecycle_new TEXT NOT NULL,
+            payload TEXT NOT NULL
+        );
+        CREATE INDEX idx_analysis_runs_key ON analysis_runs(project_root, domain, id DESC);",
+    ),
+];
 
-fn migrate(connection: &Connection) -> Result<(), StoreError> {
+pub(crate) fn migrate(connection: &Connection) -> Result<(), StoreError> {
     connection
         .execute_batch(
             "CREATE TABLE IF NOT EXISTS schema_migrations (

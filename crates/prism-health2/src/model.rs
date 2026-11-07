@@ -104,3 +104,93 @@ pub fn mark_regressed(
         .collect();
     diff
 }
+
+/// 指纹集对比（持久化基线形态，优化清单批 A）：基线只有指纹集与
+/// `baseline_new_ids`（来自 analysis_runs 行），不必反序列化整个基线
+/// 报告。语义与 `diff_against_baseline` + `mark_regressed` 完全一致：
+/// Suppressed 不参与 New/Persistent/Resolved/Regressed（§26/§31/§33）。
+pub fn diff_against_fingerprints(
+    current: &Health2Report,
+    baseline_ids: &[String],
+    baseline_new_ids: &[String],
+) -> LifecycleDiff {
+    let baseline_set: std::collections::BTreeSet<String> = baseline_ids.iter().cloned().collect();
+    let diff = diff_against_baseline(current, &synthetic_baseline(baseline_set));
+    mark_regressed(diff, baseline_new_ids, current)
+}
+
+/// 以指纹集合成的空报告基线（复用既有 diff 路径，保证语义单源）。
+fn synthetic_baseline(ids: std::collections::BTreeSet<String>) -> Health2Report {
+    let mut baseline = Health2Report::default();
+    baseline.findings = ids
+        .into_iter()
+        .map(|id| {
+            let mut finding = prism_intel::Finding::new(
+                "SYNTHETIC",
+                prism_core::Severity::Info,
+                prism_intel::finding::FindingStatus::Open,
+                id.clone(),
+                "",
+                prism_intel::Origin::Fact,
+                prism_intel::Confidence::Low,
+                None,
+                vec![],
+            );
+            // 指纹 id 由 Finding::new 派生；直接覆写保证集合恒等。
+            finding.id = id;
+            finding
+        })
+        .collect();
+    baseline
+}
+
+#[cfg(test)]
+mod fingerprint_diff_tests {
+    use super::*;
+
+    fn report_with(ids: &[&str]) -> Health2Report {
+        let mut report = Health2Report::default();
+        report.findings = ids
+            .iter()
+            .map(|id| {
+                let mut finding = prism_intel::Finding::new(
+                    "T",
+                    prism_core::Severity::Info,
+                    prism_intel::finding::FindingStatus::Open,
+                    *id,
+                    "",
+                    prism_intel::Origin::Fact,
+                    prism_intel::Confidence::Low,
+                    None,
+                    vec![],
+                );
+                finding.id = (*id).to_string();
+                finding
+            })
+            .collect();
+        report
+    }
+
+    #[test]
+    fn fingerprint_diff_matches_report_diff_semantics() {
+        let current = report_with(&["A", "B"]);
+        // 基线 = {A, C}，其中 C 是基线轮 New ⇒ 与 report diff + regress 完全一致。
+        let diff = diff_against_fingerprints(&current, &["A".into(), "C".into()], &["C".into()]);
+        assert_eq!(diff.new_findings, vec!["B".to_string()]);
+        assert_eq!(diff.persistent_findings, vec!["A".to_string()]);
+        assert_eq!(diff.resolved_findings, vec!["C".to_string()]);
+        assert!(diff.regressed_findings.is_empty());
+
+        // 基线轮 New 的是 A（本轮仍在）⇒ Regressed。
+        let diff = diff_against_fingerprints(&current, &["A".into(), "C".into()], &["A".into()]);
+        assert_eq!(diff.regressed_findings, vec!["A".to_string()]);
+    }
+
+    #[test]
+    fn empty_baseline_means_first_run_all_new() {
+        let current = report_with(&["A"]);
+        let diff = diff_against_fingerprints(&current, &[], &[]);
+        assert_eq!(diff.new_findings, vec!["A".to_string()]);
+        assert!(diff.persistent_findings.is_empty());
+    }
+}

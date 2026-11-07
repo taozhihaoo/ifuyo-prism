@@ -817,6 +817,20 @@ pub fn start_health(state: State<'_, AppState>) -> Result<String, PrismErrorDto>
                 session.health_status = Some(TaskState::Completed);
                 // P2-2：完成即写入会话缓存（重开项目后页面可秒级回显）。
                 crate::session_cache::cache_health(&cache, &root, &analysis);
+                // 批 A：落库（运行历史 + MCP 可读）；失败不影响分析结论。
+                let _ = crate::analysis_persistence::persist_run(
+                    root.to_string_lossy().as_ref(),
+                    "health",
+                    analysis.schema_version as i64,
+                    &crate::session_cache::workspace_basis(&root),
+                    analysis
+                        .findings
+                        .iter()
+                        .map(|finding| finding.id.as_str().to_string())
+                        .collect(),
+                    Vec::new(),
+                    serde_json::to_value(&analysis).unwrap_or(serde_json::Value::Null),
+                );
                 session.health_model = Some(analysis);
             }
             Err(prism_core::PrismError::Cancelled) => {

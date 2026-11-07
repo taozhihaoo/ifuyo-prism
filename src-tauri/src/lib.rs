@@ -3,6 +3,7 @@
 //! 本 crate 只是 IPC 边界：commands 接收前端调用、调用 Application 层、
 //! 返回 Core 数据。业务逻辑一律在 `prism-core`，GUI 不自建逻辑。
 
+mod analysis_persistence;
 mod commands;
 mod context_commands;
 mod env_commands;

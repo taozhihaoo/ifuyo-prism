@@ -77,6 +77,7 @@ const report: Health2ReportDto = {
     reasons: ["new findings exceed max_new=0"],
   },
   rule_source: { engine: "prism-health2", builtin_rules: 4 },
+  baseline: { kind: "empty" },
 };
 
 describe("Health2Panel (P1-1 GUI health2 rail)", () => {
@@ -150,6 +151,28 @@ describe("Health2Panel (P1-1 GUI health2 rail)", () => {
     await waitFor(() => {
       expect(screen.getByTestId("health2-error")).toHaveTextContent("engine exploded");
     });
+  });
+
+  it("labels a persisted previous-run baseline (batch A)", async () => {
+    ipc.getHealth2Status.mockResolvedValue({ status: "completed", error: null });
+    ipc.getHealth2Results.mockResolvedValue({
+      ...report,
+      baseline: { kind: "previous_run", captured_at: "2026-10-07T01:00:00Z" },
+      lifecycle: {
+        ...report.lifecycle,
+        persistent_findings: ["find:abc123"],
+        new_findings: [],
+      },
+    });
+
+    render(<Health2Panel />);
+    await waitFor(() => {
+      expect(screen.getByTestId("health2-rule-source")).toHaveTextContent(
+        "上次持久化结果",
+      );
+    });
+    // Persistent 在本轮有了真实语义：跨会话仍存在。
+    expect(screen.getByTestId("health2-findings")).toHaveTextContent("[persistent]");
   });
 
   it("cancels on unmount (§102)", async () => {

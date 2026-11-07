@@ -149,7 +149,7 @@ export default function ClassicHealthPanel() {
       {state.kind === "cached" && (
         <div className="warning-box" data-testid="health-cached-banner">
           <p>
-            上次健康结果（本会话缓存） · 完成于{" "}
+            上次健康结果（缓存，可能来自上一会话） · 完成于{" "}
             {new Date(state.completedAt).toLocaleString()}
             {state.stale
               ? " · 工作区已变化，结果可能过期"

@@ -119,6 +119,8 @@ pub struct ScanSession {
     pub health2_builtin_rules: usize,
     /// health2 Failed 时的错误描述。
     pub health2_error: Option<String>,
+    /// 生命周期基线来源（批 A：库中上次运行 / 首轮空基线）。
+    pub health2_baseline: Option<crate::intel_commands::Health2BaselineDto>,
     /// ---- 批3 P2-1：全面分析编排（scan→inspect→graph→health 串行）----
     /// 编排取消令牌（贯穿全部阶段）。
     pub full_token: CancellationToken,
@@ -186,6 +188,7 @@ impl ScanSession {
         self.health2_gate = None;
         self.health2_builtin_rules = 0;
         self.health2_error = None;
+        self.health2_baseline = None;
         self.snapshot_capturing = false;
         self.inspect_status = None;
         self.inspect_progress = InspectProgress::default();
@@ -233,6 +236,7 @@ impl ScanSession {
         self.health2_gate = None;
         self.health2_builtin_rules = 0;
         self.health2_error = None;
+        self.health2_baseline = None;
     }
 
     /// 准备一次 impact 分析。

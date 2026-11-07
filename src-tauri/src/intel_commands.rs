@@ -13,7 +13,7 @@ use prism_core::error::PrismErrorDto;
 use prism_core::runtime::command::StdCommandRunner;
 use prism_core::task::CancellationToken;
 use prism_health2::{LifecycleDiff, QualityGateResult};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tauri::State;
@@ -28,14 +28,24 @@ const COUPLING_LIMIT: usize = 20;
 // ---------- health2（P1-1 GUI 第二轨道；后台任务模式同 1.0 health）----------
 
 /// P2-4b：规则来源标注（条数运行时派生，不硬编码）。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Health2RuleSourceDto {
     pub engine: String,
     pub builtin_rules: usize,
 }
 
+/// 生命周期基线来源（批 A：持久化后基线 = 库中上次运行，首轮 = 空）。
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum Health2BaselineDto {
+    /// 库中存在同 schema 上次运行（跨会话 Persistent/Resolved/Regressed）。
+    PreviousRun { captured_at: String },
+    /// 无可比基线（首轮）——全部 New（§26）。
+    Empty,
+}
+
 /// GUI health2 报告 = CLI `prism health2 --json` 同构负载（§71）+ 来源标注。
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Health2GuiReport {
     pub schema_version: u32,
     pub metrics: BTreeMap<String, prism_health2::Metric>,
@@ -45,6 +55,9 @@ pub struct Health2GuiReport {
     pub lifecycle: LifecycleDiff,
     pub quality_gate: QualityGateResult,
     pub rule_source: Health2RuleSourceDto,
+    /// 生命周期基线来源（旧持久化负载缺省 ⇒ Empty）。
+    #[serde(default)]
+    pub baseline: Option<Health2BaselineDto>,
 }
 
 /// 启动一次 health2 分析（后台线程；会话内有效，Manual First 按需触发）。
@@ -72,24 +85,77 @@ pub fn start_health2(state: State<'_, AppState>) -> Result<String, PrismErrorDto
 
     std::thread::spawn(move || {
         let outcome = prism_health2::analyze_project(&root, DEFAULT_MAX_FILE_LINES, &token);
+        // 批 A：基线 = 结果库中同 schema 的上次运行（跨会话生命周期）。
+        // 落库/读取失败只降级为首轮语义（空基线），不掩盖分析本身。
+        let stored = crate::analysis_persistence::load_latest_run(
+            root.to_string_lossy().as_ref(),
+            "health2",
+        )
+        .ok()
+        .flatten();
+        let mut baseline_note = None;
+        let (lifecycle, gate) = match outcome {
+            Ok(ref analyzed) => {
+                let baseline = crate::analysis_persistence::usable_baseline(
+                    stored,
+                    analyzed.report.schema_version as i64,
+                );
+                match baseline {
+                    Some(previous) => {
+                        let diff = prism_health2::diff_against_fingerprints(
+                            &analyzed.report,
+                            &previous.finding_ids,
+                            &previous.lifecycle_new,
+                        );
+                        let gate = prism_health2::evaluate_gate(
+                            Some(&diff),
+                            0,
+                            &prism_health2::QualityGatePolicy::default(),
+                        );
+                        baseline_note = Some(Health2BaselineDto::PreviousRun {
+                            captured_at: previous.captured_at.clone(),
+                        });
+                        (diff, gate)
+                    }
+                    None => (analyzed.lifecycle.clone(), analyzed.gate.clone()),
+                }
+            }
+            _ => {
+                return finish_health2(
+                    session_arc,
+                    cache,
+                    root.to_string_lossy().to_string(),
+                    outcome,
+                )
+            }
+        };
         let mut session = lock_session(&session_arc);
         match outcome {
             Ok(analyzed) => {
                 session.health2_status = Some(prism_core::task::TaskState::Completed);
-                // P2-2：完成即写入会话缓存（重开项目后页面可秒级回显）。
-                crate::session_cache::cache_health2(
-                    &cache,
-                    std::path::Path::new(&root),
-                    &build_health2_gui_report(
-                        &analyzed.report,
-                        Some(&analyzed.lifecycle),
-                        Some(&analyzed.gate),
-                        analyzed.builtin_rules,
-                    ),
+                let gui = build_health2_gui_report(
+                    &analyzed.report,
+                    Some(&lifecycle),
+                    Some(&gate),
+                    analyzed.builtin_rules,
+                    baseline_note,
                 );
+                // 批 A：落库（本次运行成为下次的基线）；payload 即 GUI 报告。
+                let _ = crate::analysis_persistence::persist_run(
+                    root.to_string_lossy().as_ref(),
+                    "health2",
+                    analyzed.report.schema_version as i64,
+                    &crate::session_cache::workspace_basis(std::path::Path::new(&root)),
+                    analyzed.report.fingerprints().into_iter().collect(),
+                    gui.lifecycle.new_findings.clone(),
+                    serde_json::to_value(&gui).unwrap_or(serde_json::Value::Null),
+                );
+                // P2-2：完成即写入会话缓存（重开项目后页面可秒级回显）。
+                crate::session_cache::cache_health2(&cache, std::path::Path::new(&root), &gui);
+                session.health2_baseline = gui.baseline;
                 session.health2_model = Some(analyzed.report);
-                session.health2_lifecycle = Some(analyzed.lifecycle);
-                session.health2_gate = Some(analyzed.gate);
+                session.health2_lifecycle = Some(lifecycle);
+                session.health2_gate = Some(gate);
                 session.health2_builtin_rules = analyzed.builtin_rules;
             }
             Err(prism_core::PrismError::Cancelled) => {
@@ -103,6 +169,26 @@ pub fn start_health2(state: State<'_, AppState>) -> Result<String, PrismErrorDto
     });
 
     Ok("started".to_string())
+}
+
+/// 取消/失败收尾（避免在上面的基线 match 中重复闭包借用）。
+fn finish_health2(
+    session_arc: std::sync::Arc<std::sync::Mutex<crate::state::ScanSession>>,
+    _cache: std::sync::Arc<crate::session_cache::SessionCache>,
+    _root: String,
+    outcome: Result<prism_health2::ProjectHealth2, prism_core::PrismError>,
+) {
+    let mut session = lock_session(&session_arc);
+    match outcome {
+        Err(prism_core::PrismError::Cancelled) => {
+            session.health2_status = Some(prism_core::task::TaskState::Cancelled);
+        }
+        Err(err) => {
+            session.health2_status = Some(prism_core::task::TaskState::Failed);
+            session.health2_error = Some(err.to_string());
+        }
+        Ok(_) => {}
+    }
 }
 
 /// 查询 health2 会话状态。
@@ -136,6 +222,7 @@ pub(crate) fn build_health2_gui_report(
     lifecycle: Option<&LifecycleDiff>,
     gate: Option<&QualityGateResult>,
     builtin_rules: usize,
+    baseline: Option<Health2BaselineDto>,
 ) -> Health2GuiReport {
     Health2GuiReport {
         schema_version: report.schema_version,
@@ -154,6 +241,7 @@ pub(crate) fn build_health2_gui_report(
             engine: "prism-health2".to_string(),
             builtin_rules,
         },
+        baseline,
     }
 }
 
@@ -167,6 +255,7 @@ pub fn get_health2_results(state: State<'_, AppState>) -> Option<Health2GuiRepor
         session.health2_lifecycle.as_ref(),
         session.health2_gate.as_ref(),
         session.health2_builtin_rules,
+        session.health2_baseline.clone(),
     ))
 }
 

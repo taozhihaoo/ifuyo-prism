@@ -147,7 +147,7 @@ export default function Health2Panel() {
       {state.kind === "cached" && (
         <div className="warning-box" data-testid="health2-cached-banner">
           <p>
-            上次 health2 结果（本会话缓存） · 完成于{" "}
+            上次 health2 结果（缓存，可能来自上一会话） · 完成于{" "}
             {new Date(state.completedAt).toLocaleString()}
             {state.stale
               ? " · 工作区已变化，结果可能过期"
@@ -236,7 +236,16 @@ function Health2Results({ report }: { report: Health2ReportDto }) {
         <p className="muted small" data-testid="health2-rule-source">
           规则集：2.0 health2（engine <code>{report.rule_source.engine}</code> · 内置{" "}
           {report.rule_source.builtin_rules} 条）。与 CLI <code>prism health2</code> 同一管线
-          （§71：输出一致）；基线对比未提供 ⇒ 全部 New（首轮语义）。
+          （§71：输出一致）。
+          {report.baseline?.kind === "previous_run" ? (
+            <>
+              {" "}生命周期基线 = 上次持久化结果（
+              {new Date(report.baseline.captured_at).toLocaleString()}）——Persistent
+              即跨会话仍然存在的 finding。
+            </>
+          ) : (
+            <> 基线对比未提供 ⇒ 全部 New（首轮语义）。</>
+          )}
         </p>
       </div>
 

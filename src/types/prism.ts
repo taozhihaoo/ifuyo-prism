@@ -1262,6 +1262,11 @@ export interface Health2RuleSourceDto {
   builtin_rules: number;
 }
 
+/** 生命周期基线来源（批 A：持久化后基线 = 库中上次运行，首轮 = 空）。 */
+export type Health2BaselineDto =
+  | { kind: "previous_run"; captured_at: string }
+  | { kind: "empty" };
+
 /** 与 CLI `prism health2 --json` 同构（§71）+ rule_source 标注（P2-4b）。 */
 export interface Health2ReportDto {
   schema_version: number;
@@ -1272,6 +1277,7 @@ export interface Health2ReportDto {
   lifecycle: Health2LifecycleDto;
   quality_gate: Health2GateDto;
   rule_source: Health2RuleSourceDto;
+  baseline?: Health2BaselineDto | null;
 }
 
 export interface Health2StatusDto {

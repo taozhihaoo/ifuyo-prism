@@ -27,7 +27,7 @@ pub mod rules_supply;
 
 pub use baseline::{diff_against_baseline, mark_regressed};
 pub use gate::{evaluate_gate, GateVerdict, QualityGatePolicy, QualityGateResult};
-pub use model::{Health2Report, LifecycleDiff, Metric};
+pub use model::{diff_against_fingerprints, Health2Report, LifecycleDiff, Metric};
 pub use project_analysis::{analyze_project, ProjectHealth2};
 pub use registry::{
     CSharpFacts, RuleCategory, RuleContext, RuleDefinition, RuleOutcome, RuleRegistry,

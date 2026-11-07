@@ -123,7 +123,14 @@ fn multi_project_histories_isolated() {
         .success());
 
     // §199：删 A 的历史，B 不受影响。
-    let project_a_root = dir_a.to_string_lossy().to_string();
+    // 期望值 = 产品同款 canonicalize_root（fs::canonicalize + 剥 verbatim）：
+    // Windows 上 canonicalize 可能返回 8.3 短名（如 CI runner 的
+    // RUNNER~1，Rust #42869 类行为），不能拿原始构造路径当期望——
+    // 身份的确定性口径是"同一函数、同一输入 ⇒ 同一输出"。
+    let project_a_root = prism_project::canonicalize_root(&dir_a)
+        .expect("canonicalize fixture dir")
+        .to_string_lossy()
+        .to_string();
     // 用 history JSON 确认 A 有 1 条。
     let output = prism_with_db(&db, &["history", dir_a.to_str().unwrap(), "--json"]);
     let history_a: serde_json::Value = serde_json::from_str(&stdout_text(&output)).unwrap();

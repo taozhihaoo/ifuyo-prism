@@ -5,7 +5,6 @@
 //! （`get_cached_domain`）与 MCP 只读工具（`prism mcp`）。
 //! 数据库 = prism-store 默认路径（`PRISM_DB_PATH` 可覆盖，与快照同库）。
 
-use crate::state::{lock_session, AppState};
 use prism_store::{baseline_of, AnalysisRunRecord, AnalysisRunsStore, SqliteAnalysisRunsStore};
 
 /// 打开结果库（含父目录创建；与快照库同文件、同迁移序列）。
@@ -53,27 +52,6 @@ pub(crate) fn load_latest_run(
     store
         .latest_run(project_root, domain)
         .map_err(|err| err.to_string())
-}
-
-/// 运行历史头（供未来 UI/MCP 列表；本批先供 MCP `list_runs`）。
-pub(crate) fn list_runs(
-    project_root: &str,
-    domain: &str,
-    limit: usize,
-) -> Result<Vec<prism_store::AnalysisRunHead>, String> {
-    let store = open_runs_store()?;
-    store
-        .list_runs(project_root, domain, limit)
-        .map_err(|err| err.to_string())
-}
-
-/// 当前项目 root（无项目 ⇒ None）。
-pub(crate) fn current_root(state: &AppState) -> Option<String> {
-    let session = lock_session(&state.session);
-    session
-        .project
-        .as_ref()
-        .map(|project| project.root_path.to_string_lossy().to_string())
 }
 
 /// 基线选择（同 schema 才可比；跨版本 ⇒ 首轮语义）。

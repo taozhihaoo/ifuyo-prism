@@ -121,27 +121,28 @@ pub fn diff_against_fingerprints(
 
 /// 以指纹集合成的空报告基线（复用既有 diff 路径，保证语义单源）。
 fn synthetic_baseline(ids: std::collections::BTreeSet<String>) -> Health2Report {
-    let mut baseline = Health2Report::default();
-    baseline.findings = ids
-        .into_iter()
-        .map(|id| {
-            let mut finding = prism_intel::Finding::new(
-                "SYNTHETIC",
-                prism_core::Severity::Info,
-                prism_intel::finding::FindingStatus::Open,
-                id.clone(),
-                "",
-                prism_intel::Origin::Fact,
-                prism_intel::Confidence::Low,
-                None,
-                vec![],
-            );
-            // 指纹 id 由 Finding::new 派生；直接覆写保证集合恒等。
-            finding.id = id;
-            finding
-        })
-        .collect();
-    baseline
+    Health2Report {
+        findings: ids
+            .into_iter()
+            .map(|id| {
+                let mut finding = prism_intel::Finding::new(
+                    "SYNTHETIC",
+                    prism_core::Severity::Info,
+                    prism_intel::finding::FindingStatus::Open,
+                    id.clone(),
+                    "",
+                    prism_intel::Origin::Fact,
+                    prism_intel::Confidence::Low,
+                    None,
+                    vec![],
+                );
+                // 指纹 id 由 Finding::new 派生；直接覆写保证集合恒等。
+                finding.id = id;
+                finding
+            })
+            .collect(),
+        ..Health2Report::default()
+    }
 }
 
 #[cfg(test)]
@@ -149,26 +150,27 @@ mod fingerprint_diff_tests {
     use super::*;
 
     fn report_with(ids: &[&str]) -> Health2Report {
-        let mut report = Health2Report::default();
-        report.findings = ids
-            .iter()
-            .map(|id| {
-                let mut finding = prism_intel::Finding::new(
-                    "T",
-                    prism_core::Severity::Info,
-                    prism_intel::finding::FindingStatus::Open,
-                    *id,
-                    "",
-                    prism_intel::Origin::Fact,
-                    prism_intel::Confidence::Low,
-                    None,
-                    vec![],
-                );
-                finding.id = (*id).to_string();
-                finding
-            })
-            .collect();
-        report
+        Health2Report {
+            findings: ids
+                .iter()
+                .map(|id| {
+                    let mut finding = prism_intel::Finding::new(
+                        "T",
+                        prism_core::Severity::Info,
+                        prism_intel::finding::FindingStatus::Open,
+                        *id,
+                        "",
+                        prism_intel::Origin::Fact,
+                        prism_intel::Confidence::Low,
+                        None,
+                        vec![],
+                    );
+                    finding.id = (*id).to_string();
+                    finding
+                })
+                .collect(),
+            ..Health2Report::default()
+        }
     }
 
     #[test]

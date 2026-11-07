@@ -135,7 +135,7 @@ impl AnalysisRunsStore for SqliteAnalysisRunsStore {
             .connection
             .lock()
             .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
-        let mut transaction = connection
+        let transaction = connection
             .transaction()
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
         transaction
@@ -210,12 +210,12 @@ impl AnalysisRunsStore for SqliteAnalysisRunsStore {
             .lock()
             .map_err(|_| StoreError::Unavailable("lock poisoned".into()))?;
         let mut statement = connection
-            .prepare(&format!(
+            .prepare(
                 "SELECT id, project_root, domain, schema_version, basis, captured_at,
                         json_array_length(finding_ids) AS findings_count
                  FROM analysis_runs WHERE project_root = ?1 AND domain = ?2
-                 ORDER BY id DESC LIMIT ?3"
-            ))
+                 ORDER BY id DESC LIMIT ?3",
+            )
             .map_err(|err| StoreError::Unavailable(err.to_string()))?;
         let rows = statement
             .query_map(
@@ -324,7 +324,7 @@ impl AnalysisRunsStore for InMemoryAnalysisRunsStore {
                 findings_count: r.finding_ids.len(),
             })
             .collect();
-        heads.sort_by(|a, b| b.id.cmp(&a.id));
+        heads.sort_by_key(|head| std::cmp::Reverse(head.id));
         heads.truncate(limit);
         Ok(heads)
     }

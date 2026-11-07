@@ -1,5 +1,7 @@
 # ifuyo Prism
 
+[![CI](https://github.com/taozhihaoo/ifuyo-prism/actions/workflows/ci.yml/badge.svg)](https://github.com/taozhihaoo/ifuyo-prism/actions/workflows/ci.yml)
+
 > **AI-native、local-first 的项目理解与工程体检工作台。**
 >
 > Prism 不替你写项目，而负责让你和 AI **看懂项目、看懂变化、找到风险、

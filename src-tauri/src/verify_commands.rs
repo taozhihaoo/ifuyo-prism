@@ -28,6 +28,18 @@ pub struct VerifyPlanDto {
     pub checks: Vec<prism_verify::PlannedCheck>,
 }
 
+/// 最近一次验证的结果 DTO（前端 `VerifyResults` 契约）。
+///
+/// 必须用具名字段 struct：serde 会把 Rust tuple `(A, B)` 序列化为 JSON
+/// **数组** `[a, b]`，而前端读取的是 `{ plan, report }` 对象。历史上此处
+/// 返回 `Option<(VerifyPlanDto, Option<Report>)>`，导致 Verify 页与
+/// Overview 验证摘要恒为空。
+#[derive(Debug, Clone, Serialize)]
+pub struct VerifyResultsDto {
+    pub plan: VerifyPlanDto,
+    pub report: Option<prism_verify::VerificationReport>,
+}
+
 fn verify_root(state: &State<'_, AppState>) -> Result<std::path::PathBuf, PrismErrorDto> {
     let session = lock_session(&state.session);
     session
@@ -158,17 +170,13 @@ pub fn get_verify_status(state: State<'_, AppState>) -> VerifyStatusDto {
 
 /// 获取最近一次完成的验证报告与计划。
 #[tauri::command]
-pub fn get_verify_results(
-    state: State<'_, AppState>,
-) -> Option<(VerifyPlanDto, Option<prism_verify::VerificationReport>)> {
+pub fn get_verify_results(state: State<'_, AppState>) -> Option<VerifyResultsDto> {
     let session = lock_session(&state.session);
-    session.verify_plan.clone().map(|plan| {
-        (
-            VerifyPlanDto {
-                checks: plan.checks,
-            },
-            session.verify_report.clone(),
-        )
+    session.verify_plan.clone().map(|plan| VerifyResultsDto {
+        plan: VerifyPlanDto {
+            checks: plan.checks,
+        },
+        report: session.verify_report.clone(),
     })
 }
 
@@ -178,4 +186,24 @@ pub fn cancel_verify(state: State<'_, AppState>) -> Result<(), PrismErrorDto> {
     let session = lock_session(&state.session);
     session.verify_token.cancel();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 回归：返回值必须是具名对象 `{ plan, report }`。
+    /// 曾经返回 tuple，serde 序列化为数组，前端 `results.plan` 恒为 undefined。
+    #[test]
+    fn verify_results_serialize_as_named_object() {
+        let dto = VerifyResultsDto {
+            plan: VerifyPlanDto { checks: Vec::new() },
+            report: None,
+        };
+        let json = serde_json::to_value(&dto).expect("serialize");
+
+        assert!(!json.is_array(), "must not serialize as a tuple/array");
+        assert!(json.get("plan").is_some(), "missing `plan` field");
+        assert!(json.get("report").is_some(), "missing `report` field");
+    }
 }

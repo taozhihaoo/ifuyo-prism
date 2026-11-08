@@ -57,7 +57,7 @@ describe("IntelligenceSummaryCard (P1-2)", () => {
 
     render(<IntelligenceSummaryCard />);
     await waitFor(() => {
-      expect(screen.getByText("Intelligence 摘要（2.0）")).toBeInTheDocument();
+      expect(screen.getByText("Intelligence summary (2.0)")).toBeInTheDocument();
     });
     expect(screen.getAllByText("Unknown")).toHaveLength(4);
     expect(screen.getByText(/Manual First §147/)).toBeInTheDocument();

@@ -219,7 +219,7 @@ describe("EnvironmentPage (M9 GUI)", () => {
       expect(screen.getByTestId("env-completeness")).toBeInTheDocument();
     });
     const banner = screen.getByTestId("env-completeness");
-    expect(banner).toHaveTextContent("部分缺失");
+    expect(banner).toHaveTextContent("partial");
     expect(banner).toHaveTextContent("probe_failed");
     expect(banner).toHaveTextContent("[dotnet]");
     expect(banner).toHaveTextContent("probe timed out after 10s");

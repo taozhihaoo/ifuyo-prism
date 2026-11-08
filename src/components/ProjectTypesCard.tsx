@@ -1,22 +1,24 @@
 import { useState } from "react";
+import { useUiSettings } from "../app/SettingsProvider";
 import type { ProjectTypeCandidate } from "../types/prism";
 
 /** 项目类型 + 证据展示（纲领 §46：点击查看 Evidence）。 */
 export default function ProjectTypesCard({ candidates }: { candidates: ProjectTypeCandidate[] }) {
+  const { t } = useUiSettings();
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (candidates.length === 0) {
     return (
       <div className="card">
-        <h2 className="card-title">Detected project types</h2>
-        <p className="muted">No known project type signatures found.</p>
+        <h2 className="card-title">{t("projectTypes.title")}</h2>
+        <p className="muted">{t("projectTypes.empty")}</p>
       </div>
     );
   }
 
   return (
     <div className="card">
-      <h2 className="card-title">Detected project types</h2>
+      <h2 className="card-title">{t("projectTypes.title")}</h2>
       <ul className="row-list">
         {candidates.map((candidate) => (
           <li key={candidate.name}>
@@ -41,7 +43,7 @@ export default function ProjectTypesCard({ candidates }: { candidates: ProjectTy
           </li>
         ))}
       </ul>
-      <p className="muted small">Candidates are evidence-based, not a verdict.</p>
+      <p className="muted small">{t("projectTypes.note")}</p>
     </div>
   );
 }

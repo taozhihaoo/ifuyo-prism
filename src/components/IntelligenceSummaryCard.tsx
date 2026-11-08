@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useProjectStore } from "../app/ProjectStore";
+import { useUiSettings } from "../app/SettingsProvider";
 import { getIntelligenceSummary, toPrismError } from "../services/ipc";
 import type { IntelligenceSummaryDto } from "../types/prism";
 
@@ -7,10 +8,6 @@ type PanelState =
   | { kind: "loading" }
   | { kind: "loaded"; summary: IntelligenceSummaryDto }
   | { kind: "error"; message: string };
-
-function Unknown() {
-  return <dd className="muted">Unknown</dd>;
-}
 
 /**
  * 概览 Intelligence 摘要卡（P1-2）。
@@ -22,22 +19,28 @@ function Unknown() {
  */
 export default function IntelligenceSummaryCard() {
   const { project } = useProjectStore();
+  const { t } = useUiSettings();
   const [state, setState] = useState<PanelState>({ kind: "loading" });
+  const aliveRef = useRef(true);
+
+  useEffect(() => {
+    aliveRef.current = true;
+    return () => {
+      aliveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!project?.root_path) return;
     let disposed = false;
     setState({ kind: "loading" });
-    const load = () => {
-      getIntelligenceSummary()
-        .then((summary) => {
-          if (!disposed) setState({ kind: "loaded", summary });
-        })
-        .catch((err) => {
-          if (!disposed) setState({ kind: "error", message: toPrismError(err).message });
-        });
-    };
-    load();
+    getIntelligenceSummary()
+      .then((summary) => {
+        if (!disposed) setState({ kind: "loaded", summary });
+      })
+      .catch((err) => {
+        if (!disposed) setState({ kind: "error", message: toPrismError(err).message });
+      });
     return () => {
       disposed = true;
     };
@@ -45,44 +48,55 @@ export default function IntelligenceSummaryCard() {
 
   if (!project) return null;
 
+  const refresh = () => {
+    setState({ kind: "loading" });
+    getIntelligenceSummary()
+      .then((summary) => {
+        if (aliveRef.current) setState({ kind: "loaded", summary });
+      })
+      .catch((err) => {
+        if (aliveRef.current) setState({ kind: "error", message: toPrismError(err).message });
+      });
+  };
+
+  const Unknown = () => <dd className="muted">{t("common.unknown")}</dd>;
+
   return (
     <div className="card" data-testid="intelligence-summary">
-      <div className="context-row">
-        <h2 className="card-title">Intelligence 摘要（2.0）</h2>
+      <div className="card-head">
+        <h2 className="card-title">{t("intelligence.title")}</h2>
         <button
           type="button"
           className="linklike small"
-          onClick={() => {
-            setState({ kind: "loading" });
-            getIntelligenceSummary()
-              .then((summary) => setState({ kind: "loaded", summary }))
-              .catch((err) => setState({ kind: "error", message: toPrismError(err).message }));
-          }}
+          onClick={refresh}
           data-testid="intelligence-refresh"
         >
-          刷新
+          {t("intelligence.refresh")}
         </button>
       </div>
-      {state.kind === "loading" && <p className="muted small">Projecting intelligence facts…</p>}
+      {state.kind === "loading" && <p className="muted small">{t("intelligence.loading")}</p>}
       {state.kind === "error" && (
-        <p className="status-error">Intelligence summary unavailable: {state.message}</p>
+        <p className="status-error">
+          {t("intelligence.error")} {state.message}
+        </p>
       )}
       {state.kind === "loaded" && (
         <>
           <dl className="fact-grid">
             <div>
-              <dt>health2 findings</dt>
+              <dt>{t("intelligence.health2")}</dt>
               {state.summary.health2 ? (
                 <dd data-testid="intelligence-health2">
-                  {state.summary.health2.critical} critical · {state.summary.health2.warning}{" "}
-                  warning · {state.summary.health2.info} info
+                  {state.summary.health2.critical} {t("intelligence.units.critical")} ·{" "}
+                  {state.summary.health2.warning} {t("intelligence.units.warning")} ·{" "}
+                  {state.summary.health2.info} {t("intelligence.units.info")}
                 </dd>
               ) : (
                 <Unknown />
               )}
             </div>
             <div>
-              <dt>1.0 findings</dt>
+              <dt>{t("intelligence.health1")}</dt>
               {state.summary.health !== null ? (
                 <dd>{state.summary.health}</dd>
               ) : (
@@ -90,32 +104,31 @@ export default function IntelligenceSummaryCard() {
               )}
             </div>
             <div>
-              <dt>Godot 场景</dt>
+              <dt>{t("intelligence.godot")}</dt>
               {state.summary.godot ? (
                 <dd data-testid="intelligence-godot">
-                  {state.summary.godot.scenes} scenes · {state.summary.godot.nodes} nodes ·{" "}
-                  {state.summary.godot.resources} resources
+                  {state.summary.godot.scenes} {t("intelligence.units.scenes")} ·{" "}
+                  {state.summary.godot.nodes} {t("intelligence.units.nodes")} ·{" "}
+                  {state.summary.godot.resources} {t("intelligence.units.resources")}
                 </dd>
               ) : (
                 <Unknown />
               )}
             </div>
             <div>
-              <dt>依赖</dt>
+              <dt>{t("intelligence.deps")}</dt>
               {state.summary.deps ? (
                 <dd data-testid="intelligence-deps">
-                  {state.summary.deps.declarations} declarations ·{" "}
-                  {state.summary.deps.resolved} resolved · {state.summary.deps.cycles} cycles
+                  {state.summary.deps.declarations} {t("intelligence.units.declarations")} ·{" "}
+                  {state.summary.deps.resolved} {t("intelligence.units.resolved")} ·{" "}
+                  {state.summary.deps.cycles} {t("intelligence.units.cycles")}
                 </dd>
               ) : (
                 <Unknown />
               )}
             </div>
           </dl>
-          <p className="muted small">
-            Unknown = 本会话尚未运行该域（Manual First §147）——如实标注，不画成正常（§46）。
-            完整分析入口：健康页（1.0/health2）、理解页 Godot 投影、环境页。
-          </p>
+          <p className="muted small">{t("intelligence.note")}</p>
         </>
       )}
     </div>

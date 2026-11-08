@@ -310,7 +310,7 @@ describe("HealthPage (M7 GUI)", () => {  beforeEach(() => {
       expect(screen.getByTestId("health-completeness")).toBeInTheDocument();
     });
     const banner = screen.getByTestId("health-completeness");
-    expect(banner).toHaveTextContent("数据完整度");
+    expect(banner).toHaveTextContent("Data completeness");
     expect(banner).toHaveTextContent("unresolved_relationship");
   });
 
@@ -337,7 +337,7 @@ describe("HealthPage (M7 GUI)", () => {  beforeEach(() => {
     render(<HealthPage />);
     await waitFor(() => {
       expect(screen.getByTestId("health-completeness")).toHaveTextContent(
-        "部分缺失",
+        "partial",
       );
     });
   });

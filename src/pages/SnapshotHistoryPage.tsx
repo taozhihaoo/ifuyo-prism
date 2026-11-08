@@ -164,7 +164,7 @@ export default function SnapshotHistoryPage() {
           {comparing ? t("history.capturing") : t("history.compare")}
         </button>
         <button type="button" className="linklike" onClick={capture} disabled={capturing}>
-          Capture now
+          {capturing ? t("history.capturing") : t("history.captureNow")}
         </button>
       </div>
 

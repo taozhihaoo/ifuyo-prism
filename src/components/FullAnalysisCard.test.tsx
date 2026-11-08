@@ -75,11 +75,11 @@ describe("FullAnalysisCard (P2-1)", () => {
     });
     // 逐步进度可见：四阶段 + 各自状态。
     await waitFor(() => {
-      expect(screen.getByTestId("full-analysis-stage-scan")).toHaveTextContent("完成");
+      expect(screen.getByTestId("full-analysis-stage-scan")).toHaveTextContent("completed");
     });
-    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("运行中");
-    expect(screen.getByTestId("full-analysis-stage-graph")).toHaveTextContent("待执行");
-    expect(screen.getByTestId("full-analysis-stage-health")).toHaveTextContent("待执行");
+    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("running");
+    expect(screen.getByTestId("full-analysis-stage-graph")).toHaveTextContent("pending");
+    expect(screen.getByTestId("full-analysis-stage-health")).toHaveTextContent("pending");
     expect(screen.getByTestId("full-analysis-cancel")).toBeInTheDocument();
   });
 
@@ -89,13 +89,13 @@ describe("FullAnalysisCard (P2-1)", () => {
     render(<FullAnalysisCard />);
     await waitFor(() => {
       expect(screen.getByTestId("full-analysis-cancelled")).toHaveTextContent(
-        "已完成阶段的结果保留",
+        "completed stages above are kept",
       );
     });
-    expect(screen.getByTestId("full-analysis-stage-scan")).toHaveTextContent("完成");
-    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("完成");
-    expect(screen.getByTestId("full-analysis-stage-graph")).toHaveTextContent("已取消");
-    expect(screen.getByTestId("full-analysis-stage-health")).toHaveTextContent("跳过");
+    expect(screen.getByTestId("full-analysis-stage-scan")).toHaveTextContent("completed");
+    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("completed");
+    expect(screen.getByTestId("full-analysis-stage-graph")).toHaveTextContent("cancelled");
+    expect(screen.getByTestId("full-analysis-stage-health")).toHaveTextContent("skipped");
   });
 
   it("surfaces failure honestly", async () => {
@@ -121,7 +121,7 @@ describe("FullAnalysisCard (P2-1)", () => {
         "stage inspect failed",
       );
     });
-    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("失败");
+    expect(screen.getByTestId("full-analysis-stage-inspect")).toHaveTextContent("failed");
   });
 
   it("surfaces start errors instead of fake success", async () => {

@@ -33,7 +33,7 @@ describe("CompletenessBanner (P2-5)", () => {
     );
     const banner = screen.getByTestId("completeness-banner");
     expect(banner).toHaveTextContent("测试域");
-    expect(banner).toHaveTextContent("部分缺失");
+    expect(banner).toHaveTextContent("partial");
     expect(banner).toHaveTextContent("kind_1");
     expect(banner).toHaveTextContent("[subject_1]");
   });
@@ -53,9 +53,9 @@ describe("CompletenessBanner (P2-5)", () => {
     expect(screen.getByText("kind_1")).toBeInTheDocument();
     expect(screen.queryByText("kind_4")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /展开其余 2 条/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Show 2 more/ }));
     expect(screen.getByText("kind_4")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "收起" }));
+    fireEvent.click(screen.getByRole("button", { name: "Collapse" }));
     expect(screen.queryByText("kind_4")).not.toBeInTheDocument();
   });
 

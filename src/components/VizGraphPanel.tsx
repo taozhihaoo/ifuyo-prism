@@ -35,6 +35,7 @@ export default function VizGraphPanel() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<VizNode | null>(null);
+  const [retryTick, setRetryTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +55,7 @@ export default function VizGraphPanel() {
     return () => {
       cancelled = true;
     };
-  }, [view]);
+  }, [view, retryTick]);
 
   // 子节点（层级渲染：project → scene/dir → …）。
   const childrenOf = useMemo(() => {
@@ -99,22 +100,16 @@ export default function VizGraphPanel() {
     ]);
   };
 
-  if (error) {
-    return (
-      <div className="card" data-testid="viz-error">
-        <p className="muted">Visualization unavailable: {error}</p>
-      </div>
-    );
-  }
-
   return (
     <div className="card" data-testid="viz-panel">
-      <div role="tablist" aria-label="Visualization view">
+      <div role="tablist" aria-label="Visualization view" className="viz-tabs">
         {VIEWS.map((entry) => (
           <button
             key={entry.key}
             type="button"
             role="tab"
+            id={`viz-tab-${entry.key}`}
+            aria-controls="viz-tabpanel"
             aria-selected={view === entry.key}
             onClick={() => setView(entry.key)}
           >
@@ -122,49 +117,62 @@ export default function VizGraphPanel() {
           </button>
         ))}
       </div>
-      {loading && <p className="muted small">Projecting…</p>}
-      {!loading && graph && (
-        <>
-          {graph.status !== "complete" && (
-            <p className="muted small" data-testid="viz-status">
-              view status: {graph.status}
-            </p>
-          )}
-          {graph.truncated && (
-            <p className="muted small" data-testid="viz-truncated">
-              view truncated by resource limits (§28) — not all nodes shown
-            </p>
-          )}
-          <ul data-testid="viz-tree">{renderTree(null, 0)}</ul>
-          <div data-testid="viz-legend">
-            <p className="muted small">Legend:</p>
-            <ul>
-              {graph.legend.map((entry) => (
-                <li key={entry.key} className="muted small">
-                  {entry.key}: {entry.description}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </>
+      {/* 错误态仍保留 tabs：用户可切回其他视图或重试，不会卡死在纯文本页面。 */}
+      {error && (
+        <div className="viz-error-box" data-testid="viz-error" role="tabpanel" id="viz-tabpanel">
+          <p className="muted">Visualization unavailable: {error}</p>
+          <button type="button" className="button" onClick={() => setRetryTick((n) => n + 1)}>
+            Retry
+          </button>
+        </div>
       )}
-      {selected && (
-        <div data-testid="viz-inspector">
-          <p className="small">
-            <strong>{selected.label}</strong> ({selected.kind}, {selected.status})
-          </p>
-          <p className="muted small">entity: {selected.entity_id}</p>
-          {Object.entries(selected.metadata).map(([key, value]) => (
-            <p key={key} className="muted small">
-              {key}: {value}
-            </p>
-          ))}
-          <p className="muted small">relations: {relatedEdges.length}</p>
-          {relatedEdges.map((edge) => (
-            <p key={edge.id} className="muted small">
-              {edge.relation}: {edge.source} → {edge.target}
-            </p>
-          ))}
+      {!error && (
+        <div role="tabpanel" id="viz-tabpanel" aria-labelledby={`viz-tab-${view}`}>
+          {loading && <p className="muted small">Projecting…</p>}
+          {!loading && graph && (
+            <>
+              {graph.status !== "complete" && (
+                <p className="muted small" data-testid="viz-status">
+                  view status: {graph.status}
+                </p>
+              )}
+              {graph.truncated && (
+                <p className="muted small" data-testid="viz-truncated">
+                  view truncated by resource limits (§28) — not all nodes shown
+                </p>
+              )}
+              <ul data-testid="viz-tree">{renderTree(null, 0)}</ul>
+              <div data-testid="viz-legend">
+                <p className="muted small">Legend:</p>
+                <ul>
+                  {graph.legend.map((entry) => (
+                    <li key={entry.key} className="muted small">
+                      {entry.key}: {entry.description}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
+          {selected && (
+            <div data-testid="viz-inspector">
+              <p className="small">
+                <strong>{selected.label}</strong> ({selected.kind}, {selected.status})
+              </p>
+              <p className="muted small">entity: {selected.entity_id}</p>
+              {Object.entries(selected.metadata).map(([key, value]) => (
+                <p key={key} className="muted small">
+                  {key}: {value}
+                </p>
+              ))}
+              <p className="muted small">relations: {relatedEdges.length}</p>
+              {relatedEdges.map((edge) => (
+                <p key={edge.id} className="muted small">
+                  {edge.relation}: {edge.source} → {edge.target}
+                </p>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

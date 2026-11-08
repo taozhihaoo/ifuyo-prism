@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useUiSettings } from "../app/SettingsProvider";
+import { format } from "../app/i18n";
 
 /**
  * 数据完整度横幅（P2-5，§46 精神：Unknown 不得画成正常）。
@@ -22,12 +24,12 @@ export interface CompletenessData {
   diagnostics: CompletenessDiagnostic[];
 }
 
-const COMPLETENESS_LABEL: Record<string, string> = {
-  complete: "完整",
-  partial: "部分缺失",
-  truncated: "已截断",
-  failed: "失败",
-  unknown: "未知",
+const COMPLETENESS_KEY: Record<string, string> = {
+  complete: "completeness.complete",
+  partial: "completeness.partial",
+  truncated: "completeness.truncated",
+  failed: "completeness.failed",
+  unknown: "completeness.unknown",
 };
 
 /** 该域数据是否称得上完整：状态 complete 且没有任何诊断明细。 */
@@ -45,20 +47,22 @@ export default function CompletenessBanner({
   data: CompletenessData;
   testId?: string;
 }) {
+  const { t } = useUiSettings();
   const [expanded, setExpanded] = useState(false);
 
   if (isComplete(data)) return null;
 
-  const label = COMPLETENESS_LABEL[data.completeness] ?? data.completeness;
+  const labelKey = COMPLETENESS_KEY[data.completeness];
+  const label = labelKey ? t(labelKey) : data.completeness;
   const visible = expanded ? data.diagnostics : data.diagnostics.slice(0, PREVIEW_COUNT);
   const hidden = data.diagnostics.length - visible.length;
 
   return (
     <div className="warning-box completeness-banner" data-testid={testId}>
       <p className="completeness-banner-title">
-        数据完整度（Data Completeness）· {data.domain}：
-        <strong>{label}</strong>
-        {data.diagnostics.length > 0 && ` · ${data.diagnostics.length} 条明细`}
+        {t("completeness.title")} · {data.domain}: <strong>{label}</strong>
+        {data.diagnostics.length > 0 &&
+          ` · ${format(t("completeness.detailCount"), { n: data.diagnostics.length })}`}
       </p>
       <ul>
         {visible.map((diagnostic, index) => (
@@ -77,7 +81,7 @@ export default function CompletenessBanner({
           className="linklike small"
           onClick={() => setExpanded(true)}
         >
-          展开其余 {hidden} 条
+          {format(t("completeness.expand"), { n: hidden })}
         </button>
       )}
       {expanded && data.diagnostics.length > PREVIEW_COUNT && (
@@ -86,7 +90,7 @@ export default function CompletenessBanner({
           className="linklike small"
           onClick={() => setExpanded(false)}
         >
-          收起
+          {t("completeness.collapse")}
         </button>
       )}
     </div>

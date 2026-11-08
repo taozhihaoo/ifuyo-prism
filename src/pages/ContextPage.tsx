@@ -279,7 +279,7 @@ export default function ContextPage() {
           {pack.health.findings.map((finding) => (
             <li key={finding.rule_id} className="small">
               <span
-                className={`sev ${finding.severity === "Info" ? "sev-info" : "sev-warning"}`}
+                className={`sev ${finding.severity === "info" ? "sev-info" : "sev-warning"}`}
               >
                 [{finding.rule_id}]
               </span>{" "}

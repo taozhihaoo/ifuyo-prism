@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { PageKey } from "../pages/registry";
 import { PAGES } from "../pages/registry";
 import { useUiSettings } from "../app/SettingsProvider";
-import { translate } from "../app/i18n";
 
 interface RecentProject {
   display_name: string;
@@ -28,7 +27,7 @@ export default function CommandPalette({
   onOpenProject,
   onClose,
 }: CommandPaletteProps) {
-  const { settings, t } = useUiSettings();
+  const { t } = useUiSettings();
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,15 +36,16 @@ export default function CommandPalette({
     inputRef.current?.focus();
   }, []);
 
+  // 语言切换后必须重算标签（t 随 language 变化），否则调色板仍是旧语言。
   const pageItems = useMemo(
     () =>
       PAGES.map((page) => ({
         kind: "page" as const,
         id: page.key,
-        label: translate(settings.language, `page.${page.key}`),
-        hint: page.key === active ? "current page" : "go to page",
+        label: t(`page.${page.key}`),
+        hint: page.key === active ? t("palette.currentPage") : t("palette.goToPage"),
       })),
-    [active],
+    [active, t],
   );
   const projectItems = useMemo(
     () =>
@@ -55,7 +55,7 @@ export default function CommandPalette({
         label: `${t("palette.openProject")}: ${project.display_name}`,
         hint: project.canonical_root,
       })),
-    [recentProjects],
+    [recentProjects, t],
   );
 
   const query_lower = query.toLowerCase();
@@ -79,7 +79,8 @@ export default function CommandPalette({
       onClose();
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
-      setActiveIndex((index) => Math.min(index + 1, filtered.length - 1));
+      // filtered.length === 0 时不能把 index 钳成 -1（否则高亮/提交失效）。
+      setActiveIndex((index) => Math.max(0, Math.min(index + 1, filtered.length - 1)));
     } else if (event.key === "ArrowUp") {
       event.preventDefault();
       setActiveIndex((index) => Math.max(index - 1, 0));
@@ -91,7 +92,13 @@ export default function CommandPalette({
 
   return (
     <div className="palette-overlay" data-testid="command-palette" onClick={onClose}>
-      <div className="palette" role="dialog" aria-label="Command palette" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="palette"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
+        onClick={(e) => e.stopPropagation()}
+      >
         <input
           ref={inputRef}
           className="palette-input"

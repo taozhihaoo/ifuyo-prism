@@ -2,6 +2,38 @@
 
 所有显著变更记录于此。格式基于 Keep a Changelog。
 
+## [Unreleased]
+
+### Fixed
+
+- **Verify 结果契约**：`get_verify_results` 原先返回 Rust tuple，serde 序列化为
+  JSON 数组，而前端按 `{ plan, report }` 对象读取，导致 Verify 页与概览验证摘要
+  永远为空。改为具名 `VerifyResultsDto`，并补充序列化回归测试。
+- **全局快捷键**：Ctrl/Cmd+K 与 Ctrl/Cmd+1..9 不再在输入框/文本域内劫持输入；
+  同时支持 macOS 的 Cmd 键。
+- **项目切换竞态**：`ProjectStore` 的扫描/代码理解/依赖图轮询改为链式单次在飞，
+  切换项目会停止旧轮询并用 generation 丢弃旧结果，避免重复启动与串项目。
+- **可恢复的错误态**：可视化面板出错时仍保留视图切换与重试，不再卡在纯文本页。
+- **暗色主题可读性**：severity 配色与 `.finding-detail` 改用主题变量，暗色下不再
+  近乎不可见；清掉 `--accent` / `--border` 等未定义变量。
+- **上下文健康**：`severity === "Info"` 大小写错误导致全部 finding 被着色为 warning。
+- **命令面板**：语言切换后标签不刷新；空结果时光标索引被钳到 -1。
+
+### Changed
+
+- **界面重做**：新的设计系统（分层表面、渐变强调、图标导航、页头信息层级、
+  卡片/指标块/按钮/主题感知状态色），深色与浅色主题、两种密度均适配。
+- **i18n 补全**：外壳、概览页、设置页与关键子卡片全部走 `t()`，中英文案对齐。
+- 新增浏览器内 UI 预览入口 `demo.html`（固定演示数据，不进入生产构建），
+  用于文档截图与前端联调。
+
+### Added
+
+- 许可证：`LICENSE`（双许可说明）、`LICENSE-APACHE`、`LICENSE-MIT`；
+  `package.json` / `workspace.package` 增加 `MIT OR Apache-2.0`。
+- `SECURITY.md`（安全模型 + 漏洞上报流程）。
+- `README.md` 重写为英文主文档、`README.zh-CN.md` 中文版，各自带对应语言界面截图。
+
 ## [0.1.0] — 2026-10-05（M0–M12 交付 + M13 Release Hardening）
 
 ### Engineering Intelligence（M1–M4）

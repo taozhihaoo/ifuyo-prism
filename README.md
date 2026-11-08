@@ -1,217 +1,258 @@
 # ifuyo Prism
 
 [![CI](https://github.com/taozhihaoo/ifuyo-prism/actions/workflows/ci.yml/badge.svg)](https://github.com/taozhihaoo/ifuyo-prism/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE)
 
-> **AI-native、local-first 的项目理解与工程体检工作台。**
+**English** · [简体中文](README.zh-CN.md)
+
+> **An AI-native, local-first workbench for understanding projects and auditing engineering health.**
 >
-> Prism 不替你写项目，而负责让你和 AI **看懂项目、看懂变化、找到风险、
-> 验证结果、生成可靠上下文——并看见、部署它**。
+> Prism does not write your project for you. It makes you and your AI able to
+> *read the project, read the changes, find the risks, verify the outcome, and
+> produce trustworthy context* — and to see and deploy it.
+
+![Prism desktop UI — Overview](docs/screenshots/prism-en.png)
+
+---
 
 ## What Prism is
 
-一个理解软件项目的本地工作台，沿这条链路构建能力：
+A local workbench that builds capability along one chain:
 
 ```text
-看懂项目 → 看懂变化 → 发现风险 → 验证项目 → 生成上下文 → 观察运行 → 看见/部署
+understand → see changes → find risks → verify → generate context → observe → ship
 ```
 
-### 1.0 工程体检（已交付）
+### 1.0 — Engineering health check (delivered)
 
-- **Understand** — 结构/符号/依赖图（M1-M3）+ Git 事实（M4）+ ChangeSet（M5）
-- **Changes → Impact** — Git 变化 → ChangeSet（M5）→ 影响分析（M6）→ 健康发现（M7：13 条确定性规则 + 证据化 Findings）
-- **Health** — 基于 Evidence 的 Finding 体系（不做"项目评分"）
-- **Verify** — 构建/测试/lint 统一编排（M8：Node/Python/C#/Rust 适配 + 结构化解析 + CI 静态抽取 + Release 检查）
-- **Environment** — 项目要求 vs 机器事实（M9：requirement 层级、冲突保留、端口/进程动态事实）
-- **Context** — 风险加权、任务感知的 AI 上下文包（M10：确定性选择 + Context Health + trust/risk，无 LLM 也能工作）
-- **Snapshot** — 工程事实的持久化记忆（M11：稳定身份 + 多域指纹 + SQLite + compare/timeline/history）
+| Capability | What it does |
+| --- | --- |
+| **Understand** | Structure, symbols and dependency graph (M1–M3), git facts (M4), ChangeSet (M5) |
+| **Changes → Impact** | Git diff → ChangeSet → impact analysis (M6) → health findings (M7: 13 deterministic rules, evidence-backed) |
+| **Health** | Findings with evidence — deliberately no "project score" |
+| **Verify** | Unified build / test / lint orchestration (M8: Node, Python, C#, Rust adapters, structured parsing, CI extraction, release checks) |
+| **Environment** | Project requirements vs. machine facts (M9: requirement levels, conflicts preserved, ports/processes) |
+| **Context** | Risk-weighted, task-aware AI context packs (M10: deterministic selection, context health, trust/risk — works without an LLM) |
+| **Snapshot** | Persistent engineering memory (M11: stable identity, multi-domain fingerprints, SQLite, compare/timeline/history) |
 
-### 2.0 Intelligence（M20-M215，已交付）
+### 2.0 — Intelligence layer (M20–M215, delivered)
 
-在 1.0 基础上建成统一的工程事实层（`prism-intel`：Entity/Fact/Evidence/
-Relation/Finding），并沿这条链扩展：
+Built on a unified engineering-fact layer (`prism-intel`: Entity / Fact / Evidence /
+Relation / Finding), extended along the same chain:
 
-- **L0/L1/L2** — 结构清单（M22）→ C# 符号引擎（M23，tree-sitter）→ 语义关系解析（M25：CALLS/INHERITS/IMPLEMENTS/OVERRIDES）
-- **Godot Adapter** — Scene/Node/Script/Resource 解析（M24）+ Scene↔Script↔Symbol 跨层关联
-- **Evidence Graph & Impact** — 统一证据图 + 反向影响分析（M26：Change × 关系 → 受影响集合 + 证据路径）
-- **Context 2.0** — Impact/Change-aware 上下文（M27 `--impact-aware`）
-- **Health 2.0** — 统一 Finding 模型 + 19 条内建规则（7 categories）+ 生命周期（New/Persistent/Resolved/Regressed/Suppressed）+ Quality Gate（M28）
-- **Dependency/Security/Environment** — 依赖声明/解析分离 + lockfile + SBOM + secret 检测（全链 redaction）+ 离线 advisory 匹配（M29）
-- **Debug Intelligence** — 日志→事件→错误指纹→聚类→栈帧→符号/场景关联（M210）
-- **Git Evolution** — 文件/符号历史回放 + 热点（原始指标）/变更耦合（M211）
-- **Visualization** — godot 跨层/architecture 层级/dependency/impact 四投影（M212，确定性有界 View Model）
-- **API/Webhook Debugging** — 端点发现（ASP.NET/Express/FastAPI）+ 有界 HTTP 观测（SSRF guard）+ 本地 Webhook 接收器（HMAC 签名）+ 关联链（M213）
-- **Developer Deploy** — Artifact 身份/Manifest + Local transport（原子 activate）+ Preflight/Policy/Plan/Execute 分离 + Rollback/History/Diff（M214）
-- **Final Audit** — 全量回归 + 断链检查 + Release Decision = READY_WITH_KNOWN_LIMITATIONS（M215）
+- **L0/L1/L2** — structural inventory (M22) → C# symbol engine on tree-sitter (M23) → semantic relations (M25: CALLS / INHERITS / IMPLEMENTS / OVERRIDES)
+- **Godot adapter** — scene / node / script / resource parsing (M24) and cross-layer linking
+- **Evidence graph & impact** — unified evidence graph with reverse impact sets and evidence paths (M26)
+- **Context 2.0** — impact/change-aware context packs (M27, `--impact-aware`)
+- **Health 2.0** — unified findings, 19 built-in rules across 7 categories, lifecycle (New / Persistent / Resolved / Regressed / Suppressed), quality gate (M28)
+- **Dependency / security / environment** — declaration vs. resolution, lockfiles, SBOM, secret detection with end-to-end redaction, offline advisory matching (M29)
+- **Debug intelligence** — logs → events → error fingerprints → clusters → stack frames → symbol/scene links (M210)
+- **Git evolution** — file/symbol history, hotspots, change coupling (M211)
+- **Visualization** — godot / architecture / dependency / impact projections (M212), deterministic and bounded view models
+- **API & webhook debugging** — endpoint discovery (ASP.NET / Express / FastAPI), bounded HTTP observation with an SSRF guard, local webhook receiver with HMAC signing, correlation chains (M213)
+- **Developer deploy** — artifact identity and manifests, atomic local activation, preflight/policy/plan/execute separation, rollback/history/diff (M214)
 
 ## What Prism is not
 
-- IDE / 代码编辑器 / AI Coding Agent
-- Git GUI / Linter Dashboard / 依赖查看器
-- ChatGPT Clone / 自研 LLM / 云服务 / DevOps 平台 / CI/CD SaaS
-- 自动提交或大规模修改代码的工具
-- API 网关 / 抓包工具 / 渗透测试工具（M213 只做受观测面的调试事实）
-- 远程 Shell（M214 是受控部署系统）
+- Not an IDE, code editor, or AI coding agent
+- Not a Git GUI, linter dashboard, or dependency viewer
+- Not a ChatGPT clone, not a hosted LLM, not a cloud service, not a DevOps/CI platform
+- Not a tool that auto-commits or mass-edits your code
+- Not an API gateway, packet sniffer, or pentest tool (M213 only observes an explicitly probed surface)
+- Not a remote shell (M214 is a controlled deployment system)
 
-完整边界见 `Spec/ifuyo Prism — 开发总纲领 v1.0.md`（§19 明确不做）。
+The full boundary is defined in `Spec/` (the project charter, §19 "explicitly out of scope").
 
-## Tech stack
+## Screenshots
 
-| 层 | 技术 |
-| --- | --- |
-| Desktop 壳 | Tauri 2 |
-| Core | Rust（Cargo workspace，26 个 `crates/prism-*`） |
-| Frontend | React 18 + TypeScript + Vite |
-| CLI | Rust（`prism` 命令，与 GUI 共享 Core） |
-| 解析 | tree-sitter（C# 等增量语法解析） |
-| 哈希 | SHA-256（Artifact/Manifest 身份） |
+The desktop app, dark theme, English UI. The Chinese UI is shown in
+[README.zh-CN.md](README.zh-CN.md).
 
-## Repository structure
+![Prism — Overview page with project facts, status, project types and analysis entry points](docs/screenshots/prism-en.png)
+
+## Architecture
 
 ```text
 ifuyo-prism/
-├─ Spec/                     # 总纲领与各里程碑开发提示词（规格文档）
 ├─ crates/
-│  ├─ prism-core/            # 地基：ID/错误/配置/任务/日志/运行时抽象（M0）
-│  ├─ prism-project/         # 项目发现：扫描/ignore/语言/分类/入口点（M1）
-│  ├─ prism-parser/          # 代码理解：Symbol 模型 + tree-sitter adapters（M2）
-│  ├─ prism-analysis/        # 分析编排：CodeModel/SymbolIndex（M2）
-│  ├─ prism-graph/           # 关系层：模块/解析/依赖图/环/指标（M3）
-│  ├─ prism-git/             # Git facts：status/log/diff/refs/blame/file_history（M4+M211）
-│  ├─ prism-changes/         # ChangeSet：Git diff × 代码模型 → 变更事实（M5）
-│  ├─ prism-impact/          # 1.0 影响层（M6）
-│  ├─ prism-health/          # 1.0 健康层：13 条规则（M7，RETAIN）
-│  ├─ prism-verify/          # 验证编排（M8）
-│  ├─ prism-env/             # 环境事实（M9）
-│  ├─ prism-context/         # Context Pack（M10/M27）
-│  ├─ prism-snapshot/        # 快照 + compare/timeline（M11）
-│  ├─ prism-store/           # SQLite 持久化（M11）
-│  ├─ prism-intel/           # 2.0 统一核心：Entity/Fact/Evidence/Relation/Finding + Impact（M21/M26）
-│  ├─ prism-l0/              # 2.0 结构分析（M22）
-│  ├─ prism-csharp/          # 2.0 C# 符号/语义/变更映射（M23/M25）
-│  ├─ prism-godot/           # 2.0 Godot Adapter（M24）
-│  ├─ prism-health2/         # 2.0 统一 Finding：19 条规则/7 categories/生命周期/Gate（M28）
-│  ├─ prism-supply/          # 2.0 依赖/安全/SBOM/环境对照（M29）
-│  ├─ prism-debug/           # 2.0 日志/错误指纹/聚类/栈帧关联（M210）
-│  ├─ prism-evolution/       # 2.0 演化事实/热点/耦合（M211）
-│  ├─ prism-viz/             # 2.0 可视化投影（M212）
-│  ├─ prism-api/             # 2.0 API/Webhook 调试（M213）
-│  ├─ prism-deploy/          # 2.0 受控部署（M214）
-│  └─ prism-cli/             # prism 命令行（全命令族）
-├─ src-tauri/                # Tauri 2 应用壳（IPC 边界，无业务逻辑）
-├─ src/                      # React 前端（app/components/pages/services/types）
-├─ tests/                    # 跨 crate 集成测试
-├─ docs/                     # architecture（各里程碑契约）/ audits（Final Report）/ development / roadmap
-├─ scripts/                  # 构建辅助脚本
-└─ package.json              # 前端工作区根
+│  ├─ prism-core/         # foundation: IDs, errors, config, tasks, logging, runtime
+│  ├─ prism-project/      # discovery: scan, ignore, languages, classification, entry points
+│  ├─ prism-parser/       # symbols + tree-sitter adapters
+│  ├─ prism-analysis/     # code model / symbol index orchestration
+│  ├─ prism-graph/        # modules, resolution, dependency graph, cycles, metrics
+│  ├─ prism-git/          # git facts + evolution
+│  ├─ prism-changes/      # ChangeSet: git diff × code model
+│  ├─ prism-impact/       # 1.0 impact layer
+│  ├─ prism-health/       # 1.0 health layer (13 rules)
+│  ├─ prism-verify/       # verification orchestration
+│  ├─ prism-env/          # environment facts
+│  ├─ prism-context/      # context packs
+│  ├─ prism-snapshot/     # snapshots, compare, timeline
+│  ├─ prism-store/        # SQLite persistence
+│  ├─ prism-intel/        # 2.0 core: Entity/Fact/Evidence/Relation/Finding + impact
+│  ├─ prism-l0/           # 2.0 structural analysis
+│  ├─ prism-csharp/       # 2.0 C# symbols, semantics, change mapping
+│  ├─ prism-godot/        # 2.0 Godot adapter
+│  ├─ prism-health2/      # 2.0 unified findings, lifecycle, gate
+│  ├─ prism-supply/       # dependency / security / SBOM / environment
+│  ├─ prism-debug/        # logs, error fingerprints, clusters, stack frames
+│  ├─ prism-evolution/    # evolution facts, hotspots, coupling
+│  ├─ prism-viz/          # visualization projections
+│  ├─ prism-api/          # API / webhook debugging
+│  ├─ prism-deploy/       # controlled deployment
+│  └─ prism-cli/          # the `prism` command
+├─ src-tauri/             # Tauri 2 shell — IPC boundary only, no business logic
+├─ src/                   # React frontend (app / components / pages / services / types)
+├─ tests/                 # cross-crate integration tests + fixtures
+├─ docs/                  # architecture contracts, audits, roadmap
+├─ Spec/                  # project charter and per-milestone specifications
+└─ scripts/               # build & fixture helpers
 ```
 
-## CLI（全命令族）
+**Design invariants**
+
+- **GUI and CLI share one core.** Business logic exists once; Tauri and the CLI are thin shells.
+- **Projections are not facts.** Visualization, deploy and observation are projections of the intelligence core — there is no second source of truth.
+- **Unknown ≠ false.** Missing data, parse failures and unavailable credentials are reported as such, never rendered as zero or "all good".
+- **Deterministic first.** Core analysis is deterministic code; AI is an optional enhancement layer.
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Desktop shell | Tauri 2 |
+| Core | Rust (Cargo workspace, 26 `prism-*` crates) |
+| Frontend | React 18 + TypeScript + Vite |
+| CLI | Rust (`prism`, shares the core with the GUI) |
+| Parsing | tree-sitter (incremental C# and other grammars) |
+| Hashing | SHA-256 (artifact / manifest identity) |
+| Storage | SQLite (via `rusqlite`, bundled) |
+
+## Getting started
+
+### Prerequisites
+
+- Rust 1.85+ (edition 2021)
+- Node.js 18+
+- Tauri 2 platform dependencies ([system packages for your OS](https://v2.tauri.app/start/prerequisites/))
+
+### Develop
 
 ```bash
-# ---- 1.0 工程体检 ----
-prism scan <path>                  # 项目发现
-prism inspect <path>               # 代码符号
-prism graph <path>                 # 依赖与架构图
-prism git status|log|diff <path>   # Git facts（只读）
+npm install
+npm run tauri dev        # desktop app with HMR
+```
+
+To preview the UI in a browser without building the Rust side, use the bundled
+demo entry (deterministic sample data, no IPC required):
+
+```bash
+npm run dev
+# http://localhost:5173/demo.html?lang=en
+# http://localhost:5173/demo.html?lang=zh
+```
+
+### Build
+
+```bash
+npm run tauri build      # desktop bundle (Windows: NSIS installer + standalone exe)
+npm run build            # frontend only (dist/)
+cargo build --release    # Rust CLI (`prism`)
+```
+
+## CLI
+
+```bash
+# ---- 1.0 engineering health ----
+prism scan <path>                  # project discovery
+prism inspect <path>               # symbols
+prism graph <path>                 # dependency & architecture graph
+prism git status|log|diff <path>   # git facts (read-only)
 prism changes <path>               # ChangeSet
-prism impact <path>                # 影响分析
-prism health <path>                # 健康体检（1.0 规则）
-prism health <path> rules          # 规则检视
-prism verify <path>                # 验证编排
-prism env <path>                   # 环境事实
-prism context <path> --task "..."  # AI 上下文包
-prism snapshot|history|compare|timeline <path>  # 快照记忆
+prism impact <path>                # impact analysis
+prism health <path>                # health findings (1.0 rules)
+prism verify <path>                # verification orchestration
+prism env <path>                   # environment facts
+prism context <path> --task "..."  # AI context pack
+prism snapshot|history|compare|timeline <path>
 
-# ---- 2.0 Intelligence（M21-M215）----
+# ---- 2.0 intelligence ----
 prism intel <path> --domain dependency|structural|symbols|semantic|godot|impact
-                                   # 统一智能视图（M21-M26）
-prism health2 <path> [--baseline f.json]   # 统一 Finding + 生命周期 + Gate（M28）
+prism health2 <path> [--baseline f.json]
 prism supply <path> [--advisories db.json] [--policy p.json] [--sbom out.json]
-                                   # 依赖/安全/license/SBOM（M29）
-prism debug <path> [--source f.log]        # 日志→错误指纹→聚类→栈帧（M210）
+prism debug <path> [--source f.log]
 prism git evolution|hotspots|coupling|symbol-history|blame|commit-impact <file>
-                                   # Git 演化智能（M211）
-prism viz --view architecture|godot|dependency      # 可视化投影（M212）
-prism api endpoints|observe|correlate|webhook-listen  # API/Webhook 调试（M213）
-prism deploy artifact|plan|run|history|rollback      # 受控部署（M214）
+prism viz --view architecture|godot|dependency
+prism api endpoints|observe|correlate|webhook-listen
+prism deploy artifact|plan|run|history|rollback
 ```
 
-全部命令支持 `--json`（稳定 schema）与 `--help`。
+Every command supports `--json` with a stable schema and `--help`.
 
-带子命令的命令族（git/viz/api/deploy）路径可用三种等价形态：省略（缺省
-`.`）、位置参数（`prism git . evolution <file>`，兼容保留）、`--path`
-标志（`prism git --path <repo> evolution <file>`）。deploy 以各子命令的
-`source`/`--target-root` 为准，父级路径仅为兼容占位。
-
-## MCP server（AI 客户端接入）
+## MCP server
 
 ```bash
-prism mcp   # 只读 JSON-RPC stdio 服务器（newline-delimited）
+prism mcp   # read-only JSON-RPC stdio server (newline-delimited)
 ```
 
-让本地 AI 客户端（Claude Desktop、Claude Code 等）直接消费 Prism 的
-**持久化分析结果**（与 GUI 共用 SQLite：`analysis_runs`，`PRISM_DB_PATH`
-同口径）。工具：`list_projects` / `list_runs` / `get_report` /
-`get_finding`（含证据展开，§37 可追溯）。不重跑分析、不读项目文件、
-不写任何数据；stdout 只承载协议，日志走 stderr。
-
-客户端配置示例（Claude Desktop `claude_desktop_config.json`）：
+Lets local AI clients (Claude Desktop, Claude Code, …) consume Prism's **persisted**
+analysis results from the same SQLite store the GUI uses (`analysis_runs`,
+`PRISM_DB_PATH`). Tools: `list_projects`, `list_runs`, `get_report`, `get_finding`
+(with evidence expansion). It does not re-run analysis, does not read project files,
+and does not write data; stdout carries protocol only, logs go to stderr.
 
 ```json
 {
   "mcpServers": {
     "prism": {
-      "command": "E:/WorkSpace/ifuyo-prism/target/release/prism.exe",
+      "command": "/path/to/prism",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-GUI 每次完成 健康分析（1.0）/ health2 后自动落库（每项目每域保留最近
-50 次运行）；health2 的生命周期基线 = 库中上次运行（跨会话
-Persistent/Resolved/Regressed），首轮或 schema 变更则回退空基线（全部
-New，§26）。
+## Data and privacy
 
-## Desktop app（打包）
+- **No telemetry, no automatic upload.** Analysis runs entirely on your machine.
+- **The project is only read.** Prism does not modify your working tree; it does not
+  auto-commit. Snapshots are engineering-state records, not source backups.
+- **State lives outside the project.** The snapshot database is stored in the OS
+  application-data directory (`PRISM_DB_PATH` overrides it).
+- **Network is opt-in and bounded.** Only API observation and deploy reach the
+  network, only on explicit intent, and only through an SSRF guard / allowlist.
+- **Secrets are redacted** at every stage: detection → findings → context packs → logs.
 
-```bash
-npm run tauri build
-```
+See [SECURITY.md](SECURITY.md) for the full security model and how to report a
+vulnerability.
 
-产物位于 `target/release/bundle/`（Windows：NSIS 安装器 + 独立 exe）。
-数据边界：快照数据库在系统 AppData（不在项目里）；Prism 不修改用户项目、
-不联网（网络动作仅 M213 显式观测/M214 显式部署且经 SSRF/allowlist 强制）、
-无遥测、secret 全链 redaction。
-
-## How to test
+## Testing
 
 ```bash
-cargo test --workspace          # 804 项 Rust 单元 + 集成测试
-npm run typecheck               # 前端类型检查
-npm test                        # 61 项前端组件测试（vitest）
-cargo clippy --workspace --all-targets   # 0 warnings
+cargo test --workspace                  # Rust unit + integration tests
+npm run typecheck                       # frontend type check
+npm test                                # 96 frontend component tests (vitest)
+cargo clippy --workspace --all-targets  # lints
 ```
 
-## How to build
+## Documentation
 
-```bash
-npm run tauri build             # 桌面应用（Windows 下产出 exe/安装器）
-npm run build                   # 仅前端产物（dist/）
-cargo build --workspace         # 仅 Rust（含 prism CLI）
-cargo build --release           # release CLI（~21 MB）
-```
+- [docs/architecture.md](docs/architecture.md) — architecture overview
+- [docs/development.md](docs/development.md) — development guide
+- `docs/architecture/PRISM_2_0_*.md` — per-milestone contracts
+- [docs/audits/2.0-M215-final-audit.md](docs/audits/2.0-M215-final-audit.md) — final 2.0 audit
+- [docs/health-rules.md](docs/health-rules.md) — 1.0 health rules
+- `Spec/` — project charter and milestone specifications
 
-## Principles（摘要）
+## License
 
-- **Deterministic First**：核心分析是确定性代码，AI 只是增强层；无网络、无 AI Key 也必须完整可用
-- **Local-first**：无遥测、无自动上传；上下文生成默认脱敏
-- **Evidence first**：所有结论可定位、可复现、可解释
-- **GUI/CLI 共享 Core**：业务逻辑只有一份，Tauri 与 CLI 都是薄壳
-- **投影非事实**：可视化/部署/观测都是 Intelligence Core 的投影，不建第二事实源
-- **Unknown ≠ False**：数据缺失/解析失败/凭证不可用全部如实标注，不伪装成零或正常
+Dual-licensed under either of
 
-详细工程规范见 [docs/architecture.md](docs/architecture.md)、
-[docs/development.md](docs/development.md)、各里程碑契约
-（`docs/architecture/PRISM_2_0_*.md`）与最终审计报告
-（`docs/audits/2.0-M215-final-audit.md`）。
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE))
+- MIT License ([LICENSE-MIT](LICENSE-MIT))
+
+at your option. `SPDX-License-Identifier: MIT OR Apache-2.0`
+
+Unless you explicitly state otherwise, any contribution intentionally submitted for
+inclusion in this project shall be dual-licensed as above, without any additional
+terms or conditions.

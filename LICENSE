@@ -1,0 +1,25 @@
+# License
+
+ifuyo Prism is dual-licensed under either of the following licenses, at your option:
+
+- **Apache License, Version 2.0** — see [LICENSE-APACHE](LICENSE-APACHE)
+- **MIT License** — see [LICENSE-MIT](LICENSE-MIT)
+
+You may choose either license for your use of this software.
+
+```
+SPDX-License-Identifier: MIT OR Apache-2.0
+```
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in this project shall be dual-licensed as above, without any
+additional terms or conditions.
+
+## Third-party components
+
+Prism depends on third-party crates and npm packages that remain under their own
+licenses. Their terms are listed in `Cargo.lock` / `package-lock.json` and in the
+respective package metadata. `prism supply` can emit a CycloneDX SBOM of the
+resolved dependency set.
